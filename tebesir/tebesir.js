@@ -172,7 +172,11 @@ function ciz() {
   for (const m of gorunur) {
     const t = metinCek(m);
     const hoca = m.role === "user";
-    akisEl.append(el("div", { class: `balon ${hoca ? "hoca" : "bot"}${hoca && t.startsWith("[") ? " ozet" : ""}`, text: t }));
+    // Form özeti: modele giden iç işaret ("— tür: x") ekranda sade başlığa dönüşüyor.
+    const fm = hoca ? /^\[(.+?) formu dolduruldu — tür: [a-z_]+\]\n?/.exec(t) : null;
+    if (fm) akisEl.append(el("div", { class: "balon hoca ozet" }, el("strong", { text: `${fm[1]} formu gönderildi` }),
+      document.createTextNode("\n" + t.slice(fm[0].length))));
+    else akisEl.append(el("div", { class: `balon ${hoca ? "hoca" : "bot"}`, text: t }));
   }
   for (const a of adimlar) {
     if (a.tip === "metin") akisEl.append(el("div", { class: "balon bot", text: a.metin }));
