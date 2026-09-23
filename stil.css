@@ -1,5 +1,6 @@
 /* Satış paneli (takim-rehberi) tasarım belirteçleriyle birebir: src/index.css, AppLayout.tsx, components/ui/* */
 :root{
+  color-scheme:light;
   --background:240 20% 97%; --foreground:240 24% 10%; --card:0 0% 100%;
   --primary:262 84% 60%; --primary-foreground:0 0% 100%;
   --secondary:260 30% 94%; --secondary-foreground:260 40% 30%;
@@ -11,13 +12,6 @@
   --success:142 71% 45%; --warning:38 92% 50%;
   --golge:0 1px 2px -1px rgb(20 16 40 / .06),0 6px 20px -12px rgb(20 16 40 / .14);
 }
-@media (prefers-color-scheme:dark){:root{
-  --background:240 25% 8%; --foreground:240 15% 95%; --card:240 22% 12%;
-  --primary:262 84% 64%; --secondary:260 18% 18%; --secondary-foreground:260 20% 88%;
-  --muted:240 18% 16%; --muted-foreground:240 10% 55%; --accent:260 18% 20%; --accent-foreground:260 20% 92%;
-  --destructive:0 62% 40%; --border:240 18% 20%; --input:240 18% 20%; --ring:262 84% 64%;
-  --sidebar-background:240 28% 7%; --sidebar-foreground:240 12% 88%; --sidebar-accent:260 18% 16%; --sidebar-border:260 15% 16%;
-}}
 *{box-sizing:border-box;border-color:hsl(var(--border))}
 html,body{min-height:100%}
 body{margin:0;background:hsl(var(--background));color:hsl(var(--foreground));font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -84,7 +78,6 @@ h2{font-size:18px;font-weight:600;margin:24px 0 8px}
 .etiket.ok{background:hsl(var(--success)/.12);color:hsl(142 70% 32%)}
 .etiket.hata{background:hsl(var(--destructive)/.12);color:hsl(var(--destructive))}
 .etiket.uyari{background:hsl(var(--warning)/.15);color:hsl(32 90% 38%)}
-@media (prefers-color-scheme:dark){.etiket.ok{color:hsl(142 60% 60%)}.etiket.uyari{color:hsl(38 90% 62%)}.etiket.hata{color:hsl(0 80% 70%)}}
 .bilgi{margin:2px 0;font-size:14px}.bilgi span{color:hsl(var(--muted-foreground))}
 .gorseller{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
 .gorseller h4{margin:0 0 6px;font-size:12px;color:hsl(var(--muted-foreground));font-weight:500}
