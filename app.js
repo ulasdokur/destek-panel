@@ -8,7 +8,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const KARAR = { ONAYLA: "Onayla", REDDET: "Reddet", HAVUZA_AKTAR: "Onayla + doğru derse aktar" };
 const KARAR_ACIK = { ONAYLA: "Onaylandı", REDDET: "Reddedildi", HAVUZA_AKTAR: "Derse aktarıldı" };
-const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma" };
+const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı" };
 const KAT = { yapay_zeka: "yapay zekâ", dijital_metin: "dijital metin", soru_ustune: "soru üstüne yazma", yanlis_cevap: "yanlış cevap", okunaklilik: "okunaklılık", eksik_aciklama: "eksik açıklama", diger: "diğer" };
 let ben = null, sekme = "ozet";
 
