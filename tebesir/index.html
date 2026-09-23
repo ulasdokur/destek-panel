@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#7c3aed">
+  <title>Tebeşir · Tahta Destek</title>
+  <link rel="icon" href="logo.png">
+  <link rel="stylesheet" href="tebesir.css">
+</head>
+<body>
+  <header class="ust">
+    <img src="logo.png" alt="Tahta" class="logo">
+    <div class="ust-baslik">
+      <strong>Tebeşir</strong>
+      <span>Solver destek hattı</span>
+    </div>
+    <button id="cikis" class="dugme-hayalet" hidden>Çıkış</button>
+  </header>
+
+  <!-- GİRİŞ -->
+  <main id="giris" class="giris" hidden>
+    <section class="kart">
+      <h1>Merhaba Hocam</h1>
+      <p class="soluk">Tahta solver hesabınıza kayıtlı telefon numarasıyla giriş yapın. Numaranıza tek kullanımlık bir kod göndereceğiz.</p>
+      <form id="telForm" novalidate>
+        <label for="tel">Telefon numarası</label>
+        <input id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="05xx xxx xx xx" maxlength="17" required>
+        <p id="telHata" class="hata" role="alert" hidden></p>
+        <button id="telGonder" type="submit" class="dugme">Kod gönder</button>
+      </form>
+    </section>
+    <p class="dipnot">Tebeşir, Tahta'nın yapay zekâ destek asistanıdır. Yazışmalarınız destek ekibimiz tarafından görülebilir.</p>
+  </main>
+
+  <!-- KOD PENCERESİ (OTP: sohbetin içinde değil, açılır pencerede) -->
+  <dialog id="kodPencere" aria-labelledby="kodBaslik">
+    <form id="kodForm" method="dialog" novalidate>
+      <h2 id="kodBaslik">Doğrulama kodu</h2>
+      <p id="kodBilgi" class="soluk"></p>
+      <label for="kod">6 haneli kod</label>
+      <input id="kod" name="kod" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+      <p id="kodHata" class="hata" role="alert" hidden></p>
+      <div class="satir">
+        <button id="kodYeniden" type="button" class="dugme-hayalet" disabled>Yeniden gönder</button>
+        <button id="kodOnay" type="submit" class="dugme">Giriş yap</button>
+      </div>
+      <button id="kodKapat" type="button" class="kapat" aria-label="Kapat">×</button>
+    </form>
+  </dialog>
+
+  <!-- SOHBET -->
+  <main id="sohbet" class="sohbet" hidden>
+    <div id="akis" class="akis" aria-live="polite" aria-relevant="additions"></div>
+    <footer class="alt">
+      <div id="konuSatiri" class="konu-satiri" hidden>
+        <span id="konuEtiket" class="rozet"></span>
+        <button id="konuDegistir" type="button" class="bag">konu değiştir</button>
+      </div>
+      <form id="mesajForm" class="mesaj-form">
+        <label for="mesaj" class="gizli">Mesajınız</label>
+        <textarea id="mesaj" rows="1" maxlength="1500" placeholder="Önce konu seçin" disabled></textarea>
+        <button id="gonder" type="submit" class="dugme gonder" disabled aria-label="Gönder">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
+        </button>
+      </form>
+    </footer>
+  </main>
+
+  <noscript><p class="kart">Bu sayfa için JavaScript gerekli.</p></noscript>
+  <script src="tebesir.js" defer></script>
+</body>
+</html>
