@@ -89,3 +89,5 @@ a{color:var(--mor)}
 .geri{color:var(--mor);font-weight:500;margin-bottom:10px}
 @media (max-width:760px){.ust{padding:10px 16px 0;gap:8px}.logo{flex:1}#sekmeler{order:3;flex:0 0 100%;flex-wrap:nowrap;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 #sekmeler button{white-space:nowrap}main{padding:16px 16px 80px}.kullanici #k-ad{display:none}}
+
+.cubuk{height:14px;background:var(--mor-acik);border-radius:4px;overflow:hidden}.cubuk span{display:block;height:100%;background:var(--mor)}

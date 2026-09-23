@@ -51,7 +51,7 @@ $("#sekmeler").onclick = ev => { const b = ev.target.closest("button"); if (b) g
 function git(s, alt) {
   sekme = s; location.hash = alt ? `${s}/${alt}` : s;
   document.querySelectorAll("#sekmeler button").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
-  const f = { ozet, bekleyen, kontrol, uyari, ogretmen, sikayet }[s] || ozet;
+  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet }[s] || ozet;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>'; f(alt);
 }
 async function rozetler() {
@@ -130,12 +130,13 @@ function kartlariBagla(kok, sonra) {
 // ---------- sekmeler ----------
 async function ozet() {
   const gun = new Date(); gun.setHours(0, 0, 0, 0);
-  const [dur, turlar, bugun, bek, taslak] = await Promise.all([
+  const [dur, turlar, bugun, bek, taslak, pasifN] = await Promise.all([
     q(sb.from("d_durum").select("*")),
     q(sb.from("d_tur").select("*").order("zaman", { ascending: false }).limit(15)),
     q(sb.from("d_sikayet").select("tur,son_karar,durum").gte("olusturma", gun.toISOString())),
     sb.from("d_sikayet").select("key", { count: "exact", head: true }).eq("durum", "bekliyor"),
     sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "taslak"),
+    sb.from("d_ogretmen").select("id", { count: "exact", head: true }).eq("durum", "pasif"),
   ]);
   const D = Object.fromEntries(dur.map(x => [x.k, x]));
   const son = D.son_gonderim ? new Date(D.son_gonderim.zaman) : null;
@@ -151,11 +152,42 @@ async function ozet() {
       ${kutu(say(x => x.son_karar === "ONAYLA" || x.son_karar === "HAVUZA_AKTAR") + " / " + say(x => x.son_karar === "REDDET"), "bugün onay / ret")}
       ${kutu(bek.count ?? 0, "kararını bekleyen", bek.count ? "uyari" : "")}
       ${kutu(taslak.count ?? 0, "onay bekleyen uyarı", taslak.count ? "uyari" : "")}
+      ${kutu(pasifN.count ?? 0, "pasif öğretmen")}
     </div>
     <h2>Son turlar</h2>
     ${turlar.length ? turlar.map(t => `<div class="kart"><div class="kart-ust"><b>${tarih(t.zaman)}</b>
       <span class="soluk">${t.soru_n} soru · ${t.cevap_n} cevap şikayeti · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " sana kaldı" : ""}</span></div>
       ${t.ozet ? `<details><summary>Tur özeti</summary><pre class="ozet">${e(t.ozet)}</pre></details>` : ""}</div>`).join("") : '<div class="bos">Henüz tur yok.</div>'}`;
+}
+
+async function tumSikayetler(gun) {
+  const s = new Date(Date.now() - gun * 864e5).toISOString(); let L = [], i = 0;
+  while (true) {
+    const d = await q(sb.from("d_sikayet").select("key,tur,son_karar,durum,olusturma,ogretmen,ogretmen_id,gerekce,question_id").gte("olusturma", s).order("olusturma").range(i, i + 999));
+    L = L.concat(d); if (d.length < 1000) break; i += 1000;
+  }
+  return L;
+}
+async function gunluk() {
+  const L = await tumSikayetler(30);
+  const G = {};
+  for (const s of L) {
+    const g = s.olusturma.slice(0, 10), o = G[g] ||= { s: 0, c: 0, onay: 0, ret: 0, havuz: 0, bek: 0 };
+    o[s.tur]++; if (s.durum === "bekliyor") o.bek++; else if (s.son_karar === "ONAYLA") o.onay++; else if (s.son_karar === "REDDET") o.ret++; else if (s.son_karar === "HAVUZA_AKTAR") o.havuz++;
+  }
+  const gunler = Object.keys(G).sort().reverse(), mx = Math.max(1, ...gunler.map(g => G[g].s + G[g].c));
+  const top = k => gunler.reduce((a, g) => a + G[g][k], 0);
+  $("#icerik").innerHTML = `<h2>Günlük</h2><p class="aciklama">Son 30 gün, şikayetin karara bağlandığı güne göre. Onay = şikayet eden haklı bulundu. Derse aktarma = soru onaylanıp doğru dersin havuzuna taşındı.</p>
+    <div class="kutular">
+      <div class="kutu"><div class="s">${top("s") + top("c")}</div><div class="e">toplam şikayet (${top("s")} soru, ${top("c")} cevap)</div></div>
+      <div class="kutu"><div class="s">${top("onay")}</div><div class="e">onaylandı</div></div>
+      <div class="kutu"><div class="s">${top("ret")}</div><div class="e">reddedildi</div></div>
+      <div class="kutu"><div class="s">${top("havuz")}</div><div class="e">onaylanıp derse aktarıldı</div></div>
+    </div>
+    <div class="tablo-sar"><table class="tablo"><tr><th>Gün</th><th>Gelen</th><th>Soru / cevap</th><th>Onay</th><th>Ret</th><th>Derse aktarma</th><th>Bekleyen</th><th style="width:30%"></th></tr>
+    ${gunler.map(g => { const o = G[g], n = o.s + o.c; return `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td><b>${n}</b></td><td>${o.s} / ${o.c}</td><td>${o.onay}</td><td>${o.ret}</td><td>${o.havuz}</td><td>${o.bek || ""}</td>
+      <td><div class="cubuk" style="width:${Math.round(n / mx * 100)}%"><span style="width:${n ? Math.round((o.onay + o.havuz) / n * 100) : 0}%"></span></div></td></tr>`; }).join("")}</table></div>
+    <p class="soluk" style="margin-top:8px">Çubuk: günün şikayet hacmi, koyu kısım onaylanan + derse aktarılan.</p>`;
 }
 
 async function bekleyen() {
@@ -221,21 +253,66 @@ async function uyari() {
   });
 }
 
+function kategori(g) {  // ~/tahta-sikayet/profil.py kategori() ile aynı
+  g = (g || "").toLocaleLowerCase("tr"); const k = [];
+  if (/yapay|ai çıktı|chatgpt|markdown|latex/.test(g)) k.push("yapay_zeka");
+  if (/dijital|daktilo|düz metin|not uygulama/.test(g)) k.push("dijital_metin");
+  if (/üst(ü|ün)ne|üzerine|görseli üz/.test(g)) k.push("soru_ustune");
+  if (/yanlış|hatalı/.test(g) && /doğru(su|\s+cevap)|demiş|bulmuş/.test(g)) k.push("yanlis_cevap");
+  if (/okun|bulanık|loş|yan çek|yamuk|karanlık/.test(g)) k.push("okunaklilik");
+  if (/açıklan|gerekçe|eksik|yetersiz|adım/.test(g)) k.push("eksik_aciklama");
+  return k.length ? k : ["diger"];
+}
 async function ogretmen(id) {
   if (id) return ogretmenDetay(+id);
-  const L = await q(sb.from("d_ogretmen").select("*").order("onay", { ascending: false }).limit(1000));
-  $("#icerik").innerHTML = `<h2>Öğretmenler</h2><p class="aciklama">Cevap şikayeti almış öğretmenler. Onay = öğrenci haklı bulundu.</p>
-    <div class="filtre"><input id="o-ara" placeholder="İsimle ara"><select id="o-durum"><option value="">Hepsi</option><option value="aktif">Aktif</option><option value="pasif">Pasif</option></select></div>
+  const [O, U, S7] = await Promise.all([
+    q(sb.from("d_ogretmen").select("*").limit(2000)),
+    q(sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")),
+    tumSikayetler(7),
+  ]);
+  const son = {}, bekleyenU = {};
+  for (const u of U) {
+    if (u.durum === "gonderildi" || (u.kademe === "AKTIF")) son[u.ogretmen_id] = u;
+    if (u.durum === "taslak" || u.durum === "onaylandi") bekleyenU[u.ogretmen_id] = u;
+  }
+  const H = {};
+  for (const s of S7) {
+    if (s.tur !== "c" || !s.ogretmen_id || s.durum !== "islendi") continue;
+    const h = H[s.ogretmen_id] ||= { onay: 0, top: 0, kat: {} }; h.top++;
+    if (s.son_karar === "ONAYLA") { h.onay++; for (const k of kategori(s.gerekce)) h.kat[k] = (h.kat[k] || 0) + 1; }
+  }
+  const takip = o => {  // UYARI_KURALLAR.md eşikleri (son 7 gün)
+    const h = H[o.id]; if (!h || o.durum === "pasif") return null;
+    if (h.onay >= 4 && h.onay / h.top >= .5) return "G";
+    if (h.kat.yapay_zeka) return "Y";
+    if ((h.kat.dijital_metin || 0) >= 2 || (h.kat.soru_ustune || 0) >= 2) return "F";
+    return null;
+  };
+  const takipDurum = o => {
+    const k = takip(o), u = son[o.id], b = bekleyenU[o.id], yeni = u && (Date.now() - new Date(u.gonderim || u.olusturma)) < 7 * 864e5;
+    if (b) return `<span class="etiket uyari">${KADEME[b.kademe]} onay bekliyor</span>`;
+    if (k && !yeni) return `<span class="etiket hata">Takip gerekli (${KADEME[k]})</span>`;
+    if (u) return `<span class="etiket ok">${KADEME[u.kademe]}</span><br><span class="soluk">${tarih(u.gonderim || u.olusturma)}</span>`;
+    return '<span class="soluk">—</span>';
+  };
+  const pasif = O.filter(o => o.durum === "pasif");
+  $("#icerik").innerHTML = `<h2>Öğretmenler</h2><p class="aciklama">Cevap şikayeti almış öğretmenler. Onay = öğrenci haklı bulundu. "Takip gerekli": son 7 günde uyarı eşiğini aşmış ama bildirim gitmemiş.</p>
+    ${pasif.length ? `<div class="kart"><div class="kart-ust"><b>Pasife alınanlar (${pasif.length})</b></div>${pasif.map(o => `<div class="bilgi"><a href="#" onclick="event.preventDefault();git('ogretmen','${o.id}')">${e(o.ad)}</a> <span class="soluk">· ${son[o.id] ? tarih(son[o.id].gonderim) + " · " + e(son[o.id].title) : ""} · ${o.onay} onay / ${o.ret} ret</span></div>`).join("")}</div>` : ""}
+    <div class="filtre"><input id="o-ara" placeholder="İsimle ara"><select id="o-durum"><option value="">Hepsi</option><option value="takip">Takip gerekenler</option><option value="bildirim">Bildirim gitmiş olanlar</option><option value="aktif">Aktif</option><option value="pasif">Pasif</option></select>
+    <select id="o-sira"><option value="h">Son 7 gün onaya göre</option><option value="t">Toplam onaya göre</option></select></div>
     <div class="tablo-sar"><table class="tablo" id="o-tablo"></table></div>`;
   const ciz = () => {
     const a = $("#o-ara").value.toLocaleLowerCase("tr"), d = $("#o-durum").value;
-    const S = L.filter(o => (!a || o.ad.toLocaleLowerCase("tr").includes(a)) && (!d || o.durum === d));
-    $("#o-tablo").innerHTML = `<tr><th>Öğretmen</th><th>Durum</th><th>Onay / ret</th><th>Onay sebepleri</th></tr>` +
-      S.map(o => `<tr class="tik" data-id="${o.id}"><td>${e(o.ad)}</td><td><span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span></td>
-        <td>${o.onay} / ${o.ret}</td><td class="soluk">${Object.entries(o.kategoriler || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${KAT[k] || k} ${v}`).join(", ")}</td></tr>`).join("");
-    $("#o-tablo").querySelectorAll("tr.tik").forEach(t => t.onclick = () => git("ogretmen", t.dataset.id));
+    let S = O.filter(o => (!a || o.ad.toLocaleLowerCase("tr").includes(a)) &&
+      (!d || (d === "takip" ? takip(o) && !(son[o.id] && Date.now() - new Date(son[o.id].gonderim || son[o.id].olusturma) < 7 * 864e5) : d === "bildirim" ? son[o.id] : o.durum === d)));
+    S.sort($("#o-sira").value === "h" ? (x, y) => (H[y.id]?.onay || 0) - (H[x.id]?.onay || 0) || y.onay - x.onay : (x, y) => y.onay - x.onay);
+    $("#o-tablo").innerHTML = `<tr><th>Öğretmen</th><th>Son 7 gün onay</th><th>Toplam onay / ret</th><th>Onay sebepleri (toplam)</th><th>Takip / bildirim</th></tr>` +
+      S.map(o => `<tr class="tik" data-id="${o.id}"><td>${e(o.ad)}${o.durum === "pasif" ? ' <span class="etiket hata">Pasif</span>' : ""}</td>
+        <td>${H[o.id] ? `<b>${H[o.id].onay}</b> / ${H[o.id].top}` : '<span class="soluk">—</span>'}</td><td>${o.onay} / ${o.ret}</td>
+        <td class="soluk">${Object.entries(o.kategoriler || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${KAT[k] || k} ${v}`).join(", ")}</td><td>${takipDurum(o)}</td></tr>`).join("");
+    $("#o-tablo").querySelectorAll("tr.tik").forEach(r => r.onclick = () => git("ogretmen", r.dataset.id));
   };
-  $("#o-ara").oninput = ciz; $("#o-durum").onchange = ciz; ciz();
+  $("#o-ara").oninput = ciz; $("#o-durum").onchange = ciz; $("#o-sira").onchange = ciz; ciz();
 }
 async function ogretmenDetay(id) {
   const [o, S, U] = await Promise.all([
