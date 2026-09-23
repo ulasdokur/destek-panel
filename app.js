@@ -51,17 +51,18 @@ $("#sekmeler").onclick = ev => { const b = ev.target.closest("button"); if (b) g
 function git(s, alt) {
   sekme = s; location.hash = alt ? `${s}/${alt}` : s;
   document.querySelectorAll("#sekmeler button").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
-  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet }[s] || ozet;
+  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci }[s] || ozet;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>'; f(alt);
 }
 async function rozetler() {
-  const [b, k, u] = await Promise.all([
+  const [b, k, u, kb] = await Promise.all([
     sb.from("d_sikayet").select("key", { count: "exact", head: true }).eq("durum", "bekliyor"),
     sb.from("d_sikayet").select("key,d_karar(id)", { count: "exact" }).eq("kontrol_hafta", haftaNo()),
     sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "taslak"),
+    sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", haftaNo()).is("kontrol_secim", null),
   ]);
   $("#r-bekleyen").textContent = b.count || "";
-  $("#r-kontrol").textContent = (k.data || []).filter(x => !x.d_karar.length).length || "";
+  $("#r-kontrol").textContent = ((k.data || []).filter(x => !x.d_karar.length).length + (kb.count || 0)) || "";
   $("#r-uyari").textContent = u.count || "";
 }
 document.addEventListener("click", ev => {
@@ -200,11 +201,14 @@ async function bekleyen() {
 async function kontrol() {
   const h = haftaNo();
   const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("kontrol_hafta", h).order("olusturma"));
+  const B = await q(sb.from("d_basvuru").select("*").eq("kontrol_hafta", h).order("id"));
   const bitti = L.filter(s => s.d_karar.some(k => k.tip === "kontrol")).length;
   $("#icerik").innerHTML = `<h2>Haftalık kontrol</h2><p class="aciklama">Bu hafta (${h}) panele işlenmiş kararlardan rastgele ${L.length} tanesi. ${bitti}/${L.length} tamamlandı.
     "Karar yanlış" dersen notun kurallara eklenir. Paneldeki kararı geri alma özelliği gelene kadar yanlış kararı admin panelinde elle düzeltmen gerekir.</p>
-    ${L.length ? L.map(s => sikayetKart(s, "kontrol")).join("") : '<div class="bos">Bu haftanın örnekleri henüz seçilmedi.</div>'}`;
-  kartlariBagla($("#icerik"));
+    ${L.length ? L.map(s => sikayetKart(s, "kontrol")).join("") : '<div class="bos">Bu haftanın örnekleri henüz seçilmedi.</div>'}
+    <h2 style="margin-top:28px">Solver başvuruları (bu hafta ${B.length} örnek)</h2>
+    ${B.length ? B.map(b => basvuruKart(b, true)).join("") : '<div class="bos">Bu hafta başvuru örneği yok.</div>'}`;
+  kartlariBagla($("#icerik")); basvuruBagla();
 }
 
 async function uyari() {
@@ -213,7 +217,10 @@ async function uyari() {
     q(sb.from("d_uyari").select("*").in("durum", ["gonderildi", "iptal", "hata"]).order("id", { ascending: false }).limit(100)),
   ]);
   const kanitlar = [...new Set(acik.flatMap(u => u.kanit || []))];
-  const K = kanitlar.length ? Object.fromEntries((await q(sb.from("d_sikayet").select("*").in("key", kanitlar))).map(s => [s.key, s])) : {};
+  const ks = kanitlar.filter(k => !k.startsWith("t:")), kt = kanitlar.filter(k => k.startsWith("t:")).map(k => k.slice(2));
+  const K = Object.fromEntries([
+    ...(ks.length ? (await q(sb.from("d_sikayet").select("*").in("key", ks))).map(s => [s.key, s]) : []),
+    ...(kt.length ? (await q(sb.from("d_takip").select("*").in("key", kt))).map(s => ["t:" + s.key, takipKayit(s)]) : [])]);
   const kart = u => `<section class="kart" data-id="${u.id}">
     <div class="kart-ust"><b>${e(u.ad)}</b><span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe]}</span>
       <a class="soluk" href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">öğretmen sayfası</a>
@@ -350,6 +357,89 @@ async function sikayet() {
   };
   let z; $("#f-ara").oninput = () => { clearTimeout(z); z = setTimeout(yukle, 350); };
   $("#f-tur").onchange = yukle; $("#f-karar").onchange = yukle; yukle();
+}
+
+// ---------- solver başvuruları ----------
+function basvuruKart(b, kontrol) {
+  const img = u => `<img src="${e(u)}" loading="lazy" alt="">`;
+  const sor = (b.sorular || []).map(s => `<div class="kart" style="margin:10px 0 0">
+      <div class="kart-ust"><b>${s.no}. soru</b><span class="soluk">${e(s.ders)} · ${e(s.seviye)}</span>
+      <span class="etiket ${s.dogru_mu === false ? "hata" : "ok"}">${s.dogru_mu === false ? "Yanlış" : "Doğru"}</span>${s.format_uygun === false ? '<span class="etiket uyari">Format dışı</span>' : ""}</div>
+      <div class="bilgi"><span>Doğru cevap:</span> ${e(s.dogru_cevap)} · <span>Adayın cevabı:</span> ${e(s.aday_cevap)}</div>${s.not ? `<div class="bilgi soluk">${e(s.not)}</div>` : ""}
+      <div class="gorseller"><div><h4>Soru</h4>${(s.soru_url || []).map(img).join("")}</div><div><h4>Aday</h4>${(s.cevap_url || []).map(img).join("") || '<p class="soluk">Görsel yok</p>'}</div></div></div>`).join("");
+  const alt = kontrol ? `<div class="secimler"><button class="secim ${b.kontrol_secim === "DOGRU" ? "secili" : ""}" data-v="DOGRU">Karar doğru</button><button class="secim ${b.kontrol_secim === "YANLIS" ? "secili" : ""}" data-v="YANLIS">Karar yanlış</button></div>
+      <textarea placeholder="Yanlışsa neden? (onay/ret admin panelde elle düzeltilmeli)">${e(b.kontrol_not)}</textarea>
+      <div class="kart-alt"><span class="durum-not">${b.kontrol_kim ? "Kaydedildi (" + e(b.kontrol_kim) + ")" : ""}</span><button class="birincil kucuk b-kaydet">Kaydet</button></div>` : "";
+  return `<section class="kart" data-bid="${b.id}"><div class="kart-ust"><b>${e(b.ad)}</b><span class="soluk">${e(b.ders)} · başvuru ${b.id} · ${e(b.basvuru_tarihi)}</span>
+    <span class="etiket ${b.karar === "ONAYLA" ? "ok" : "hata"}">${b.karar === "ONAYLA" ? "Onaylandı (solver)" : "Reddedildi · " + e(b.sebep)}</span>
+    ${b.seo ? `<a class="soluk" target="_blank" href="https://admin.tahtaapp.com/SolverApplication/SolverApplicationDetail/${b.id}">admin panelde aç</a>` : ""}</div>
+    <div class="ajan"><b>Gerekçe</b>${e(b.gerekce)}</div><details><summary>6 soru ve adayın cevapları</summary>${sor}</details>${alt}</section>`;
+}
+function basvuruBagla() {
+  document.querySelectorAll("section[data-bid]").forEach(k => {
+    let sec = k.querySelector(".secim.secili")?.dataset.v;
+    k.querySelectorAll(".secim").forEach(x => x.onclick = () => { sec = x.dataset.v; k.querySelectorAll(".secim").forEach(y => y.classList.toggle("secili", y === x)); });
+    const btn = k.querySelector(".b-kaydet"); if (!btn) return;
+    btn.onclick = async () => {
+      const not = k.querySelector("textarea").value.trim();
+      if (!sec) return bildir("Önce seçim yap."); if (sec === "YANLIS" && not.length < 3) return bildir("Yanlış dediysen nedenini yaz.");
+      const { error } = await sb.rpc("d_basvuru_kontrol", { p_id: +k.dataset.bid, p_secim: sec, p_not: not });
+      if (error) return bildir("Kaydedilemedi: " + error.message);
+      k.querySelector(".durum-not").textContent = "Kaydedildi"; bildir("Kaydedildi."); rozetler();
+    };
+  });
+}
+async function basvuru() {
+  const L = await q(sb.from("d_basvuru").select("*").order("islem_zamani", { ascending: false }).limit(300));
+  const on = L.filter(b => b.karar === "ONAYLA").length, seb = {};
+  L.filter(b => b.karar !== "ONAYLA").forEach(b => seb[b.sebep] = (seb[b.sebep] || 0) + 1);
+  $("#icerik").innerHTML = `<h2>Solver başvuruları</h2><p class="aciklama">Kural: 6 sorunun tamamı doğru ve Solver Kılavuzu'ndaki çözüm formatına uygunsa solver olarak onaylanır, aksi halde reddedilir. Kararları Mac'teki tur verir, başvuru sahibine ek bildirim gitmez.</p>
+    <div class="kutular"><div class="kutu"><div class="s">${L.length}</div><div class="e">değerlendirilen</div></div><div class="kutu"><div class="s">${on}</div><div class="e">onaylandı</div></div><div class="kutu"><div class="s">${L.length - on}</div><div class="e">reddedildi</div></div></div>
+    <p class="soluk">Ret sebepleri: ${Object.entries(seb).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${e(k)} ${v}`).join(" · ")}</p>
+    <div class="filtre"><select id="b-karar"><option value="">Hepsi</option><option value="ONAYLA">Onaylananlar</option><option value="REDDET">Reddedilenler</option></select><input id="b-ara" placeholder="İsim ya da ders"></div><div id="b-liste"></div>`;
+  const ciz = () => { const k = $("#b-karar").value, a = $("#b-ara").value.toLocaleLowerCase("tr");
+    $("#b-liste").innerHTML = L.filter(b => (!k || b.karar === k) && (!a || (b.ad + " " + b.ders).toLocaleLowerCase("tr").includes(a))).map(b => basvuruKart(b, false)).join("") || '<div class="bos">Kayıt yok.</div>'; };
+  $("#b-karar").onchange = ciz; $("#b-ara").oninput = ciz; ciz();
+}
+
+// ---------- yakın takip ----------
+function takipKayit(t) {  // d_takip satırını şikayet kartı biçimine çevir
+  return { key: "t:" + t.key, tur: "c", sikayet_id: t.question_id, ders: t.ders, ogretmen: t.ogretmen, ogretmen_id: t.ogretmen_id, olusturma: t.cevap_tarihi,
+    soru_url: t.soru_url, cevap_url: t.cevap_url, video_url: t.video_url, ajan_karar: t.sonuc, gerekce: t.gerekce, durum: "islendi", son_karar: t.sonuc };
+}
+async function takip() {
+  const [I, T] = await Promise.all([q(sb.from("d_izlenen").select("*").order("baslangic")), q(sb.from("d_takip").select("*").order("cevap_tarihi", { ascending: false }).limit(500))]);
+  const S = {}; T.forEach(t => { const s = S[t.ogretmen_id] ||= { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; s[t.sonuc]++; });
+  const et = { TEMIZ: '<span class="etiket ok">Temiz</span>', SORUNLU: '<span class="etiket uyari">Sorunlu</span>', YZ_KESIN: '<span class="etiket hata">Yapay zekâ (kesin)</span>' };
+  $("#icerik").innerHTML = `<h2>Yakın takip</h2><p class="aciklama">Pasife alınıp affedilen öğretmenlerin affedildikten sonraki TÜM cevapları (şikayet gelmese de) 3 saatte bir kontrol edilir. Yapay zekâ kesin görülürse pasife alma önerisi Uyarılar'a düşer.</p>
+    <div class="tablo-sar"><table class="tablo"><tr><th>Öğretmen</th><th>Takip</th><th>Kontrol edilen cevap</th><th>Temiz / sorunlu / yapay zekâ</th></tr>
+    ${I.map(o => { const s = S[o.ogretmen_id] || { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; return `<tr class="tik" onclick="git('ogretmen','${o.ogretmen_id}')"><td>${e(o.ad)}</td><td class="soluk">${tarih(o.baslangic)} → ${tarih(o.bitis)}</td><td>${s.TEMIZ + s.SORUNLU + s.YZ_KESIN}</td><td>${s.TEMIZ} / ${s.SORUNLU} / <b>${s.YZ_KESIN}</b></td></tr>`; }).join("")}</table></div>
+    <h2 style="margin-top:24px">Sorunlu bulunan cevaplar</h2>
+    ${T.filter(t => t.sonuc !== "TEMIZ").map(t => sikayetKart(takipKayit(t), "goster").replace('<b>Cevap şikayeti</b>', `<b>Takip</b> ${et[t.sonuc]}`)).join("") || '<div class="bos">Sorunlu cevap yok.</div>'}`;
+}
+
+// ---------- öğrenciler (kötüye kullanım) ----------
+async function ogrenci() {
+  const L = (await tumSikayetler(30)).filter(s => s.tur === "c");
+  const extra = await q(sb.from("d_sikayet").select("key,ogrenci,ogrenci_id,question_id").eq("tur", "c").gte("olusturma", new Date(Date.now() - 30 * 864e5).toISOString()).limit(5000));
+  const X = Object.fromEntries(extra.map(x => [x.key, x])), O = {};
+  for (const s of L) {
+    const x = X[s.key]; if (!x?.ogrenci_id) continue;
+    const o = O[x.ogrenci_id] ||= { ad: x.ogrenci, n: 0, ret: 0, onay: 0, sorular: {} };
+    o.n++; if (s.son_karar === "REDDET") o.ret++; else if (s.son_karar === "ONAYLA") o.onay++;
+    o.sorular[x.question_id] = (o.sorular[x.question_id] || 0) + 1;
+  }
+  const R = Object.entries(O).map(([id, o]) => ({ id, ...o, tekrar: Object.values(o.sorular).filter(v => v > 1).length, oran: o.n ? o.ret / o.n : 0 }))
+    .map(o => ({ ...o, supheli: (o.n >= 5 && o.oran >= .6) || o.tekrar >= 1 && o.n >= 3 }))
+    .sort((a, b) => b.supheli - a.supheli || b.ret - a.ret || b.n - a.n);
+  $("#icerik").innerHTML = `<h2>Öğrenciler</h2><p class="aciklama">Son 30 günde cevap şikayeti açan öğrenciler. Haksız = şikayet reddedildi (öğretmen haklı). Şüpheli: 5+ şikayetin %60'ından fazlası haksız ya da aynı soruya birden çok şikayet.</p>
+    <div class="filtre"><select id="og-f"><option value="s">Şüpheliler</option><option value="">Hepsi</option></select></div>
+    <div class="tablo-sar"><table class="tablo" id="og-t"></table></div>`;
+  const ciz = () => { const f = $("#og-f").value;
+    $("#og-t").innerHTML = `<tr><th>Öğrenci</th><th>Şikayet</th><th>Haksız (ret)</th><th>Haklı (onay)</th><th>Aynı soruya tekrar</th><th></th></tr>` +
+      R.filter(o => !f || o.supheli).map(o => `<tr><td>${e(o.ad)} <span class="soluk">#${o.id}</span></td><td><b>${o.n}</b></td><td>${o.ret} <span class="soluk">(%${Math.round(o.oran * 100)})</span></td><td>${o.onay}</td><td>${o.tekrar || ""}</td>
+        <td>${o.supheli ? '<span class="etiket hata">Şüpheli</span>' : ""}</td></tr>`).join("") || '<tr><td colspan="6" class="soluk">Kayıt yok.</td></tr>'; };
+  $("#og-f").onchange = ciz; ciz();
 }
 
 window.git = git;
