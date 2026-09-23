@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Destek Paneli · Tahta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+<div id="giris" hidden>
+  <form class="giris-kutu" id="giris-form">
+    <div class="logo">Tahta <span>Destek</span></div>
+    <h1>Giriş</h1>
+    <p>Sadece yetkili hesaplar girebilir.</p>
+    <label>E-posta<input type="email" id="g-eposta" autocomplete="username" required></label>
+    <label>Şifre<input type="password" id="g-sifre" autocomplete="current-password" required></label>
+    <button class="birincil" type="submit">Giriş yap</button>
+    <div class="hata-satir" id="g-hata"></div>
+  </form>
+</div>
+
+<div id="uygulama" hidden>
+  <header class="ust">
+    <div class="logo">Tahta <span>Destek</span></div>
+    <nav id="sekmeler">
+      <button data-s="ozet">Özet</button>
+      <button data-s="bekleyen">Kararını bekleyenler <b class="rozet" id="r-bekleyen"></b></button>
+      <button data-s="kontrol">Haftalık kontrol <b class="rozet" id="r-kontrol"></b></button>
+      <button data-s="uyari">Uyarılar <b class="rozet" id="r-uyari"></b></button>
+      <button data-s="ogretmen">Öğretmenler</button>
+      <button data-s="sikayet">Tüm şikayetler</button>
+    </nav>
+    <div class="kullanici"><span id="k-ad"></span>
+      <button class="ince" id="sifre-btn">Şifre</button><button class="ince" id="cikis">Çıkış</button></div>
+  </header>
+  <main id="icerik"></main>
+</div>
+
+<dialog id="sifre-dlg"><form method="dialog" id="sifre-form">
+  <h3>Şifre değiştir</h3>
+  <label>Yeni şifre (en az 10 karakter)<input type="password" id="yeni-sifre" minlength="10" required></label>
+  <div class="dlg-alt"><button value="iptal" formnovalidate class="ince">Vazgeç</button><button class="birincil kucuk" id="sifre-kaydet" value="ok">Kaydet</button></div>
+  <div class="hata-satir" id="s-hata"></div>
+</form></dialog>
+
+<div id="buyut" hidden><img alt=""></div>
+<div id="bildirim" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
