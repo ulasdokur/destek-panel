@@ -98,9 +98,9 @@ function sikayetKart(s, mod) {
   let cevap = (s.cevap_url || []).map(img).join("");
   if (s.video_url) cevap += `<video controls preload="none" src="${e(s.video_url)}"></video>`;
   const hedef = s.hedef_ders ? ` → ${e(s.hedef_ders)}` : "";
-  let ajan = `<div class="ajan"><b>Ajanın kararı: ${KARAR[s.ajan_karar] || e(s.ajan_karar)}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}${s.emin_degil ? ' <span class="etiket uyari">emin değil</span>' : ""}</b>${e(s.gerekce)}`;
+  let ajan = `<div class="ajan"><b>Karar: ${KARAR[s.ajan_karar] || e(s.ajan_karar)}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}${s.emin_degil ? ' <span class="etiket uyari">emin değil</span>' : ""}</b>${e(s.gerekce)}`;
   if (s.dogru_cevap) ajan += `<br><span class="soluk">Doğru cevap: ${e(s.dogru_cevap)} · Öğretmenin cevabı: ${e(s.ogretmen_cevabi)}</span>`;
-  if (s.oneri) ajan += `<br><b style="margin-top:6px">Tur ajanının önerisi: ${KARAR[s.oneri] || e(s.oneri)}</b>${e(s.oneri_gerekce)}`;
+  if (s.oneri) ajan += `<br><b style="margin-top:6px">Önerilen karar: ${KARAR[s.oneri] || e(s.oneri)}</b>${e(s.oneri_gerekce)}`;
   ajan += "</div>";
   const son = s.durum === "islendi" ? `<span class="etiket ${s.son_karar === "REDDET" ? "" : "ok"}">${KARAR_ACIK[s.son_karar] || e(s.son_karar)}</span>` : '<span class="etiket uyari">Karar bekliyor</span>';
   let alt = "";
@@ -109,10 +109,10 @@ function sikayetKart(s, mod) {
     const sec = ["ONAYLA", "REDDET"].concat(s.tur === "s" && s.hedef_lecture_id ? ["HAVUZA_AKTAR"] : []);
     alt = `<div class="secimler">${sec.map(x => `<button class="secim ${k?.secim === x ? "secili" : ""}" data-v="${x}">${KARAR[x]}${x === "HAVUZA_AKTAR" ? hedef : ""}</button>`).join("")}</div>
       <textarea placeholder="Not (isteğe bağlı): neden bu karar?">${e(k?.notu)}</textarea>
-      <div class="kart-alt"><span class="durum-not">${k ? (k.uygulandi ? "Panele işlendi." : `Kaydedildi (${e(k.kim)}), 20 dk içinde panele işlenecek.`) : ""}</span><button class="birincil kucuk kaydet">Kaydet</button></div>`;
+      <div class="kart-alt"><span class="durum-not">${k ? (k.uygulandi ? "Admin paneline işlendi." : `Kaydedildi (${e(k.kim)}). En geç 20 dakika içinde admin paneline işlenecek.`) : ""}</span><button class="birincil kucuk kaydet">Kaydet</button></div>`;
   } else if (mod === "kontrol") {
     alt = `<div class="secimler"><button class="secim ${k?.secim === "DOGRU" ? "secili" : ""}" data-v="DOGRU">Karar doğru</button><button class="secim ${k?.secim === "YANLIS" ? "secili" : ""}" data-v="YANLIS">Karar yanlış</button></div>
-      <textarea placeholder="Yanlışsa neden? Bu not kurallara eklenir, ajanlar bir sonraki turda okur.">${e(k?.notu)}</textarea>
+      <textarea placeholder="Yanlışsa neden? Bu not kurallara eklenir, sonraki kararlarda dikkate alınır.">${e(k?.notu)}</textarea>
       <div class="kart-alt"><span class="durum-not">${k ? `Kaydedildi (${e(k.kim)})` : ""}</span><button class="birincil kucuk kaydet">Kaydet</button></div>`;
   }
   return `<section class="kart" data-key="${e(s.key)}" data-mod="${mod}">
@@ -135,7 +135,7 @@ function kartlariBagla(kok, sonra) {
       const { error } = await sb.rpc("d_karar_ver", { p_key: kart.dataset.key, p_tip: mod === "kontrol" ? "kontrol" : "bekleyen", p_secim: secim, p_not: not });
       k.disabled = false;
       if (error) return bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : "Kaydedilemedi: " + error.message);
-      kart.querySelector(".durum-not").textContent = mod === "kontrol" ? `Kaydedildi (${ben.email})` : "Kaydedildi, 20 dk içinde panele işlenecek.";
+      kart.querySelector(".durum-not").textContent = mod === "kontrol" ? `Kaydedildi (${ben.email})` : "Kaydedildi. En geç 20 dakika içinde admin paneline işlenecek.";
       bildir("Kaydedildi."); rozetler(); sonra && sonra();
     };
   });
@@ -158,20 +158,20 @@ async function ozet() {
   const oturum = D.oturum?.v?.durum;
   const say = (f) => bugun.filter(f).length;
   const kutu = (s, e_, cls = "") => `<div class="kutu ${cls}"><div class="s">${s}</div><div class="e">${e_}</div></div>`;
-  $("#icerik").innerHTML = `<h2>Özet</h2><p class="aciklama">Şikayet turu Mac'te her 20 dakikada bir çalışır. Buradaki kararları da o tur uygular.</p>
+  $("#icerik").innerHTML = `<h2>Özet</h2><p class="aciklama">Şikayetler 20 dakikada bir otomatik kontrol edilir. Bu panelde verdiğin kararlar da o kontrolde admin paneline işlenir.</p>
     <div class="kutular">
-      ${kutu(dk === null ? "—" : dk < 60 ? dk + " dk" : Math.round(dk / 60) + " sa", "son eşitlemeden bu yana", dk !== null && dk > 50 ? "uyari" : "")}
-      ${kutu(oturum === "dustu" ? "Düştü" : "Açık", "admin oturumu " + (D.oturum ? "· " + e(D.oturum.v.zaman) : ""), oturum === "dustu" ? "hata" : "")}
+      ${kutu(dk === null ? "—" : dk < 60 ? dk + " dk" : Math.round(dk / 60) + " sa", "son kontrolden bu yana", dk !== null && dk > 50 ? "uyari" : "")}
+      ${kutu(oturum === "dustu" ? "Düştü" : "Açık", "admin paneli bağlantısı " + (D.oturum ? "· " + e(D.oturum.v.zaman) : ""), oturum === "dustu" ? "hata" : "")}
       ${kutu(bugun.length, "bugün gelen şikayet")}
       ${kutu(say(x => x.son_karar === "ONAYLA" || x.son_karar === "HAVUZA_AKTAR") + " / " + say(x => x.son_karar === "REDDET"), "bugün onay / ret")}
       ${kutu(bek.count ?? 0, "kararını bekleyen", bek.count ? "uyari" : "")}
       ${kutu(taslak.count ?? 0, "onay bekleyen uyarı", taslak.count ? "uyari" : "")}
       ${kutu(pasifN.count ?? 0, "pasif öğretmen")}
     </div>
-    <h2>Son turlar</h2>
+    <h2>Son kontroller</h2>
     ${turlar.length ? turlar.map(t => `<div class="kart"><div class="kart-ust"><b>${tarih(t.zaman)}</b>
-      <span class="soluk">${t.soru_n} soru · ${t.cevap_n} cevap şikayeti · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " sana kaldı" : ""}</span></div>
-      ${t.ozet ? `<details><summary>Tur özeti</summary><pre class="ozet">${e(t.ozet)}</pre></details>` : ""}</div>`).join("") : '<div class="bos">Henüz tur yok.</div>'}`;
+      <span class="soluk">${t.soru_n} soru · ${t.cevap_n} cevap şikayeti · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " karar bekliyor" : ""}</span></div>
+      ${t.ozet ? `<details><summary>Neler oldu</summary><pre class="ozet">${e(t.ozet)}</pre></details>` : ""}</div>`).join("") : '<div class="bos">Henüz kontrol yapılmadı.</div>'}`;
 }
 
 async function tumSikayetler(gun) {
@@ -206,7 +206,7 @@ async function gunluk() {
 
 async function bekleyen() {
   const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("durum", "bekliyor").order("olusturma"));
-  $("#icerik").innerHTML = `<h2>Kararını bekleyenler</h2><p class="aciklama">Ajanın emin olamadığı kayıtlar. Seçtiğin karar bir sonraki turda (20 dk içinde) panele işlenir. İşlenene kadar fikrini değiştirebilirsin.</p>
+  $("#icerik").innerHTML = `<h2>Kararını bekleyenler</h2><p class="aciklama">Otomatik kontrolün emin olamadığı şikayetler. Seçtiğin karar en geç 20 dakika içinde admin paneline işlenir; o zamana kadar değiştirebilirsin.</p>
     ${L.length ? L.map(s => sikayetKart(s, "bekleyen")).join("") : '<div class="bos">Bekleyen kayıt yok.</div>'}`;
   kartlariBagla($("#icerik"));
 }
@@ -237,7 +237,7 @@ async function uyari() {
   const kart = u => `<section class="kart" data-id="${u.id}">
     <div class="kart-ust"><b>${e(u.ad)}</b><span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe]}</span>
       <a class="soluk" href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">öğretmen sayfası</a>
-      ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), bir sonraki turda gidecek</span>` : ""}</div>
+      ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), 20 dakika içinde gidecek</span>` : ""}</div>
     ${u.kademe === "PASIF" ? '<p class="bilgi"><span>Onaylarsan:</span> bildirim gider ve öğretmenin hesabı pasife alınır.</p>' : ""}
     <label>Başlık<input class="u-baslik" value="${e(u.title)}" ${u.durum !== "taslak" ? "disabled" : ""}></label>
     <label>Metin<textarea class="u-metin" rows="4" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
@@ -246,7 +246,7 @@ async function uyari() {
       ${u.durum === "taslak" ? `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>`
       : `<button class="ince u-geri">Onayı geri al</button>`}
     </div></section>`;
-  $("#icerik").innerHTML = `<h2>Uyarılar</h2><p class="aciklama">Kurallara göre hazırlanan bildirimler. Onayladıkların bir sonraki turda (20 dk içinde) gönderilir. Metni göndermeden önce düzenleyebilirsin.</p>
+  $("#icerik").innerHTML = `<h2>Uyarılar</h2><p class="aciklama">Kurallara göre hazırlanan bildirimler. Onayladıkların en geç 20 dakika içinde gönderilir. Metni göndermeden önce düzenleyebilirsin.</p>
     ${acik.length ? acik.map(kart).join("") : '<div class="bos">Onay bekleyen uyarı yok.</div>'}
     <h2 style="margin-top:28px">Gönderilenler</h2>
     <div class="tablo-sar"><table class="tablo"><tr><th>Tarih</th><th>Öğretmen</th><th>Tür</th><th>Durum</th><th>Metin</th></tr>
@@ -262,7 +262,7 @@ async function uyari() {
       }
       const { error } = await sb.rpc("d_uyari_karar", { p_id: id, p_onay: onay });
       if (error) return bildir("Olmadı: " + error.message);
-      bildir(onay ? "Onaylandı, bir sonraki turda gidecek." : "Gönderilmeyecek."); rozetler(); uyari();
+      bildir(onay ? "Onaylandı, 20 dakika içinde gidecek." : "Gönderilmeyecek."); rozetler(); uyari();
     };
     k.querySelector(".u-onay")?.addEventListener("click", () => { if (k.querySelector(".etiket.hata") && !confirm("Bildirim gidecek ve öğretmenin hesabı pasife alınacak. Emin misin?")) return; karar(true); });
     k.querySelector(".u-iptal")?.addEventListener("click", () => karar(false));
@@ -406,7 +406,7 @@ async function basvuru() {
   const L = await q(sb.from("d_basvuru").select("*").order("islem_zamani", { ascending: false }).limit(300));
   const on = L.filter(b => b.karar === "ONAYLA").length, seb = {};
   L.filter(b => b.karar !== "ONAYLA").forEach(b => seb[b.sebep] = (seb[b.sebep] || 0) + 1);
-  $("#icerik").innerHTML = `<h2>Solver başvuruları</h2><p class="aciklama">Kural: 6 sorunun tamamı doğru ve Solver Kılavuzu'ndaki çözüm formatına uygunsa solver olarak onaylanır, aksi halde reddedilir. Kararları Mac'teki tur verir, başvuru sahibine ek bildirim gitmez.</p>
+  $("#icerik").innerHTML = `<h2>Solver başvuruları</h2><p class="aciklama">Kural: 6 sorunun tamamı doğru ve Solver Kılavuzu'ndaki çözüm formatına uygunsa solver olarak onaylanır, aksi halde reddedilir. Kararlar otomatik verilir, başvuru sahibine ayrıca bildirim gitmez.</p>
     <div class="kutular"><div class="kutu"><div class="s">${L.length}</div><div class="e">değerlendirilen</div></div><div class="kutu"><div class="s">${on}</div><div class="e">onaylandı</div></div><div class="kutu"><div class="s">${L.length - on}</div><div class="e">reddedildi</div></div></div>
     <p class="soluk">Ret sebepleri: ${Object.entries(seb).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${e(k)} ${v}`).join(" · ")}</p>
     <div class="filtre"><select id="b-karar"><option value="">Hepsi</option><option value="ONAYLA">Onaylananlar</option><option value="REDDET">Reddedilenler</option></select><input id="b-ara" placeholder="İsim ya da ders"></div><div id="b-liste"></div>`;
