@@ -25,6 +25,8 @@ async function basla() {
   if (!y.data) { await sb.auth.signOut(); return girisGoster("Bu hesabın panele yetkisi yok."); }
   ben = { ...y.data, email: session.user.email };
   $("#giris").hidden = true; $("#uygulama").hidden = false; $("#k-ad").textContent = ben.ad;
+  $("#k-rol").textContent = ben.rol === "yonetici" ? "Yönetici" : "Destek";
+  window.lucide && lucide.createIcons();
   const h = location.hash.slice(1); if (h) sekme = h.split("/")[0];
   git(sekme, location.hash.slice(1).split("/")[1]);
   rozetler(); setInterval(rozetler, 60000);
@@ -47,10 +49,19 @@ $("#sifre-kaydet").onclick = async ev => {
 };
 
 // ---------- gezinme ----------
-$("#sekmeler").onclick = ev => { const b = ev.target.closest("button"); if (b) git(b.dataset.s); };
+$("#sekmeler").onclick = ev => {
+  const b = ev.target.closest("button"); if (!b) return;
+  if (b.classList.contains("grup-bas")) return b.parentElement.classList.toggle("acik");
+  if (b.dataset.s) git(b.dataset.s);
+};
+const menuKapat = () => { $("#yan").classList.remove("acik"); $("#perde").hidden = true; };
+$("#menu-ac").onclick = () => { $("#yan").classList.add("acik"); $("#perde").hidden = false; };
+$("#perde").onclick = menuKapat;
 function git(s, alt) {
   sekme = s; location.hash = alt ? `${s}/${alt}` : s;
-  document.querySelectorAll("#sekmeler button").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
+  document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
+  document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
+  menuKapat(); window.scrollTo(0, 0);
   const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci }[s] || ozet;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>'; f(alt);
 }
@@ -64,6 +75,8 @@ async function rozetler() {
   $("#r-bekleyen").textContent = b.count || "";
   $("#r-kontrol").textContent = ((k.data || []).filter(x => !x.d_karar.length).length + (kb.count || 0)) || "";
   $("#r-uyari").textContent = u.count || "";
+  const top = ids => ids.reduce((a, i) => a + (+$(i).textContent || 0), 0) || "";
+  $("#r-sikayet-grup").textContent = top(["#r-bekleyen", "#r-kontrol"]); $("#r-ogretmen-grup").textContent = top(["#r-uyari"]);
 }
 document.addEventListener("click", ev => {
   const i = ev.target.closest(".gorseller img"); if (i) { $("#buyut img").src = i.src; $("#buyut").hidden = false; }

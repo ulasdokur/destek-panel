@@ -5,42 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Destek Paneli · Tahta</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="stil.css">
 </head>
 <body>
 <div id="giris" hidden>
-  <form class="giris-kutu" id="giris-form">
-    <div class="logo">Tahta <span>Destek</span></div>
-    <h1>Giriş</h1>
-    <p>Sadece yetkili hesaplar girebilir.</p>
+  <form class="giris-kutu kart" id="giris-form">
+    <div class="giris-ust"><img src="logo.png" alt="TAHTA" class="giris-logo"><h1>Destek Paneli</h1><p>Yetkili hesabınla giriş yap.</p></div>
     <label>E-posta<input type="email" id="g-eposta" autocomplete="username" required></label>
     <label>Şifre<input type="password" id="g-sifre" autocomplete="current-password" required></label>
-    <button class="birincil" type="submit">Giriş yap</button>
+    <button class="birincil tam" type="submit">Giriş Yap</button>
     <div class="hata-satir" id="g-hata"></div>
   </form>
 </div>
 
 <div id="uygulama" hidden>
-  <header class="ust">
-    <div class="logo">Tahta <span>Destek</span></div>
+  <button class="menu-ac" id="menu-ac" aria-label="Menüyü aç"><i data-lucide="menu"></i></button>
+  <div class="perde" id="perde" hidden></div>
+  <aside class="yan" id="yan">
+    <div class="yan-ust">
+      <img src="logo-white.png" alt="TAHTA" class="yan-logo">
+      <p class="yan-ad" id="k-ad"></p>
+      <span class="yan-rol" id="k-rol">Destek</span>
+    </div>
     <nav id="sekmeler">
-      <button data-s="ozet">Özet</button>
-      <button data-s="gunluk">Günlük</button>
-      <button data-s="bekleyen">Kararını bekleyenler <b class="rozet" id="r-bekleyen"></b></button>
-      <button data-s="kontrol">Haftalık kontrol <b class="rozet" id="r-kontrol"></b></button>
-      <button data-s="uyari">Uyarılar <b class="rozet" id="r-uyari"></b></button>
-      <button data-s="ogretmen">Öğretmenler</button>
-      <button data-s="basvuru">Solver başvuruları</button>
-      <button data-s="takip">Yakın takip</button>
-      <button data-s="ogrenci">Öğrenciler</button>
-      <button data-s="sikayet">Tüm şikayetler</button>
+      <button data-s="ozet"><i data-lucide="layout-dashboard"></i>Özet</button>
+      <button data-s="gunluk"><i data-lucide="bar-chart-3"></i>Günlük</button>
+      <div class="grup" data-grup="sikayet">
+        <button class="grup-bas"><span><i data-lucide="inbox"></i>Şikayetler<b class="rozet grup-rozet" id="r-sikayet-grup"></b></span><i data-lucide="chevron-down" class="ok"></i></button>
+        <div class="grup-ic">
+          <button data-s="bekleyen">Kararını Bekleyenler<b class="rozet" id="r-bekleyen"></b></button>
+          <button data-s="kontrol">Haftalık Kontrol<b class="rozet" id="r-kontrol"></b></button>
+          <button data-s="sikayet">Tüm Şikayetler</button>
+        </div>
+      </div>
+      <div class="grup" data-grup="ogretmen">
+        <button class="grup-bas"><span><i data-lucide="graduation-cap"></i>Öğretmenler<b class="rozet grup-rozet" id="r-ogretmen-grup"></b></span><i data-lucide="chevron-down" class="ok"></i></button>
+        <div class="grup-ic">
+          <button data-s="ogretmen">Öğretmen Listesi</button>
+          <button data-s="uyari">Uyarılar<b class="rozet" id="r-uyari"></b></button>
+          <button data-s="takip">Yakın Takip</button>
+        </div>
+      </div>
+      <button data-s="basvuru"><i data-lucide="award"></i>Solver Başvuruları</button>
+      <button data-s="ogrenci"><i data-lucide="users"></i>Öğrenciler</button>
     </nav>
-    <div class="kullanici"><span id="k-ad"></span>
-      <button class="ince" id="sifre-btn">Şifre</button><button class="ince" id="cikis">Çıkış</button></div>
-  </header>
+    <div class="yan-alt">
+      <button class="yan-alt-btn" id="sifre-btn"><i data-lucide="key-round"></i>Şifre Değiştir</button>
+      <button class="yan-alt-btn" id="cikis"><i data-lucide="log-out"></i>Çıkış Yap</button>
+    </div>
+  </aside>
   <main id="icerik"></main>
 </div>
 
@@ -54,6 +67,7 @@
 <div id="buyut" hidden><img alt=""></div>
 <div id="bildirim" hidden></div>
 
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="app.js"></script>
 </body>
