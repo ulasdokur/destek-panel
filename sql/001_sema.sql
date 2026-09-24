@@ -1,4 +1,4 @@
--- Destek paneli (destek.tahtaapp.com). soru-kontrol projesinde, d_ önekli tablolar.
+-- Destek paneli (şimdilik ulasdokur.github.io/destek-panel). soru-kontrol projesinde, d_ önekli tablolar.
 -- Okuma: sadece d_yetkili listesindeki giriş yapmış kullanıcılar. Yazma: sadece RPC'ler (kararlar) ve Mac'teki servis anahtarı.
 -- Panel admin.tahtaapp.com'a HİÇ bağlanmaz; panel sadece karar kaydeder, uygulamayı Mac yapar.
 
