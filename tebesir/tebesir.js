@@ -187,7 +187,7 @@ function ciz() {
   if (akan) akisEl.append(el("div", { class: "balon bot", text: akan }));
   if (adayBekleniyor) akisEl.append(el("div", { class: "yaziyor", text: "O tarihteki cevaplarınız getiriliyor…" }));
   else if (yaziyor && !akan && !adimlar.some((a) => a.tip === "arac" && !a.bitti)) akisEl.append(el("div", { class: "yaziyor", text: "Yanıt hazırlanıyor…" }));
-  // Sohbet varken konu değişirse düğmeler en altta (üstte kalınca görünmüyordu).
+  // Sohbet varken konu değişirse düğmeler en altta; üstte kalınca görünmez.
   if (gorunur.length && !s.konu && tanim && !yaziyor) {
     akisEl.append(el("div", { class: "acilis" }, el("p", { text: "Hangi konuda devam edelim?" }),
       el("div", { class: "konular" }, ...tanim.konular.map((k) =>
@@ -276,7 +276,7 @@ async function adaylariGetir(tarih, ozet) {
     if (liste.length === 1) return gonder(`${ozet}\n${adaySatiri(liste[0])}`);
     if (!liste.length) return gonder(`${ozet}\n(o tarihte panelde cevap görünmüyor)`);
     adaylar = liste; formKuyrugu = ozet; ciz();
-  } catch (e) {
+  } catch {
     adayBekleniyor = false;
     gonder(ozet);   // liste gelmediyse sohbetten devam
   }
@@ -344,7 +344,7 @@ async function gonder(metin, ek = {}) {
       }
     }
     if (!bitti) throw new Error("akış yarıda kesildi");
-  } catch (e) {
+  } catch {
     // Akış olmadıysa bir kez düz JSON yolunu dene. Form kaydında tekrar deneme YOK (mükerrer kayıt).
     if (ek.form_kaydi) { s.mesajlar = onceki; sistemNotu = "Bağlantı koptu. Kaydınızın düşüp düşmediğini görmek için birkaç saniye sonra tekrar deneyin."; }
     else {

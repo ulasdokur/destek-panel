@@ -8,7 +8,7 @@ const ADMIN = "https://admin.tahtaapp.com";
 
 const $ = (s, el = document) => el.querySelector(s);
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı" };
+const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı", EKSI: "Puan eksiye düştü" };
 const KAT = { yapay_zeka: "yapay zekâ", dijital_metin: "dijital metin", soru_ustune: "soru üstüne yazma", yanlis_cevap: "yanlış cevap", okunaklilik: "okunaklılık", eksik_aciklama: "eksik açıklama", diger: "diğer" };
 const GERI_AL_SN = 15;
 let ben = null, sekme = "ozet";
@@ -47,17 +47,19 @@ const bildir = m => toast(m);
 let galeri = [], gi = 0;
 function galeriAc(liste, i) { galeri = liste; gi = i; galeriCiz(); $("#buyut").hidden = false; }
 function galeriCiz() {
-  const b = $("#buyut"), u = galeri[gi];
-  b.innerHTML = `<button class="g-ok" data-y="-1" ${galeri.length < 2 ? "hidden" : ""}>‹</button><div class="g-orta">${/\.(mp4|mov)(\?|$)/i.test(u) ? `<video src="${e(u)}" controls autoplay style="max-width:100%;max-height:90vh"></video>` : `<img src="${e(u)}" alt="">`}</div>
-    <button class="g-ok" data-y="1" ${galeri.length < 2 ? "hidden" : ""}>›</button>${galeri.length > 1 ? `<span class="g-sayac">${gi + 1} / ${galeri.length}</span>` : ""}`;
+  const u = galeri[gi], vid = /\.(mp4|mov)(\?|$)/i.test(u), cok = galeri.length > 1;
+  $("#buyut").innerHTML = `<div class="g-pencere"><div class="g-ust"><span>${cok ? `${gi + 1} / ${galeri.length}` : ""}</span><button class="g-kapat" title="Kapat (Esc)">×</button></div>
+    <div class="g-govde"><span class="soluk" style="position:absolute">Yükleniyor…</span>${vid ? `<video src="${e(u)}" controls autoplay></video>` : `<img src="${e(u)}" alt="">`}
+    ${cok ? '<button class="g-ok sol" data-y="-1">‹</button><button class="g-ok sag" data-y="1">›</button>' : ""}</div></div>`;
 }
+const galeriKapat = () => { $("#buyut").hidden = true; $("#buyut").innerHTML = ""; };
 $("#buyut").onclick = ev => {
   const y = ev.target.closest(".g-ok"); if (y) { gi = (gi + +y.dataset.y + galeri.length) % galeri.length; return galeriCiz(); }
-  if (ev.target.closest("video")) return; $("#buyut").hidden = true; $("#buyut").innerHTML = "";
+  if (ev.target.closest(".g-kapat") || ev.target.id === "buyut") galeriKapat();
 };
 document.addEventListener("keydown", ev => {
   if ($("#buyut").hidden) return;
-  if (ev.key === "Escape") { $("#buyut").hidden = true; $("#buyut").innerHTML = ""; }
+  if (ev.key === "Escape") galeriKapat();
   if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") { gi = (gi + (ev.key === "ArrowRight" ? 1 : -1) + galeri.length) % galeri.length; galeriCiz(); }
 });
 document.addEventListener("click", ev => {
@@ -119,7 +121,7 @@ function git(s, alt) {
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
   menuKapat(); window.scrollTo(0, 0);
-  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci }[s] || ozet;
+  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi }[s] || ozet;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>';
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
@@ -512,6 +514,20 @@ async function takip() {
     ${T.filter(t => t.sonuc !== "TEMIZ").map(t => sikayetKart(takipKayit(t), "goster")).join("") || '<div class="bos">Sorunlu cevap yok. 👍</div>'}`;
 }
 
+// ---------- eksi puanlı solverlar ----------
+async function eksi() {
+  const L = await q(sb.from("d_solver_puan").select("*").order("puan").limit(1000));
+  const ek = L.filter(x => x.puan < 0), risk = L.filter(x => x.puan >= 0 && x.puan < 20), son = L.reduce((a, x) => x.son_okuma > a ? x.son_okuma : a, "");
+  const satir = x => `<tr><td>${kisiLink(x.seo, x.ad)}</td><td><b>${Number(x.puan)}</b></td><td>${x.onceki_puan ?? "—"}</td><td>${x.son_3gun_cevap ?? ""}</td>
+    <td>${x.eksiye_dustu ? tarih(x.eksiye_dustu) : '<span class="soluk">—</span>'}</td><td>${x.bildirim_zamani ? `<span class="etiket ok">Gitti · ${tarih(x.bildirim_zamani)}</span>` : '<span class="soluk">—</span>'}</td></tr>`;
+  const bas = `<tr><th>Solver</th><th>Puan</th><th>Önceki okuma</th><th>Son 3 gün cevap</th><th>Eksiye düştü</th><th>Bildirim</th></tr>`;
+  $("#icerik").innerHTML = baslik("Eksi puanlı solverlar", "Puanı eksideki solver çözdüğü sorudan ücret alamaz. Son 3 günde cevap veren solverların puanı saatte bir okunur. Puanı artıdan eksiye düşen solvera otomatik kısa bir bildirim gider. Özellikle yeni solverlar ilk günlerde kolay eksiye düşer; listede uzun süre kalan olursa Ulaş'a haber ver.") + `
+    <div class="bilgi-serit"><i data-lucide="clock"></i>Son okuma: ${son ? tarih(son) : "—"} · ${L.length} aktif solver</div>
+    <h2>Şu an eksi puanda (${ek.length})</h2><div class="tablo-sar" id="e-eksi"><table class="tablo sik">${bas}${ek.map(satir).join("") || '<tr><td colspan="6" class="soluk">Eksi puanlı solver yok. 👍</td></tr>'}</table></div>
+    <h2>Risk grubu: puanı 0–19 arası (${risk.length})</h2><p class="aciklama">Bir onaylanan şikayet (−3 puan) ya da bir cezayla eksiye düşebilirler.</p>
+    <div class="tablo-sar"><table class="tablo sik">${bas}${risk.map(satir).join("")}</table></div>`;
+}
+
 // ---------- öğrenciler ----------
 async function ogrenci() {
   const L = (await tumSikayetler(30)).filter(s => s.tur === "c"), O = {};
@@ -557,6 +573,7 @@ const REHBER = {
   sikayet: [["#f-tur", "Filtreler", "Türe ve sonuca göre süz, altta ada ya da şikayet numarasına göre ara."], ["#f-liste", "Liste", "Satıra tıklayınca aynı satırda detay açılır. Öğrenci/öğretmen adları admin paneldeki profile gider."]],
   basvuru: [["#b-cip", "Filtreler", "Onaylananlar ya da ret sebebine göre süz."], ["section.sk .b-grid", "6 test sorusu", "Her kutuda solda soru, sağda adayın çözümü. Tıklayınca büyür. Çipin üstüne gelince not görünür."]],
   takip: [[".tablo-sar", "İzlenen öğretmenler", "Kaç cevabının kontrol edildiği ve sonuçları. Satıra tıklayınca öğretmenin sayfası açılır."]],
+  eksi: [["#e-eksi", "Eksidekiler", "Bu solverlar şu an soru başına ücret alamıyor. Bildirim sütunu, eksiye düştüğünde otomatik bildirimin gidip gitmediğini gösterir."]],
   ogrenci: [["#og-cip", "Şüpheliler", "Sık ve çoğunlukla haksız şikayet açan öğrenciler."], ["#og-t", "Liste", "İsme tıklayınca admin paneldeki profil açılır."]],
 };
 let rAd = 0, rL = [];

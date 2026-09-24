@@ -216,3 +216,17 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .ust-cubuk h2{font-size:24px;font-weight:600;margin:0 0 4px}
 .ust-cubuk .aciklama{max-width:900px}
 .nw{white-space:nowrap}.tablo .etiket{white-space:nowrap}
+
+/* görsel penceresi: ortada, sayfayı kaplamadan */
+#buyut{position:fixed;inset:0;background:rgb(10 8 20/.55);z-index:60;display:grid;place-items:center;padding:24px;cursor:default;grid-template-columns:none}
+#buyut .g-pencere{position:relative;width:min(960px,92vw);height:min(82vh,900px);background:hsl(var(--card));border-radius:14px;box-shadow:0 20px 60px -15px rgb(0 0 0/.5);display:grid;grid-template-rows:auto 1fr;overflow:hidden}
+#buyut .g-ust{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid hsl(var(--border));font-size:13px;color:hsl(var(--muted-foreground))}
+#buyut .g-kapat{width:32px;height:32px;border-radius:8px;font-size:20px;color:hsl(var(--foreground))}#buyut .g-kapat:hover{background:hsl(var(--muted))}
+#buyut .g-govde{position:relative;display:grid;place-items:center;min-height:0;background:hsl(var(--muted)/.6);padding:12px}
+#buyut .g-govde img,#buyut .g-govde video{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;display:block}
+#buyut .g-ok{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:hsl(var(--card));color:hsl(var(--foreground));font-size:22px;box-shadow:0 2px 8px rgb(0 0 0/.2);display:grid;place-items:center}
+#buyut .g-ok:hover{background:hsl(var(--accent))}#buyut .g-ok.sol{left:12px}#buyut .g-ok.sag{right:12px}
+#buyut .g-sayac{position:static;transform:none;background:none;color:inherit;padding:0}
+#buyut .g-govde{overflow:hidden}
+#buyut .g-govde img,#buyut .g-govde video{max-width:calc(min(960px,92vw) - 24px);max-height:calc(min(82vh,900px) - 78px);width:auto;height:auto}
+#buyut .g-govde img,#buyut .g-govde video{position:relative;z-index:1}
