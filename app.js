@@ -337,7 +337,7 @@ async function kontrol() {
 async function uyari() {
   const [acik, gecmis] = await Promise.all([
     q(sb.from("d_uyari").select("*").in("durum", ["taslak", "onaylandi"]).order("id")),
-    q(sb.from("d_uyari").select("*").in("durum", ["gonderildi", "iptal", "hata"]).order("id", { ascending: false }).limit(300)),
+    q(sb.from("d_uyari").select("*").in("durum", ["gonderildi", "gonderiliyor", "iptal", "hata"]).order("id", { ascending: false }).limit(300)),
   ]);
   const kanitlar = [...new Set(acik.flatMap(u => u.kanit || []))];
   const ks = kanitlar.filter(k => !k.startsWith("t:")), kt = kanitlar.filter(k => k.startsWith("t:")).map(k => k.slice(2));
@@ -353,7 +353,7 @@ async function uyari() {
     <label>Metin<textarea class="u-metin" rows="3" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
     ${(u.kanit || []).length ? `<details><summary>Kanıt: ${u.kanit.length} cevap</summary>${u.kanit.map(k => K[k] ? sikayetKart(K[k], "goster") : "").join("")}</details>` : ""}
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`;
-  const DUR = { gonderildi: ["Gönderildi", "ok"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
+  const DUR = { gonderildi: ["Gönderildi", "ok"], gonderiliyor: ["Gönderiliyor", "uyari"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
   $("#icerik").innerHTML = baslik("Uyarılar", "Şikayet sayılarına göre öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Aşağıda daha önce gönderilen bildirimlerin tamamı var.") + `
     <div id="u-acik">${acik.length ? acik.map(kart).join("") : '<div class="bos">Onay bekleyen uyarı yok.</div>'}</div>
     <h2>Gönderilen bildirimler</h2>
@@ -392,8 +392,8 @@ async function uyari() {
     k.querySelector(".u-onay")?.addEventListener("click", () => { if (k.querySelector(".etiket.hata") && !confirm("Bildirim gidecek ve öğretmenin hesabı pasife alınacak. Emin misin?")) return; karar(true); });
     k.querySelector(".u-iptal")?.addEventListener("click", () => karar(false));
     k.querySelector(".u-geri")?.addEventListener("click", async () => {
-      const { error } = await sb.rpc("d_uyari_karar", { p_id: id, p_onay: false });
-      if (error) return bildir("Geri alınamadı (gönderilmiş olabilir)."); bildir("Onay geri alındı."); uyari();
+      const { error } = await sb.rpc("d_uyari_geri_al", { p_id: id });
+      if (error) return bildir("Geri alınamadı (gönderim başlamış olabilir)."); bildir("Onay geri alındı, yeniden onay bekliyor."); rozetler(); uyari();
     });
   });
 }
@@ -471,7 +471,7 @@ async function ogretmenDetay(id) {
   const A = [];
   S.forEach(s => A.push({ z: s.olusturma, tur: "sikayet", renk: sonucRenk(s.son_karar), b: s.durum === "bekliyor" ? "Şikayet · karar bekliyor" : "Şikayet · " + sonucAdi("c", s.son_karar), m: `${s.ders || ""} — ${s.gerekce || ""}`, key: s.key }));
   U.filter(u => u.durum !== "taslak").forEach(u => A.push({ z: u.gonderim || u.karar_zamani || u.olusturma, tur: "uyari", renk: u.kademe === "PASIF" ? "hata" : u.kademe === "AKTIF" ? "ok" : "uyari",
-    b: (KADEME[u.kademe] || u.kademe) + (u.durum === "gonderildi" ? " · bildirim gitti" : u.kademe === "AKTIF" ? "" : " · gönderilmedi"), m: u.kademe === "AKTIF" ? (u.description || "") : u.description }));
+    b: (KADEME[u.kademe] || u.kademe) + (u.durum === "gonderildi" ? " · bildirim gitti" : u.durum === "gonderiliyor" ? " · gönderiliyor" : u.kademe === "AKTIF" ? "" : " · gönderilmedi"), m: u.kademe === "AKTIF" ? (u.description || "") : u.description }));
   T.forEach(x => A.push({ z: x.cevap_tarihi, tur: "takip", renk: sonucRenk(x.sonuc), b: (x.kaynak === "denetim" ? "Rastgele denetim · " : "Yakın takip · ") + sonucAdi("c", x.sonuc), m: `${x.ders || ""} — ${x.gerekce || ""}` }));
   if (P?.eksiye_dustu) A.push({ z: P.eksiye_dustu, tur: "eksi", renk: "hata", b: "Puan eksiye düştü", m: `Puan ${P.puan}` });
   A.sort((a, b) => (b.z || "").localeCompare(a.z || ""));
@@ -539,7 +539,7 @@ function basvuruKart(b, kontrol) {
   const alt = kontrol ? `<div class="aksiyon"><button class="secim onay" data-v="DOGRU">Karar doğru</button><button class="secim ret" data-v="YANLIS">Karar yanlış</button><input placeholder="Yanlışsa neden? (zorunlu)"><button class="birincil kucuk b-kaydet">Kaydet</button></div>` : "";
   return `<section class="kart sk" data-bid="${b.id}"><div class="sk-ust"><span class="etiket">Solver başvurusu</span><b>${e(b.ad)}</b><span class="soluk">${e(b.ders)} · ${e(b.basvuru_tarihi)}</span>
     <span class="sag"><a class="soluk" target="_blank" rel="noopener" href="${ADMIN}/SolverApplication/SolverApplicationDetail/${b.id}">admin panelde aç</a>
-    <span class="etiket ${b.karar === "ONAYLA" ? "ok" : "hata"}">${b.karar === "ONAYLA" ? "Onaylandı" : "Reddedildi"}</span></span></div>
+    <span class="etiket ${b.karar === "ONAYLA" ? "ok" : "hata"}">${b.karar === "ONAYLA" ? "Onaylandı" : "Reddedildi"}</span>${b.durum === "hata" ? '<span class="etiket uyari" data-ipucu="Karar admin paneline 3 denemede işlenemedi. Admin panelde başvuruyu elle onayla ya da reddet.">admin panele işlenemedi</span>' : ""}</span></div>
     <div class="sk-karar"><div class="sk-karar-satir">${b.karar === "ONAYLA" ? '<span class="etiket ok">6/6 doğru, format uygun</span>' : `<span class="etiket hata">${e(b.sebep)}</span>`}</div><div class="klamp">${e(b.gerekce)}</div></div>
     <div class="b-grid" data-medya='${e(JSON.stringify(hepsi))}'>${grid}</div>${alt}</section>`;
 }
@@ -662,7 +662,7 @@ const REHBER = {
     ["section.sk .sk-bilgi", "Öğrencinin şikayeti", "Öğrencinin neden şikayet ettiği ve yazdığı not. Kararı verirken önce buna bak."],
     ["section.sk .medya", "Soru ve cevap", "Solda soru, sağda öğretmenin cevabı. Görsele tıklayınca büyür, oklarla diğer görsellere geçersin."],
     ["section.sk .sk-karar", "Otomatik incelemenin görüşü", "İlk incelemenin önerisi ve gerekçesi. \"Emin değil\" yazıyorsa karar senin. \"İkinci kontrol\" varsa kayda ikinci kez bakılmıştır."],
-    ["section.sk .aksiyon", "Kararın", "Cevap şikayetinde Onayla = öğrenci haklı (öğretmen ücret alamaz), Reddet = öğretmen haklı. Soru şikayetinde Onayla = soru kaldırılır. İstersen not yaz, Kaydet'e bas. 15 saniye içinde sağ alttan geri alabilirsin."]],
+    ["section.sk .aksiyon", "Kararın", "Cevap şikayetinde Onayla = öğrenci haklı (öğretmen ücret alamaz), Reddet = öğretmen haklı. Soru şikayetinde Onayla = soru kaldırılır. İstersen not yaz, Kaydet'e bas. 30 saniye içinde sağ alttan geri alabilirsin."]],
   kontrol: [[".bilgi-serit", "Bu haftanın ilerlemesi", "Kaç kararı kontrol ettiğin."], ["section.sk .sk-karar", "Verilen karar", "Otomatik incelemenin verdiği karar ve gerekçesi. Görsellere bakıp katılıp katılmadığına karar ver."],
     ["section.sk .aksiyon", "Doğru mu?", "Katılıyorsan \"Karar doğru\". Katılmıyorsan \"Karar yanlış\" seç ve nedenini yaz; bu not kurallara eklenir. Yanlış kararı admin panelinde ayrıca elle düzeltmen gerekir."]],
   uyari: [["#u-acik", "Onay bekleyen bildirimler", "Kurallara göre hazırlanmış bildirimler. Metni düzeltebilirsin. \"Onayla ve gönder\" 30 saniyelik geri alma süresinden sonra gönderir, \"Gönderme\" iptal eder. \"Hesabı pasife alma\" onaylanırsa öğretmenin hesabı kapanır."],

@@ -1,4 +1,4 @@
--- Kaydedilen kararı geri alma (15 sn'lik "Geri al" düğmesi) + admin panel profil bağlantıları için seo adları
+-- Kaydedilen kararı geri alma (30 sn'lik "Geri al" düğmesi) + admin panel profil bağlantıları için seo adları
 alter table public.d_sikayet add column if not exists ogretmen_seo text, add column if not exists ogrenci_seo text;
 
 create or replace function public.d_karar_geri_al(p_key text, p_tip text)
