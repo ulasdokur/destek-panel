@@ -36,11 +36,12 @@ function toast(baslik_, alt = "", geriAl = null) {
   const t = document.createElement("div"); t.className = "toast";
   t.innerHTML = `<div class="t-metin"><b>${e(baslik_)}</b>${alt ? `<span>${e(alt)}</span>` : ""}</div>${geriAl ? `<button class="geri-al">Geri al (${GERI_AL_SN})</button>` : ""}`;
   $("#toastlar").appendChild(t);
-  let kalan = GERI_AL_SN, bitti = false;
+  const bas = Date.now(); let bitti = false;
+  const kalan = () => GERI_AL_SN - Math.floor((Date.now() - bas) / 1000);
   const kapat = () => { if (bitti) return; bitti = true; clearInterval(say); t.remove(); };
-  const say = setInterval(() => { kalan--; const b = t.querySelector(".geri-al"); if (b) b.textContent = `Geri al (${kalan})`; if (kalan <= 0) kapat(); }, 1000);
+  const say = setInterval(() => { const b = t.querySelector(".geri-al"); if (b) b.textContent = `Geri al (${kalan()})`; if (kalan() <= 0) kapat(); }, 500);
   if (!geriAl) { clearInterval(say); setTimeout(kapat, 3500); }
-  t.querySelector(".geri-al")?.addEventListener("click", async () => { kapat(); await geriAl(); });
+  t.querySelector(".geri-al")?.addEventListener("click", async () => { if (kalan() <= 0) return kapat(); kapat(); await geriAl(); });
 }
 const bildir = m => toast(m);
 
@@ -159,7 +160,7 @@ function sikayetKart(s, mod) {
     ? [["Öğrencinin seçimi", [s.sebep, (s.alt_sebep || []).join(", ")].filter(Boolean).join(" · ")], ["Öğrencinin notu", s.ogrenci_notu],
        ["Yorumlar", (s.yorumlar || []).join(" / ")], ["Sorudaki açıklama", s.soru_aciklamasi], ["Öğretmenin açıklaması", s.cevap_aciklamasi], ["Videodaki konuşma", s.ses_dokumu && s.ses_dokumu.slice(0, 400)]]
     : [["Şikayet sebebi", s.sebep], ["Öğrencinin açıklaması", s.ogrenci_notu]];
-  const durum = s.durum === "islendi" ? `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>` : '<span class="etiket uyari">Karar bekliyor</span>';
+  const durum = s.durum === "hata" ? '<span class="etiket hata" data-ipucu="Admin paneline yazılırken yanıt alınamadı ve kayıt artık bekleyenlerde değil. Admin panelde bu şikayetin sonucuna bakın.">Admin\'de kontrol et</span>' : s.durum === "islendi" ? `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>` : '<span class="etiket uyari">Karar bekliyor</span>';
   const hedef = s.hedef_ders ? ` → ${e(s.hedef_ders)}` : "";
   let karar = `<div class="sk-karar"><div class="sk-karar-satir"><span class="etiket">İlk inceleme: ${kararAdi(s.tur, s.ajan_karar).split(" · ")[0]}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}</span>
     ${s.emin_degil ? '<span class="etiket uyari" data-ipucu="İlk inceleme bu kayıtta emin olamadı, bu yüzden karar sana bırakıldı.">emin değil</span>' : ""}
@@ -200,11 +201,11 @@ function kartlariBagla(kok, yenile) {
       k.disabled = true;
       const { error } = await sb.rpc("d_karar_ver", { p_key: key, p_tip: tip, p_secim: secim, p_not: not });
       k.disabled = false;
-      if (error) return bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : "Kaydedilemedi: " + error.message);
+      if (error) return bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : error.message === "isleniyor" ? "Bu kayda verilen karar şu an admin paneline işleniyor, değiştirilemez." : "Kaydedilemedi: " + error.message);
       kart.classList.add("gidiyor"); setTimeout(() => { kart.remove(); bosKontrol(kok); }, 250); rozetler();
       toast(tip === "kontrol" ? "Kontrol kaydedildi" : "Karar kaydedildi", tip === "kontrol" ? "Teşekkürler." : "30 saniye içinde geri alabilirsin, sonra 1-2 dakika içinde admin paneline işlenir.", async () => {
         const r = await sb.rpc("d_karar_geri_al", { p_key: key, p_tip: tip });
-        if (r.error) return bildir("Geri alınamadı: karar işlenmiş olabilir.");
+        if (r.error) return bildir("Geri alınamadı: süre doldu ya da karar işlenmeye başladı.");
         bildir("Geri alındı."); rozetler(); sekme === s0 && yenile && yenile();
       });
     };
@@ -344,7 +345,7 @@ async function uyari() {
   const K = Object.fromEntries([
     ...(ks.length ? (await q(sb.from("d_sikayet").select("*").in("key", ks))).map(s => [s.key, s]) : []),
     ...(kt.length ? (await q(sb.from("d_takip").select("*").in("key", kt))).map(s => ["t:" + s.key, takipKayit(s)]) : [])]);
-  const kart = u => `<section class="kart" data-id="${u.id}">
+  const kart = u => `<section class="kart" data-id="${u.id}" data-durum="${e(u.durum)}">
     <div class="kart-ust"><b>${e(u.ad)}</b><span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe] || e(u.kademe)}</span>
       <a class="soluk" href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">öğretmenin geçmişi</a>
       ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), birazdan gidecek</span>` : ""}</div>
@@ -380,8 +381,8 @@ async function uyari() {
         const { error } = await sb.rpc("d_uyari_metin", { p_id: id, p_title: k.querySelector(".u-baslik").value, p_description: k.querySelector(".u-metin").value });
         if (error) return bildir("Metin kaydedilemedi: " + error.message);
       }
-      const { error } = await sb.rpc("d_uyari_karar", { p_id: id, p_onay: onay });
-      if (error) return bildir(error.message === "sadece_yonetici" ? "Bunu yalnızca yöneticiler onaylayabilir." : "Olmadı: " + error.message);
+      const { error } = await sb.rpc("d_uyari_karar", { p_id: id, p_onay: onay, p_beklenen: k.dataset.durum });
+      if (error) return bildir(error.message === "sadece_yonetici" ? "Bunu yalnızca yöneticiler onaylayabilir." : error.message === "degisti" ? "Bu uyarıda başka biri karar vermiş; sayfa yenilendi." : "Olmadı: " + error.message), error.message === "degisti" && uyari();
       rozetler(); uyari();
       toast(onay ? "Onaylandı" : "Gönderilmeyecek", onay ? "30 saniye içinde geri alabilirsin, sonra 1-2 dakika içinde gönderilir." : "", async () => {
         const r = await sb.rpc("d_uyari_geri_al", { p_id: id });
@@ -514,7 +515,7 @@ async function sikayet() {
     $("#f-liste").innerHTML = `<div class="tablo-sar"><table class="tablo sik"><tr><th></th><th>Tarih</th><th>Tür</th><th>Ders</th><th>Öğrenci</th><th>Öğretmen</th><th>Sonuç</th></tr>
       ${L.map(s => `<tr class="tik" data-key="${e(s.key)}"><td><span class="ok-ikon">›</span></td><td class="nw">${tarih(s.olusturma)}</td><td class="nw">${s.tur === "s" ? "Soru" : "Cevap"} <span class="soluk">#${s.sikayet_id}</span></td><td>${e(s.ders)}</td>
         <td>${kisiLink(s.ogrenci_seo, s.ogrenci)}</td><td>${kisiLink(s.ogretmen_seo, s.ogretmen)}</td>
-        <td>${s.durum === "bekliyor" ? '<span class="etiket uyari">Karar bekliyor</span>' : `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>`}</td></tr>
+        <td>${s.durum === "hata" ? '<span class="etiket hata">Admin\'de kontrol et</span>' : s.durum === "bekliyor" ? '<span class="etiket uyari">Karar bekliyor</span>' : `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>`}</td></tr>
         <tr class="acilir" hidden><td colspan="7"></td></tr>`).join("") || '<tr><td colspan="7" class="soluk">Kayıt yok.</td></tr>'}</table></div>`;
     $("#f-liste").querySelectorAll("tr.tik").forEach(t => t.onclick = ev => { if (ev.target.closest("a")) return;
       const alt = t.nextElementSibling; alt.hidden = !alt.hidden; t.classList.toggle("acik-satir", !alt.hidden);
