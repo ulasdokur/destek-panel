@@ -121,7 +121,7 @@ function git(s, alt) {
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
   menuKapat(); window.scrollTo(0, 0);
-  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi }[s] || ozet;
+  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim }[s] || ozet;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>';
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
@@ -535,13 +535,31 @@ function takipKayit(t) {
     soru_url: t.soru_url, cevap_url: t.cevap_url, video_url: t.video_url, ajan_karar: t.sonuc, gerekce: t.gerekce, durum: "islendi", son_karar: t.sonuc };
 }
 async function takip() {
-  const [I, T] = await Promise.all([q(sb.from("d_izlenen").select("*").order("baslangic")), q(sb.from("d_takip").select("*").order("cevap_tarihi", { ascending: false }).limit(500))]);
+  const [I, T] = await Promise.all([q(sb.from("d_izlenen").select("*").order("baslangic")), q(sb.from("d_takip").select("*").eq("kaynak", "takip").order("cevap_tarihi", { ascending: false }).limit(500))]);
   const S = {}; T.forEach(t => { const s = S[t.ogretmen_id] ||= { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; s[t.sonuc]++; });
   $("#icerik").innerHTML = baslik("Yakın takip", "Yapay zekâ kullandığı için hesabı kapatılıp sonra yeniden açılan öğretmenler 14 gün boyunca yakından izlenir: şikayet gelmese bile verdikleri her cevap 3 saatte bir kontrol edilir. Yapay zekâ kesin görülürse hesabı kapatma önerisi Uyarılar'a düşer.") + `
     <div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Takip süresi</th><th>Kontrol edilen cevap</th><th>Temiz</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
     ${I.map(o => { const s = S[o.ogretmen_id] || { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; return `<tr class="tik" onclick="git('ogretmen','${o.ogretmen_id}')"><td>${e(o.ad)}</td><td class="soluk">${tarih(o.baslangic)} → ${tarih(o.bitis)}</td><td>${s.TEMIZ + s.SORUNLU + s.YZ_KESIN}</td><td>${s.TEMIZ}</td><td>${s.SORUNLU}</td><td><b>${s.YZ_KESIN}</b></td></tr>`; }).join("")}</table></div>
     <h2>Sorunlu bulunan cevaplar</h2>
     ${T.filter(t => t.sonuc !== "TEMIZ").map(t => sikayetKart(takipKayit(t), "goster")).join("") || '<div class="bos">Sorunlu cevap yok. 👍</div>'}`;
+}
+
+// ---------- rastgele denetim ----------
+async function denetim() {
+  const L = await q(sb.from("d_takip").select("*").eq("kaynak", "denetim").order("cevap_tarihi", { ascending: false }).limit(2000));
+  const G = {}, O = {};
+  L.forEach(x => { const g = (x.olusturma || "").slice(0, 10), o = G[g] ||= { n: 0, s: 0, y: 0 }; o.n++; if (x.sonuc === "SORUNLU") o.s++; if (x.sonuc === "YZ_KESIN") o.y++;
+    const t = O[x.ogretmen_id] ||= { ad: x.ogretmen, n: 0, s: 0, y: 0 }; t.n++; if (x.sonuc === "SORUNLU") t.s++; if (x.sonuc === "YZ_KESIN") t.y++; });
+  const top = L.length, sor = L.filter(x => x.sonuc !== "TEMIZ").length;
+  $("#icerik").innerHTML = baslik("Rastgele denetim", "Şikayet gelmese de her gün son 24 saatte verilen cevaplardan rastgele 50 tanesi kontrol edilir; bir öğretmenden en fazla 3 cevap alınır. Böylece öğrencinin şikayet etmediği kötü cevaplar da görünür. Yapay zekâ kesin görülürse hesabı kapatma önerisi Uyarılar'a düşer.") + `
+    <div class="kutular"><div class="kutu"><div class="s">${top}</div><div class="e">denetlenen cevap</div></div>
+      <div class="kutu ${top && sor / top > .2 ? "uyari" : ""}"><div class="s">%${top ? Math.round(sor / top * 100) : 0}</div><div class="e">sorunlu oranı (${sor} cevap)</div></div>
+      <div class="kutu ${L.some(x => x.sonuc === "YZ_KESIN") ? "hata" : ""}"><div class="s">${L.filter(x => x.sonuc === "YZ_KESIN").length}</div><div class="e">yapay zekâ (kesin)</div></div></div>
+    <h2>Gün gün</h2><div class="tablo-sar" id="d-gun"><table class="tablo sik"><tr><th>Gün</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
+    ${Object.keys(G).sort().reverse().map(g => `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td>${G[g].n}</td><td>${G[g].s}</td><td>${G[g].y}</td></tr>`).join("") || '<tr><td colspan="4" class="soluk">Henüz denetim yapılmadı. İlk denetim bugün içinde çalışacak.</td></tr>'}</table></div>
+    <h2>Sorunlu çıkan öğretmenler</h2><div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
+    ${Object.entries(O).filter(([, o]) => o.s + o.y).sort((a, b) => (b[1].s + b[1].y) - (a[1].s + a[1].y)).map(([id, o]) => `<tr class="tik" onclick="git('ogretmen','${id}')"><td>${e(o.ad)}</td><td>${o.n}</td><td>${o.s}</td><td><b>${o.y}</b></td></tr>`).join("") || '<tr><td colspan="4" class="soluk">Yok.</td></tr>'}</table></div>
+    <h2>Sorunlu bulunan cevaplar</h2>${L.filter(x => x.sonuc !== "TEMIZ").slice(0, 40).map(x => sikayetKart(takipKayit(x), "goster").replace(">Yakın takip<", ">Rastgele denetim<")).join("") || '<div class="bos">Sorunlu cevap yok. 👍</div>'}`;
 }
 
 // ---------- eksi puanlı solverlar ----------
