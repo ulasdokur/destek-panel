@@ -8,7 +8,8 @@ const ADMIN = "https://admin.tahtaapp.com";
 
 const $ = (s, el = document) => el.querySelector(s);
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı", EKSI: "Puan eksiye düştü", GERI: "Günlük geri bildirim" };
+const SEBEP = { 7: "Yapılan çözümler hatalı", 8: "Format kurallarına uyulmamış", 6: "Soruların çoğunluğu çözülmemiş", 4: "Yetersiz açıklama", 5: "Çözüm aşamaları anlaşılır değil", 1: "Görüntü kalitesi kötü", 2: "Yazı okunamıyor", 3: "Yapay zeka veya dış kaynak kullanımı", 9: "Uygunsuz içerik" };  // admin RejectSolver sebep kodları
+const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı", EKSI: "Puan eksiye düştü", KUCUK: "Küçük hatırlatma", GERI: "Günlük geri bildirim" };
 const KAT = { yapay_zeka: "yapay zekâ", dijital_metin: "dijital metin", soru_ustune: "soru üstüne yazma", yanlis_cevap: "yanlış cevap", okunaklilik: "okunaklılık", eksik_aciklama: "eksik açıklama", diger: "diğer" };
 const GERI_AL_SN = 30;  // Mac tarafı (senk.py GERI_AL_SN) bu süre dolmadan karara dokunmaz
 let ben = null, sekme = "ozet";
@@ -128,15 +129,17 @@ function git(s, alt) {
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
 async function rozetler() {
-  const [b, k, u, kb] = await Promise.all([
+  const [b, k, u, kb, bb] = await Promise.all([
     sb.from("d_sikayet").select("key,d_karar(id,tip,uygulandi)").eq("durum", "bekliyor"),
     sb.from("d_sikayet").select("key,d_karar(id,tip)").eq("kontrol_hafta", haftaNo()),
     sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "taslak"),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", haftaNo()).is("kontrol_secim", null),
+    sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("durum", "bekliyor").is("insan_karar", null),
   ]);
   $("#r-bekleyen").textContent = (b.data || []).filter(x => !x.d_karar.some(k => k.tip === "bekleyen")).length || "";
   $("#r-kontrol").textContent = ((k.data || []).filter(x => !x.d_karar.some(k => k.tip === "kontrol")).length + (kb.count || 0)) || "";
   $("#r-uyari").textContent = u.count || "";
+  const rb = document.getElementById("r-basvuru"); if (rb) rb.textContent = bb.count || "";
   const top = ids => ids.reduce((a, i) => a + (+$(i).textContent || 0), 0) || "";
   $("#r-sikayet-grup").textContent = top(["#r-bekleyen", "#r-kontrol"]); $("#r-ogretmen-grup").textContent = top(["#r-uyari"]);
 }
@@ -171,7 +174,7 @@ function sikayetKart(s, mod) {
   if (mod === "bekleyen") {
     const sec = ["ONAYLA", "REDDET"].concat(!cevapli && s.hedef_lecture_id ? ["HAVUZA_AKTAR"] : []);
     alt = `<div class="aksiyon">${sec.map(x => `<button class="secim ${x === "REDDET" ? "ret" : "onay"}" data-v="${x}">${kararAdi(s.tur, x)}${x === "HAVUZA_AKTAR" ? hedef : ""}</button>`).join("")}
-      <input placeholder="Not (isteğe bağlı): neden bu karar?"><button class="birincil kucuk kaydet">Kaydet</button></div>`;
+      <input class="not" placeholder="Not (isteğe bağlı): neden bu karar?">${cevapli ? '<input class="kucuk-not" placeholder="Reddederken öğretmene küçük not (isteğe bağlı), ör. fotoğraf loş" data-ipucu="Şikayeti reddetseniz de cevapta küçük bir sorun varsa buraya yazın. Bu notlar birikir, öğretmene toplu hatırlatma olarak gider; ücreti ve puanı etkilemez.">' : ""}<button class="birincil kucuk kaydet">Kaydet</button></div>`;
   } else if (mod === "kontrol") {
     alt = `<div class="aksiyon"><button class="secim onay" data-v="DOGRU">Karar doğru</button><button class="secim ret" data-v="YANLIS">Karar yanlış</button>
       <input placeholder="Yanlışsa neden? (zorunlu)"><button class="birincil kucuk kaydet">Kaydet</button></div>`;
@@ -196,10 +199,10 @@ function kartlariBagla(kok, yenile) {
     const k = kart.querySelector(".kaydet");
     k.onclick = async () => {
       if (!secim) return bildir("Önce bir seçim yap.");
-      const not = kart.querySelector(".aksiyon input").value.trim(), tip = kart.dataset.mod === "kontrol" ? "kontrol" : "bekleyen", key = kart.dataset.key;
+      const not = kart.querySelector(".aksiyon input").value.trim(), tip = kart.dataset.mod === "kontrol" ? "kontrol" : "bekleyen", key = kart.dataset.key, kucuk = kart.querySelector(".kucuk-not")?.value.trim() || null;
       if (tip === "kontrol" && secim === "YANLIS" && not.length < 3) return bildir("Yanlış dediysen kısaca nedenini yaz.");
       k.disabled = true;
-      const { error } = await sb.rpc("d_karar_ver", { p_key: key, p_tip: tip, p_secim: secim, p_not: not });
+      const { error } = await sb.rpc("d_karar_ver", { p_key: key, p_tip: tip, p_secim: secim, p_not: not, p_kucuk: secim === "REDDET" ? kucuk : null });
       k.disabled = false;
       if (error) return bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : error.message === "isleniyor" ? "Bu kayda verilen karar şu an admin paneline işleniyor, değiştirilemez." : "Kaydedilemedi: " + error.message);
       kart.classList.add("gidiyor"); setTimeout(() => { kart.remove(); bosKontrol(kok); }, 250); rozetler();
@@ -528,7 +531,7 @@ async function sikayet() {
 }
 
 // ---------- solver başvuruları ----------
-function basvuruKart(b, kontrol) {
+function basvuruKart(b, kontrol, karar) {
   const hepsi = (b.sorular || []).flatMap(s => [...(s.soru_url || []).slice(0, 1), ...(s.cevap_url || []).slice(0, 1)]);
   let i = 0;
   const grid = (b.sorular || []).map(s => {
@@ -538,17 +541,33 @@ function basvuruKart(b, kontrol) {
       <span class="etiket ${s.dogru_mu === false ? "hata" : s.format_uygun === false ? "uyari" : "ok"}" ${s.not ? `data-ipucu="${e(s.not)}"` : ""}>${s.dogru_mu === false ? "Yanlış" : s.format_uygun === false ? "Format" : "Doğru"}</span></div></div>`;
   }).join("");
   const alt = kontrol ? `<div class="aksiyon"><button class="secim onay" data-v="DOGRU">Karar doğru</button><button class="secim ret" data-v="YANLIS">Karar yanlış</button><input placeholder="Yanlışsa neden? (zorunlu)"><button class="birincil kucuk b-kaydet">Kaydet</button></div>` : "";
+  const kararAlt = karar ? `<div class="aksiyon"><button class="secim onay" data-v="ONAYLA">Onayla · solver olsun</button><button class="secim ret" data-v="REDDET">Reddet</button>
+      <select class="b-sebep"><option value="">Ret sebebi</option>${Object.entries(SEBEP).map(([k, v]) => `<option value="${k}">${e(v)}</option>`).join("")}</select>
+      <input placeholder="Not (isteğe bağlı)"><button class="birincil kucuk b-karar">Kaydet</button></div>` : "";
+  const oneri = karar && b.oneri ? `<div class="sk-karar"><div class="sk-karar-satir"><span class="etiket" data-ipucu="İlk değerlendirme emin olamadı; ikinci bakışın önerisi bu.">İkinci bakış: ${b.oneri === "ONAYLA" ? "Onayla" : "Reddet"}</span></div><div class="klamp">${e(b.oneri_gerekce)}</div></div>` : "";
   return `<section class="kart sk" data-bid="${b.id}"><div class="sk-ust"><span class="etiket">Solver başvurusu</span><b>${e(b.ad)}</b><span class="soluk">${e(b.ders)} · ${e(b.basvuru_tarihi)}</span>
     <span class="sag"><a class="soluk" target="_blank" rel="noopener" href="${ADMIN}/SolverApplication/SolverApplicationDetail/${b.id}">admin panelde aç</a>
-    <span class="etiket ${b.karar === "ONAYLA" ? "ok" : "hata"}">${b.karar === "ONAYLA" ? "Onaylandı" : "Reddedildi"}</span>${b.durum === "hata" ? '<span class="etiket uyari" data-ipucu="Karar admin paneline 3 denemede işlenemedi. Admin panelde başvuruyu elle onayla ya da reddet.">admin panele işlenemedi</span>' : ""}</span></div>
-    <div class="sk-karar"><div class="sk-karar-satir">${b.karar === "ONAYLA" ? '<span class="etiket ok">6/6 doğru, format uygun</span>' : `<span class="etiket hata">${e(b.sebep)}</span>`}</div><div class="klamp">${e(b.gerekce)}</div></div>
-    <div class="b-grid" data-medya='${e(JSON.stringify(hepsi))}'>${grid}</div>${alt}</section>`;
+    ${b.durum === "bekliyor" ? `<span class="etiket uyari">${b.insan_karar ? "Karar verildi, işleniyor" : "Kararınızı bekliyor"}</span>${b.uygulama_notu ? `<span class="etiket hata">${e(b.uygulama_notu)}</span>` : ""}` : `<span class="etiket ${b.karar === "ONAYLA" ? "ok" : "hata"}">${b.karar === "ONAYLA" ? "Onaylandı" : "Reddedildi"}</span>`}${b.durum === "hata" ? '<span class="etiket uyari" data-ipucu="Karar admin paneline 3 denemede işlenemedi. Admin panelde başvuruyu elle onayla ya da reddet.">admin panele işlenemedi</span>' : ""}</span></div>
+    <div class="sk-karar"><div class="sk-karar-satir">${karar ? `<span class="etiket">İlk değerlendirme: ${b.karar === "ONAYLA" ? "Onayla" : "Reddet · " + e(b.sebep || "")}</span><span class="etiket uyari">emin değil</span>` : b.karar === "ONAYLA" ? '<span class="etiket ok">6/6 doğru, format uygun</span>' : `<span class="etiket hata">${e(b.sebep)}</span>`}</div><div class="klamp">${e(b.gerekce)}</div></div>${oneri}
+    <div class="b-grid" data-medya='${e(JSON.stringify(hepsi))}'>${grid}</div>${alt}${kararAlt}</section>`;
 }
 function basvuruBagla(yenile) {
   const s0 = sekme;
   document.querySelectorAll("section[data-bid]").forEach(k => {
     let sec = null;
     k.querySelectorAll(".secim").forEach(x => x.onclick = () => { sec = x.dataset.v; k.querySelectorAll(".secim").forEach(y => y.classList.toggle("secili", y === x)); });
+    const kb = k.querySelector(".b-karar");
+    if (kb) kb.onclick = async () => {
+      const id = +k.dataset.bid, sebep = +k.querySelector(".b-sebep").value || null, not = k.querySelector(".aksiyon input").value.trim();
+      if (!sec) return bildir("Önce Onayla ya da Reddet seçin."); if (sec === "REDDET" && !sebep) return bildir("Reddederken sebep seçin.");
+      kb.disabled = true; const { error } = await sb.rpc("d_basvuru_karar", { p_id: id, p_secim: sec, p_sebep_id: sec === "REDDET" ? sebep : null, p_not: not }); kb.disabled = false;
+      if (error) return bildir(error.message === "degistirilemez" ? "Bu başvuru işleniyor ya da artık beklemiyor." : "Kaydedilemedi: " + error.message);
+      k.classList.add("gidiyor"); setTimeout(() => k.remove(), 250); rozetler();
+      toast("Karar kaydedildi", "30 saniye içinde geri alabilirsiniz, sonra 1-2 dakika içinde admin paneline işlenir.", async () => {
+        const r = await sb.rpc("d_basvuru_karar_geri_al", { p_id: id });
+        if (r.error) return bildir("Geri alınamadı: süre doldu ya da işlenmeye başladı."); bildir("Geri alındı."); rozetler(); sekme === s0 && yenile && yenile();
+      });
+    };
     const btn = k.querySelector(".b-kaydet"); if (!btn) return;
     btn.onclick = async () => {
       const not = k.querySelector(".aksiyon input").value.trim(), id = +k.dataset.bid;
@@ -564,11 +583,13 @@ function basvuruBagla(yenile) {
   });
 }
 async function basvuru() {
-  const L = await q(sb.from("d_basvuru").select("*").order("islem_zamani", { ascending: false }).limit(300));
+  const H = await q(sb.from("d_basvuru").select("*").order("islem_zamani", { ascending: false }).limit(300));
+  const BK = H.filter(b => b.durum === "bekliyor"), L = H.filter(b => b.durum !== "bekliyor");
   const seb = {}; L.filter(b => b.karar !== "ONAYLA").forEach(b => seb[b.sebep] = (seb[b.sebep] || 0) + 1);
   $("#icerik").innerHTML = baslik("Solver başvuruları", "Solver olmak isteyen adaylar 6 test sorusu çözer. 6 sorunun hepsi doğru ve çözümler Solver Kılavuzu'ndaki formata uygunsa aday solver olarak onaylanır, değilse reddedilir. Kararlar otomatik verilir, adaya ayrıca bildirim gitmez. Küçük görsellere tıklayınca büyür; çiplerin üstüne gelince not görünür.") + `
     <div class="cipler" id="b-cip"><button class="cip secili" data-v="">Hepsi <small>${L.length}</small></button><button class="cip" data-v="ONAYLA">Onaylanan <small>${L.filter(b => b.karar === "ONAYLA").length}</small></button>
       ${Object.entries(seb).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<button class="cip" data-v="${e(k)}">${e(k)} <small>${v}</small></button>`).join("")}</div>
+    ${BK.length ? `<h2>Kararınızı bekleyenler (${BK.length})</h2><p class="aciklama">İlk değerlendirme bu başvurularda emin olamadı. Görsellere bakıp Onayla ya da Reddet seçin; 30 saniye geri alabilirsiniz, sonra admin paneline işlenir.</p><div id="b-bekleyen" class="b-yer">${BK.map(b => basvuruKart(b, false, !b.insan_karar)).join("")}</div><h2>Sonuçlananlar</h2>` : ""}
     <div class="filtre"><input id="b-ara" placeholder="İsim ya da ders"></div><div id="b-liste"></div>`;
   let fv = "";
   const ciz = () => { const a = $("#b-ara").value.toLocaleLowerCase("tr");
@@ -576,6 +597,7 @@ async function basvuru() {
     klampBagla($("#b-liste")); };
   $("#b-cip").querySelectorAll(".cip").forEach(c => c.onclick = () => { $("#b-cip").querySelectorAll(".cip").forEach(x => x.classList.toggle("secili", x === c)); fv = c.dataset.v; ciz(); });
   $("#b-ara").oninput = ciz; ciz();
+  if (BK.length) { klampBagla($("#b-bekleyen")); basvuruBagla(basvuru); }
 }
 
 // ---------- yakın takip ----------
