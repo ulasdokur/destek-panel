@@ -503,7 +503,7 @@ async function ogretmenDetay(id) {
 
 // ---------- tüm şikayetler ----------
 async function sikayet() {
-  $("#icerik").innerHTML = baslik("Tüm şikayetler", "İncelenmiş bütün şikayetlerin listesi. Satıra tıklayınca aynı satırda soru, cevap ve kararın gerekçesi açılır. Öğrenci ve öğretmen adları admin paneldeki profillerine gider. Görseller sadece satırı açınca yüklenir.") + `
+  $("#icerik").innerHTML = baslik("Tüm şikayetler", "İncelenmiş bütün şikayetlerin listesi. Satıra tıklayınca aynı satırda soru, cevap ve kararın gerekçesi açılır. Öğrenci ve öğretmen adları admin paneldeki profillerine gider. Görseller sadece satırı açınca yüklenir. Kırmızı \"Admin'de kontrol et\" etiketi: karar admin paneline gönderilirken cevap alınamadı ve şikayet artık admin'de bekleyenlerde görünmüyor. Admin panelde o şikayetin sonucuna bakın; doğruysa bir şey yapmayın, yanlışsa admin'de düzeltin.") + `
     <div class="cipler" id="f-tur"><span class="cip-bas">Tür</span><button class="cip secili" data-v="">Hepsi</button><button class="cip" data-v="s">Soru şikayeti</button><button class="cip" data-v="c">Cevap şikayeti</button></div>
     <div class="cipler" id="f-karar"><span class="cip-bas">Sonuç</span><button class="cip secili" data-v="">Hepsi</button><button class="cip" data-v="ONAYLA">Onaylandı</button><button class="cip" data-v="REDDET">Reddedildi</button><button class="cip" data-v="HAVUZA_AKTAR">Derse aktarıldı</button><button class="cip" data-v="bekliyor">Karar bekliyor</button></div>
     <div class="filtre"><input id="f-ara" placeholder="Şikayet no, ders, öğrenci ya da öğretmen adı"></div><div id="f-liste"></div>`;
