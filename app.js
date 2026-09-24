@@ -217,7 +217,7 @@ function kartlariBagla(kok, yenile) {
 function bosKontrol(kok) { if (!kok.querySelector("section.sk[data-mod]") && kok.querySelector(".bos-yer")) kok.querySelector(".bos-yer").innerHTML = '<div class="bos">Hepsi bitti.</div>'; }
 
 // ---------- özet ----------
-function saglikTablo(S, bugun) {
+function saglikTablo(S, bugun, M) {
   // Mac'teki her adımın son çalışması (saglik.json → d_durum 'saglik'); eskiyse turuncu
   if (!S) return "";
   const ne = { cek: ["Şikayet çekme", 60, x => `${x.yeni ?? 0} yeni${x.bekleyen ? `, ${x.bekleyen} birikmesi bekleniyor` : ""}${x.medya_hatasi ? `, ${x.medya_hatasi} medya indirilemedi` : ""}${x.talimat ? `, ${x.talimat} talimat benzeri metin` : ""}`],
@@ -232,7 +232,8 @@ function saglikTablo(S, bugun) {
     return `<tr><td>${ad}</td><td class="${eski ? "" : "soluk"}">${eski ? '<span class="etiket uyari">' : ""}${dk < 60 ? dk + " dk" : dk < 1440 ? Math.round(dk / 60) + " sa" : Math.round(dk / 1440) + " gün"} önce${eski ? "</span>" : ""}</td><td class="soluk">${e(f(S[k]))}</td></tr>`;
   }).join("");
   const insana = bugun.filter(x => x.durum === "bekliyor").length;
-  return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün size düşen: ${insana} / ${bugun.length} şikayet${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}. Bu oran zamanla düşmeli.</p>
+  const mal = M ? ` Son 24 saatte ajanların API karşılığı maliyeti: <b>$${M.son_24_saat_usd}</b> (${M.kayit} kayıt; abonelikte ödenmez, kota ölçüsüdür).` : "";
+  return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün size düşen: ${insana} / ${bugun.length} şikayet${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}. Bu oran zamanla düşmeli.${mal}</p>
     <div class="tablo-sar"><table class="tablo sik"><tr><th>Adım</th><th>Son çalışma</th><th>Son sonuç</th></tr>${satir}</table></div>`;
 }
 async function ozet() {
@@ -265,7 +266,7 @@ async function ozet() {
       ${kutu(pasifN.count ?? 0, "pasif öğretmen")}
       ${kutu(dogruluk === null ? "—" : "%" + dogruluk, `otomatik karar doğruluğu (${kontrolN} kontrol)`, dogruluk !== null && dogruluk < 90 ? "uyari" : "", "oz-dogruluk")}
     </div>
-    ${saglikTablo(D.saglik?.v, bugun)}
+    ${saglikTablo(D.saglik?.v, bugun, D.maliyet?.v)}
     <h2 id="oz-kontroller">Son otomatik kontroller</h2>
     ${turlar.length ? turlar.map(t => `<div class="kart"><div class="kart-ust"><b>${tarih(t.zaman)}</b>
       <span class="soluk">${t.soru_n + t.cevap_n} şikayet · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " karar bekliyor" : ""}</span></div>
