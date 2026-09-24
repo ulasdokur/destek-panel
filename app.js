@@ -217,6 +217,24 @@ function kartlariBagla(kok, yenile) {
 function bosKontrol(kok) { if (!kok.querySelector("section.sk[data-mod]") && kok.querySelector(".bos-yer")) kok.querySelector(".bos-yer").innerHTML = '<div class="bos">Hepsi bitti.</div>'; }
 
 // ---------- özet ----------
+function saglikTablo(S, bugun) {
+  // Mac'teki her adımın son çalışması (saglik.json → d_durum 'saglik'); eskiyse turuncu
+  if (!S) return "";
+  const ne = { cek: ["Şikayet çekme", 60, x => `${x.yeni ?? 0} yeni${x.bekleyen ? `, ${x.bekleyen} birikmesi bekleniyor` : ""}${x.medya_hatasi ? `, ${x.medya_hatasi} medya indirilemedi` : ""}${x.talimat ? `, ${x.talimat} talimat benzeri metin` : ""}`],
+    ajan_sikayet: ["Şikayet ajanları", 24 * 60, x => `${x.paket} paket${x.bos ? `, ${x.bos} boş döndü` : ""}${x.atilan ? `, ${x.atilan} pakette geçersiz karar atıldı` : ""}`],
+    isle: ["Admin'e yazma", 24 * 60, x => `${x.basarili} işlendi${x.hata ? `, ${x.hata} yazılamadı` : ""}${x.insana ? `, ${x.insana} size düştü` : ""}`],
+    ajan_basvuru: ["Başvuru ajanları", 7 * 24 * 60, x => `${x.paket} başvuru${x.bos ? `, ${x.bos} boş döndü` : ""}`],
+    takip: ["Yakın takip", 6 * 60, x => `${x.cevap} cevap kontrol edildi`],
+    denetim: ["Rastgele denetim", 30 * 60, x => `${x.cevap} cevap kontrol edildi`],
+    solver_puan: ["Eksi puan takibi", 3 * 60, x => `${x.okunan}/${x.aktif} solver okundu, ${x.eksi} eksi puanlı`] };
+  const satir = Object.entries(ne).filter(([k]) => S[k]).map(([k, [ad, sinir, f]]) => {
+    const dk = Math.round((Date.now() / 1000 - S[k].zaman) / 60), eski = dk > sinir;
+    return `<tr><td>${ad}</td><td class="${eski ? "" : "soluk"}">${eski ? '<span class="etiket uyari">' : ""}${dk < 60 ? dk + " dk" : dk < 1440 ? Math.round(dk / 60) + " sa" : Math.round(dk / 1440) + " gün"} önce${eski ? "</span>" : ""}</td><td class="soluk">${e(f(S[k]))}</td></tr>`;
+  }).join("");
+  const insana = bugun.filter(x => x.durum === "bekliyor").length;
+  return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün size düşen: ${insana} / ${bugun.length} şikayet${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}. Bu oran zamanla düşmeli.</p>
+    <div class="tablo-sar"><table class="tablo sik"><tr><th>Adım</th><th>Son çalışma</th><th>Son sonuç</th></tr>${satir}</table></div>`;
+}
 async function ozet() {
   const gun = new Date(); gun.setHours(0, 0, 0, 0);
   const [dur, turlar, bugun, bek, taslak, pasifN, kk, bk] = await Promise.all([
@@ -247,6 +265,7 @@ async function ozet() {
       ${kutu(pasifN.count ?? 0, "pasif öğretmen")}
       ${kutu(dogruluk === null ? "—" : "%" + dogruluk, `otomatik karar doğruluğu (${kontrolN} kontrol)`, dogruluk !== null && dogruluk < 90 ? "uyari" : "", "oz-dogruluk")}
     </div>
+    ${saglikTablo(D.saglik?.v, bugun)}
     <h2 id="oz-kontroller">Son otomatik kontroller</h2>
     ${turlar.length ? turlar.map(t => `<div class="kart"><div class="kart-ust"><b>${tarih(t.zaman)}</b>
       <span class="soluk">${t.soru_n + t.cevap_n} şikayet · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " karar bekliyor" : ""}</span></div>
