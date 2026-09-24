@@ -121,7 +121,7 @@ function git(s, alt) {
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
   menuKapat(); window.scrollTo(0, 0);
-  const f = { ozet, gunluk, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim }[s] || ozet;
+  const f = { ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim }[s] || ozet;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>';
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
@@ -272,6 +272,39 @@ async function gunluk() {
     ${gunler.map(g => { const o = G[g], n = o.s + o.c; return `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td><b>${n}</b></td><td>${o.s} / ${o.c}</td><td>${o.onay}</td><td>${o.ret}</td><td>${o.havuz}</td><td>${o.bek || ""}</td>
       <td><div class="cubuk" style="width:${Math.round(n / mx * 100)}%"><span style="width:${n ? Math.round((o.onay + o.havuz) / n * 100) : 0}%"></span></div></td></tr>`; }).join("")}</table></div>
     <p class="soluk" style="margin-top:8px">Çubuğun uzunluğu günün şikayet sayısı; koyu kısmı onaylanan + derse aktarılan.</p>`;
+}
+
+// ---------- haftalık rapor ----------
+async function haftalik() {
+  const gun = new Date(); gun.setHours(0, 0, 0, 0);
+  const bas = new Date(gun - 7 * 864e5), onc = new Date(gun - 14 * 864e5), iso = d => d.toISOString();
+  const [S, U, B, K, KB, E, T] = await Promise.all([
+    tumSikayetler(14),
+    q(sb.from("d_uyari").select("kademe,durum,gonderim").gte("gonderim", iso(bas))),
+    q(sb.from("d_basvuru").select("karar,sebep").gte("islem_zamani", iso(bas))),
+    q(sb.from("d_karar").select("secim").eq("tip", "kontrol").gte("zaman", iso(bas))),
+    q(sb.from("d_basvuru").select("kontrol_secim").gte("kontrol_zamani", iso(bas))),
+    q(sb.from("d_solver_puan").select("ad,seo,puan").lt("puan", 0)),
+    q(sb.from("d_takip").select("kaynak,sonuc").gte("olusturma", iso(bas))),
+  ]);
+  const bu = S.filter(s => s.olusturma >= iso(bas)), ge = S.filter(s => s.olusturma < iso(bas) && s.olusturma >= iso(onc));
+  const onay = L => L.filter(s => s.son_karar === "ONAYLA" || s.son_karar === "HAVUZA_AKTAR").length;
+  const O = {}; bu.filter(s => s.tur === "c" && s.son_karar === "ONAYLA" && s.ogretmen_id).forEach(s => { const o = O[s.ogretmen_id] ||= { ad: s.ogretmen, n: 0, k: {} }; o.n++; kategori(s.gerekce).forEach(c => o.k[c] = (o.k[c] || 0) + 1); });
+  const kN = K.length + KB.length, kD = K.filter(x => x.secim === "DOGRU").length + KB.filter(x => x.kontrol_secim === "DOGRU").length;
+  const fark = (a, b) => `${a} <span class="soluk">(önceki hafta ${b})</span>`, sat = (a, b) => `<tr><td class="soluk">${a}</td><td><b>${b}</b></td></tr>`;
+  const say = (L, f) => L.filter(f).length, tabl = (id, r) => `<div class="tablo-sar" ${id ? `id="${id}"` : ""}><table class="tablo sik">${r}</table></div>`;
+  const den = T.filter(x => x.kaynak === "denetim"), tak = T.filter(x => x.kaynak === "takip");
+  const tarihAralik = `${bas.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })} – ${new Date(gun - 864e5).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}`;
+  $("#icerik").innerHTML = baslik("Haftalık rapor", `Son 7 günün özeti (${tarihAralik}), önceki haftayla karşılaştırmalı. Her gün güncellenir.`) + `
+    <h2>Şikayetler</h2>${tabl("h-sikayet", sat("İncelenen şikayet", fark(bu.length, ge.length)) + sat("Soru / cevap şikayeti", `${say(bu, s => s.tur === "s")} / ${say(bu, s => s.tur === "c")}`) +
+      sat("Onaylanan (şikayet eden haklı)", fark(onay(bu), onay(ge))) + sat("Reddedilen", say(bu, s => s.son_karar === "REDDET")) + sat("Kararını bekleyen", say(bu, s => s.durum === "bekliyor")) +
+      sat("Otomatik karar doğruluğu", kN ? `%${Math.round(kD / kN * 100)} (${kN} kontrol)` : "bu hafta kontrol yapılmadı"))}
+    <h2>En çok şikayeti onaylanan öğretmenler</h2>${tabl("", Object.entries(O).sort((a, b) => b[1].n - a[1].n).slice(0, 5).map(([id, o]) => `<tr class="tik" onclick="git('ogretmen','${id}')"><td>${e(o.ad)}</td><td><b>${o.n}</b></td><td class="soluk">${Object.entries(o.k).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${KAT[k] || k} ${v}`).join(", ")}</td></tr>`).join("") || '<tr><td class="soluk">Yok.</td></tr>')}
+    <h2>Öğretmenlere giden bildirimler</h2>${tabl("", Object.entries(U.filter(u => u.durum === "gonderildi" || u.kademe === "AKTIF").reduce((a, u) => (a[KADEME[u.kademe] || u.kademe] = (a[KADEME[u.kademe] || u.kademe] || 0) + 1, a), {})).sort((a, b) => b[1] - a[1]).map(([k, v]) => sat(k, v)).join("") || sat("Bildirim yok", ""))}
+    <h2>Rastgele denetim ve yakın takip</h2>${tabl("", sat("Rastgele denetlenen cevap", `${den.length} · sorunlu ${say(den, x => x.sonuc !== "TEMIZ")}${den.length ? ` (%${Math.round(say(den, x => x.sonuc !== "TEMIZ") / den.length * 100)})` : ""}`) +
+      sat("Yakın takipte kontrol edilen", `${tak.length} · sorunlu ${say(tak, x => x.sonuc !== "TEMIZ")} · yapay zekâ ${say(T, x => x.sonuc === "YZ_KESIN")}`))}
+    <h2>Solver başvuruları</h2>${tabl("", sat("Değerlendirilen", B.length) + sat("Onaylanan", say(B, b => b.karar === "ONAYLA")) + Object.entries(B.filter(b => b.karar !== "ONAYLA").reduce((a, b) => (a[b.sebep] = (a[b.sebep] || 0) + 1, a), {})).sort((a, b) => b[1] - a[1]).map(([k, v]) => sat("Ret · " + e(k), v)).join(""))}
+    <h2>Puan</h2>${tabl("", sat("Şu an eksi puanlı solver", E.map(x => `${kisiLink(x.seo, x.ad)} (${Number(x.puan)})`).join(", ") || "yok"))}`;
 }
 
 // ---------- kararını bekleyenler ----------
@@ -608,6 +641,7 @@ const REHBER = {
     ["#oz-dogruluk", "Otomatik karar doğruluğu", "Haftalık kontrolde \"Karar doğru\" dediğin kararların oranı. %90'ın altına düşerse kutu turuncu olur; o zaman kuralları birlikte gözden geçiririz."],
     ["#oz-bekleyen", "Kararını bekleyen", "Otomatik incelemenin emin olamadığı ve senin kararını bekleyen şikayetler. Sol menüden Şikayetler › Kararını Bekleyenler'e git."],
     ["#oz-kontroller", "Son otomatik kontroller", "Her kontrolde kaç şikayet incelendi ve nasıl sonuçlandı. \"Neler oldu\"ya tıklayınca tek tek görürsün."]],
+  haftalik: [["#h-sikayet", "Şikayet özeti", "Son 7 günün sayıları; parantez içinde önceki haftanınki. Onaylananlar hızla artıyorsa öğretmenlere geri bildirimleri sıklaştırmak gerekir."]],
   gunluk: [["#gn-kutular", "30 günün toplamı", "Toplam şikayet ve bunların kaçının onaylandığı, reddedildiği, doğru derse aktarıldığı."], ["#gn-tablo", "Gün gün", "Her satır bir gün. Sağdaki çubuk o günün yoğunluğunu gösterir."]],
   bekleyen: [["section.sk .sk-kisiler", "Kimler", "Öğrenci ve öğretmen adına tıklayınca admin paneldeki profili açılır. \"Soruyu admin panelde aç\" sorunun sayfasına gider."],
     ["section.sk .sk-bilgi", "Öğrencinin şikayeti", "Öğrencinin neden şikayet ettiği ve yazdığı not. Kararı verirken önce buna bak."],
