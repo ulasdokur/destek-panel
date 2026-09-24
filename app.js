@@ -1,5 +1,5 @@
 // Tahta Destek Paneli. Veri Supabase'de (d_ tabloları), yazma sadece RPC'lerle.
-// Panel admin.tahtaapp.com'a bağlanmaz: kararlar kaydedilir, otomatik kontrol (20 dk'da bir, Mac) admin paneline işler.
+// Panel admin.tahtaapp.com'a bağlanmaz: kararlar kaydedilir, Mac (hizli.sh, dakikada bir) geri al süresi dolunca admin paneline işler.
 // Görseller Tahta'nın kendi CDN'inden (cloudfront) doğrudan, sadece görünür olunca yüklenir; bu panel görsel depolamaz.
 const SB_URL = "https://rbjrnevngfuribasrnph.supabase.co";
 const SB_ANON = "sb_publishable_yK1dNA6CGKIQ88U3gp53xA_nBLQGNVJ";
@@ -10,7 +10,7 @@ const $ = (s, el = document) => el.querySelector(s);
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı", EKSI: "Puan eksiye düştü", GERI: "Günlük geri bildirim" };
 const KAT = { yapay_zeka: "yapay zekâ", dijital_metin: "dijital metin", soru_ustune: "soru üstüne yazma", yanlis_cevap: "yanlış cevap", okunaklilik: "okunaklılık", eksik_aciklama: "eksik açıklama", diger: "diğer" };
-const GERI_AL_SN = 15;
+const GERI_AL_SN = 30;  // Mac tarafı (senk.py GERI_AL_SN) bu süre dolmadan karara dokunmaz
 let ben = null, sekme = "ozet";
 
 // karar adları şikayet türüne göre (CS için açık)
@@ -202,7 +202,7 @@ function kartlariBagla(kok, yenile) {
       k.disabled = false;
       if (error) return bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : "Kaydedilemedi: " + error.message);
       kart.classList.add("gidiyor"); setTimeout(() => { kart.remove(); bosKontrol(kok); }, 250); rozetler();
-      toast(tip === "kontrol" ? "Kontrol kaydedildi" : "Karar kaydedildi", tip === "kontrol" ? "Teşekkürler." : "En geç 20 dakika içinde admin paneline işlenecek.", async () => {
+      toast(tip === "kontrol" ? "Kontrol kaydedildi" : "Karar kaydedildi", tip === "kontrol" ? "Teşekkürler." : "30 saniye içinde geri alabilirsin, sonra 1-2 dakika içinde admin paneline işlenir.", async () => {
         const r = await sb.rpc("d_karar_geri_al", { p_key: key, p_tip: tip });
         if (r.error) return bildir("Geri alınamadı: karar işlenmiş olabilir.");
         bildir("Geri alındı."); rozetler(); sekme === s0 && yenile && yenile();
@@ -232,7 +232,7 @@ async function ozet() {
   const dk = son ? Math.round((Date.now() - son) / 60000) : null;
   const oturum = D.oturum?.v?.durum, say = f => bugun.filter(f).length;
   const kutu = (s, a, cls = "", id = "") => `<div class="kutu ${cls}" ${id ? `id="${id}"` : ""}><div class="s">${s}</div><div class="e">${a}</div></div>`;
-  $("#icerik").innerHTML = baslik("Özet", "Günün durumu tek bakışta. Şikayetler 20 dakikada bir otomatik kontrol edilir; bu panelde verdiğin kararlar da o kontrolde admin paneline işlenir.") + `
+  $("#icerik").innerHTML = baslik("Özet", "Günün durumu tek bakışta. Şikayetler 20 dakikada bir otomatik kontrol edilir; bu panelde verdiğin kararlar 30 saniyelik geri alma süresinden sonra 1-2 dakika içinde admin paneline işlenir.") + `
     <div class="kutular">
       ${kutu(dk === null ? "—" : dk < 60 ? dk + " dk" : Math.round(dk / 60) + " sa", "son otomatik kontrolden bu yana", dk !== null && dk > 50 ? "uyari" : "", "oz-kontrol")}
       ${kutu(oturum === "dustu" ? "Kopuk" : "Bağlı", "admin paneli bağlantısı", oturum === "dustu" ? "hata" : "", "oz-baglanti")}
@@ -313,7 +313,7 @@ async function haftalik() {
 async function bekleyen() {
   const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("durum", "bekliyor").order("olusturma"));
   const acik = L.filter(s => !s.d_karar.some(k => k.tip === "bekleyen")), sirada = L.length - acik.length;
-  $("#icerik").innerHTML = baslik("Kararını bekleyenler", "Otomatik incelemenin emin olamadığı şikayetler burada senin kararını bekler. Soru ve cevap görsellerine bak, bir karar seç, istersen not yaz ve Kaydet'e bas. Kayıt ekrandan kalkar, 15 saniye içinde geri alabilirsin; en geç 20 dakika içinde admin paneline işlenir.") + `
+  $("#icerik").innerHTML = baslik("Kararını bekleyenler", "Otomatik incelemenin emin olamadığı şikayetler burada senin kararını bekler. Soru ve cevap görsellerine bak, bir karar seç, istersen not yaz ve Kaydet'e bas. Kayıt ekrandan kalkar, 30 saniye içinde geri alabilirsin; sonra 1-2 dakika içinde admin paneline işlenir.") + `
     ${sirada ? `<div class="bilgi-serit"><i data-lucide="clock"></i>${sirada} kararın admin paneline işlenmeyi bekliyor.</div>
       <div class="tablo-sar"><table class="tablo sik"><tr><th>Şikayet</th><th>Verilen karar</th><th>Kim</th><th>Durum</th></tr>${L.filter(s => !acik.includes(s)).map(s => { const k = s.d_karar.filter(x => x.tip === "bekleyen").pop();
         return `<tr><td>${e(s.ogretmen || "")} <span class="soluk">${e(s.ders || "")}</span></td><td>${kararAdi(s.tur, k.secim)}</td><td class="soluk">${e(k.kim)}</td><td>${k.uygulama_notu ? `<span class="etiket hata">${e(k.uygulama_notu)}</span>` : '<span class="soluk">sırada</span>'}</td></tr>`; }).join("")}</table></div>` : ""}
@@ -347,14 +347,14 @@ async function uyari() {
   const kart = u => `<section class="kart" data-id="${u.id}">
     <div class="kart-ust"><b>${e(u.ad)}</b><span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe] || e(u.kademe)}</span>
       <a class="soluk" href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">öğretmenin geçmişi</a>
-      ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), 20 dakika içinde gidecek</span>` : ""}</div>
+      ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), birazdan gidecek</span>` : ""}</div>
     ${u.kademe === "PASIF" ? '<p class="bilgi"><span>Onaylarsan:</span> öğretmene bu bildirim gider ve hesabı pasife alınır.</p>' : ""}
     <label>Başlık<input class="u-baslik" value="${e(u.title)}" ${u.durum !== "taslak" ? "disabled" : ""}></label>
     <label>Metin<textarea class="u-metin" rows="3" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
     ${(u.kanit || []).length ? `<details><summary>Kanıt: ${u.kanit.length} cevap</summary>${u.kanit.map(k => K[k] ? sikayetKart(K[k], "goster") : "").join("")}</details>` : ""}
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`;
   const DUR = { gonderildi: ["Gönderildi", "ok"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
-  $("#icerik").innerHTML = baslik("Uyarılar", "Şikayet sayılarına göre öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıkların en geç 20 dakika içinde gider. Aşağıda daha önce gönderilen bildirimlerin tamamı var.") + `
+  $("#icerik").innerHTML = baslik("Uyarılar", "Şikayet sayılarına göre öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Aşağıda daha önce gönderilen bildirimlerin tamamı var.") + `
     <div id="u-acik">${acik.length ? acik.map(kart).join("") : '<div class="bos">Onay bekleyen uyarı yok.</div>'}</div>
     <h2>Gönderilen bildirimler</h2>
     <div class="cipler" id="u-dur"><span class="cip-bas">Durum</span>${[["", "Hepsi"], ["gonderildi", "Gönderildi"], ["iptal", "Gönderilmedi"], ["hata", "Hata"]].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? gecmis.filter(u => u.durum === v).length : gecmis.length}</small></button>`).join("")}</div>
@@ -382,7 +382,12 @@ async function uyari() {
       }
       const { error } = await sb.rpc("d_uyari_karar", { p_id: id, p_onay: onay });
       if (error) return bildir(error.message === "sadece_yonetici" ? "Bunu yalnızca yöneticiler onaylayabilir." : "Olmadı: " + error.message);
-      toast(onay ? "Onaylandı" : "Gönderilmeyecek", onay ? "En geç 20 dakika içinde gönderilecek." : ""); rozetler(); uyari();
+      rozetler(); uyari();
+      toast(onay ? "Onaylandı" : "Gönderilmeyecek", onay ? "30 saniye içinde geri alabilirsin, sonra 1-2 dakika içinde gönderilir." : "", async () => {
+        const r = await sb.rpc("d_uyari_geri_al", { p_id: id });
+        if (r.error) return bildir("Geri alınamadı (gönderim başlamış olabilir).");
+        bildir("Geri alındı, yeniden onay bekliyor."); rozetler(); sekme === "uyari" && uyari();
+      });
     };
     k.querySelector(".u-onay")?.addEventListener("click", () => { if (k.querySelector(".etiket.hata") && !confirm("Bildirim gidecek ve öğretmenin hesabı pasife alınacak. Emin misin?")) return; karar(true); });
     k.querySelector(".u-iptal")?.addEventListener("click", () => karar(false));
@@ -398,7 +403,7 @@ function metinGoster(b, m) {
 }
 
 // ---------- öğretmenler ----------
-function kategori(g) {  // ~/tahta-sikayet/profil.py kategori() ile aynı
+function kategori(g) {  // ~/tahta-sikayet/ortak.py kategori() ile aynı
   g = (g || "").toLocaleLowerCase("tr"); const k = [];
   if (/yapay|ai çıktı|chatgpt|markdown|latex/.test(g)) k.push("yapay_zeka");
   if (/dijital|daktilo|düz metin|not uygulama/.test(g)) k.push("dijital_metin");
@@ -413,8 +418,13 @@ async function ogretmen(id) {
   const [O, U, S7] = await Promise.all([q(sb.from("d_ogretmen").select("*").limit(2000)), q(sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7)]);
   const son = {}, bekleyenU = {}, H = {};
   for (const u of U) { if (u.durum === "gonderildi" || u.kademe === "AKTIF") son[u.ogretmen_id] = u; if (u.durum === "taslak" || u.durum === "onaylandi") bekleyenU[u.ogretmen_id] = u; }
+  const Q = {};  // öğretmen başına aynı soru tek sayılır, onaylanan varsa o (uyari.py plan() ile aynı)
   for (const s of S7) {
     if (s.tur !== "c" || !s.ogretmen_id || s.durum !== "islendi") continue;
+    const k = s.ogretmen_id + ":" + s.question_id;
+    if (!Q[k] || (Q[k].son_karar !== "ONAYLA" && s.son_karar === "ONAYLA")) Q[k] = s;
+  }
+  for (const s of Object.values(Q)) {
     const h = H[s.ogretmen_id] ||= { onay: 0, top: 0, kat: {} }; h.top++;
     if (s.son_karar === "ONAYLA") { h.onay++; for (const k of kategori(s.gerekce)) h.kat[k] = (h.kat[k] || 0) + 1; }
   }
@@ -499,7 +509,7 @@ async function sikayet() {
     if (ft) p = p.eq("tur", ft);
     if (fk === "bekliyor") p = p.eq("durum", "bekliyor"); else if (fk) p = p.eq("son_karar", fk);
     const a = $("#f-ara").value.trim().replace(/[,()]/g, " ");
-    if (/^\d+$/.test(a)) p = p.eq("sikayet_id", +a); else if (a) p = p.or(`ders.ilike.%${a}%,ogretmen.ilike.%${a}%,ogrenci.ilike.%${a}%`);
+    if (/^\d+$/.test(a)) p = p.eq("sikayet_id", +a); else if (a) { const v = a.replace(/["\\%*]/g, ""); p = p.or(["ders", "ogretmen", "ogrenci"].map(k => `${k}.ilike."*${v}*"`).join(",")); }
     const L = await q(p);
     $("#f-liste").innerHTML = `<div class="tablo-sar"><table class="tablo sik"><tr><th></th><th>Tarih</th><th>Tür</th><th>Ders</th><th>Öğrenci</th><th>Öğretmen</th><th>Sonuç</th></tr>
       ${L.map(s => `<tr class="tik" data-key="${e(s.key)}"><td><span class="ok-ikon">›</span></td><td class="nw">${tarih(s.olusturma)}</td><td class="nw">${s.tur === "s" ? "Soru" : "Cevap"} <span class="soluk">#${s.sikayet_id}</span></td><td>${e(s.ders)}</td>
@@ -575,7 +585,7 @@ function takipKayit(t) {
 async function takip() {
   const [I, T] = await Promise.all([q(sb.from("d_izlenen").select("*").order("baslangic")), q(sb.from("d_takip").select("*").eq("kaynak", "takip").order("cevap_tarihi", { ascending: false }).limit(500))]);
   const S = {}; T.forEach(t => { const s = S[t.ogretmen_id] ||= { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; s[t.sonuc]++; });
-  $("#icerik").innerHTML = baslik("Yakın takip", "Yapay zekâ kullandığı için hesabı kapatılıp sonra yeniden açılan öğretmenler 14 gün boyunca yakından izlenir: şikayet gelmese bile verdikleri her cevap 3 saatte bir kontrol edilir. Yapay zekâ kesin görülürse hesabı kapatma önerisi Uyarılar'a düşer.") + `
+  $("#icerik").innerHTML = baslik("Yakın takip", "Yapay zekâ kullandığı için hesabı kapatılıp sonra yeniden açılan öğretmenler takip süresi boyunca (tablodaki tarihler) yakından izlenir: şikayet gelmese bile verdikleri her cevap 3 saatte bir kontrol edilir. Yapay zekâ kesin görülürse hesabı kapatma önerisi Uyarılar'a düşer.") + `
     <div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Takip süresi</th><th>Kontrol edilen cevap</th><th>Temiz</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
     ${I.map(o => { const s = S[o.ogretmen_id] || { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; return `<tr class="tik" onclick="git('ogretmen','${o.ogretmen_id}')"><td>${e(o.ad)}</td><td class="soluk">${tarih(o.baslangic)} → ${tarih(o.bitis)}</td><td>${s.TEMIZ + s.SORUNLU + s.YZ_KESIN}</td><td>${s.TEMIZ}</td><td>${s.SORUNLU}</td><td><b>${s.YZ_KESIN}</b></td></tr>`; }).join("")}</table></div>
     <h2>Sorunlu bulunan cevaplar</h2>
@@ -655,7 +665,7 @@ const REHBER = {
     ["section.sk .aksiyon", "Kararın", "Cevap şikayetinde Onayla = öğrenci haklı (öğretmen ücret alamaz), Reddet = öğretmen haklı. Soru şikayetinde Onayla = soru kaldırılır. İstersen not yaz, Kaydet'e bas. 15 saniye içinde sağ alttan geri alabilirsin."]],
   kontrol: [[".bilgi-serit", "Bu haftanın ilerlemesi", "Kaç kararı kontrol ettiğin."], ["section.sk .sk-karar", "Verilen karar", "Otomatik incelemenin verdiği karar ve gerekçesi. Görsellere bakıp katılıp katılmadığına karar ver."],
     ["section.sk .aksiyon", "Doğru mu?", "Katılıyorsan \"Karar doğru\". Katılmıyorsan \"Karar yanlış\" seç ve nedenini yaz; bu not kurallara eklenir. Yanlış kararı admin panelinde ayrıca elle düzeltmen gerekir."]],
-  uyari: [["#u-acik", "Onay bekleyen bildirimler", "Kurallara göre hazırlanmış bildirimler. Metni düzeltebilirsin. \"Onayla ve gönder\" 20 dakika içinde gönderir, \"Gönderme\" iptal eder. \"Hesabı pasife alma\" onaylanırsa öğretmenin hesabı kapanır."],
+  uyari: [["#u-acik", "Onay bekleyen bildirimler", "Kurallara göre hazırlanmış bildirimler. Metni düzeltebilirsin. \"Onayla ve gönder\" 30 saniyelik geri alma süresinden sonra gönderir, \"Gönderme\" iptal eder. \"Hesabı pasife alma\" onaylanırsa öğretmenin hesabı kapanır."],
     ["#u-dur", "Hızlı filtre", "Gönderilen bildirimleri duruma ve türe göre süz."], ["#u-tablo", "Geçmiş", "Metnin tamamını görmek için metne tıkla. Durum çipinin üstüne gelince varsa açıklaması görünür."]],
   ogretmen: [["#o-cip", "Hızlı filtre", "\"Takip gerekli\": uyarı eşiğini aşmış ama bildirim almamış öğretmenler; önce bunlara bak."], ["#o-tablo", "Liste", "Bir satıra tıklayınca öğretmenin bütün şikayetleri ve aldığı bildirimler açılır."]],
   sikayet: [["#f-tur", "Filtreler", "Türe ve sonuca göre süz, altta ada ya da şikayet numarasına göre ara."], ["#f-liste", "Liste", "Satıra tıklayınca aynı satırda detay açılır. Öğrenci/öğretmen adları admin paneldeki profile gider."]],
@@ -678,7 +688,7 @@ function rehberCiz() {
   const r = el.getBoundingClientRect(), p = 6, isik = $("#rehber-isik"), kutu = $("#rehber-kutu");
   const h = Math.min(r.height, window.innerHeight - 40);
   Object.assign(isik.style, { left: r.left - p + "px", top: r.top - p + "px", width: r.width + 2 * p + "px", height: h + 2 * p + "px", display: "block" });
-  kutu.innerHTML = `<h4>${b}</h4><p>${m}</p><div class="r-alt"><span>${rAd + 1} / ${rL.length}</span><span style="display:flex;gap:6px">
+  kutu.innerHTML = `<h4>${e(b)}</h4><p>${e(m)}</p><div class="r-alt"><span>${rAd + 1} / ${rL.length}</span><span style="display:flex;gap:6px">
     <button class="ince" onclick="rehberKapat()">Kapat</button>${rAd ? '<button class="ince" onclick="rAd--;rehberCiz()">Geri</button>' : ""}
     ${rAd < rL.length - 1 ? '<button class="birincil kucuk" onclick="rAd++;rehberCiz()">İleri</button>' : '<button class="birincil kucuk" onclick="rehberKapat()">Bitti</button>'}</span></div>`;
   const kw = Math.min(320, window.innerWidth - 32), altBos = window.innerHeight - (r.top + h + p) > 200;
