@@ -3,6 +3,12 @@
  * Kimlik tarayıcıdan GÖNDERİLMEZ; sunucu oturumdan okur. Tüm metinler textContent ile basılır. */
 "use strict";
 
+// Başka sitenin çerçevesinde açılırsa çalışma (tıklama kaçırma); GitHub Pages frame-ancestors başlığı koyamıyor.
+if (window.top !== window.self) {
+  document.documentElement.hidden = true;
+  throw new Error("çerçeve içinde açılamaz");
+}
+
 // Herkese açık (publishable) anahtar — gizli değil, satış panelinin yayınlanmış kodunda da var.
 const SUPABASE_URL = "https://tnvzhtwnykjhdyssikgc.supabase.co";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRudnpodHdueWtqaGR5c3Npa2djIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExNjYxMjUsImV4cCI6MjA4Njc0MjEyNX0.WG30hxLfXn01QKoD5u4gR7ok_ZsPbRmZ5CYAVKRLPMI";
@@ -139,7 +145,11 @@ $("kodForm").addEventListener("submit", async (e) => {
   } catch (err) { h.textContent = err.message; h.hidden = false; }
   finally { b.disabled = false; }
 });
-$("cikis").addEventListener("click", () => cikisYap());
+$("cikis").addEventListener("click", () => {
+  // Sunucuda da kapat: bu cihazdan ya da başka yerden alınmış eski oturumlar geçersiz olur.
+  if (oturum?.jeton) api({ tebesir: { islem: "cikis" }, oturum: oturum.jeton }).catch(() => {});
+  cikisYap();
+});
 
 /* ── sohbet çizimi ── */
 const metinCek = (m) => typeof m.content === "string" ? m.content
