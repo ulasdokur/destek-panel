@@ -240,3 +240,5 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .z-ikon.ok{background:hsl(var(--success)/.14);color:hsl(142 70% 32%)}.z-ikon.hata{background:hsl(var(--destructive)/.12);color:hsl(var(--destructive))}.z-ikon.uyari{background:hsl(var(--warning)/.16);color:hsl(32 90% 38%)}
 .z-govde{flex:1;min-width:0;font-size:14px}.z-bas{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;margin-bottom:2px}
 .z-detay .sk{box-shadow:none;border:0;padding:8px 0 0;margin:0;background:transparent}
+
+.metin-dlg p { white-space: pre-line; }

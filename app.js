@@ -350,7 +350,7 @@ async function uyari() {
       ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), birazdan gidecek</span>` : ""}</div>
     ${u.kademe === "PASIF" ? '<p class="bilgi"><span>Onaylarsan:</span> öğretmene bu bildirim gider ve hesabı pasife alınır.</p>' : ""}
     <label>Başlık<input class="u-baslik" value="${e(u.title)}" ${u.durum !== "taslak" ? "disabled" : ""}></label>
-    <label>Metin<textarea class="u-metin" rows="3" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
+    <label>Metin<textarea class="u-metin" rows="${Math.min(9, Math.max(3, (u.description || "").split("\n").length + 2))}" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
     ${(u.kanit || []).length ? `<details><summary>Kanıt: ${u.kanit.length} cevap</summary>${u.kanit.map(k => K[k] ? sikayetKart(K[k], "goster") : "").join("")}</details>` : ""}
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`;
   const DUR = { gonderildi: ["Gönderildi", "ok"], gonderiliyor: ["Gönderiliyor", "uyari"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
