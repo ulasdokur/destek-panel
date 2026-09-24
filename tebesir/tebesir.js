@@ -269,12 +269,14 @@ function formGonder(hataEl) {
   const veri = Object.fromEntries(dolular.map((x) => [x.ad, form.deger[x.ad].trim()]));
   const { tur, adaySor } = form;
   form = null;
-  if (adaySor && tarih) { adaylariGetir(tarih, ozet); return; }
+  if (adaySor && tarih) { adaylariGetir(tarih, ozet, tur, veri); return; }
   // Teknik arıza ve özel derste karar yok: kaydı sunucu açıyor.
   gonder(ozet, { form_kaydi: { tur, veri } });
 }
 
-async function adaylariGetir(tarih, ozet) {
+/** Seçilen soru form kaydıyla birlikte gider: form modunda (model kapalıyken) talebi sunucu açar. */
+async function adaylariGetir(tarih, ozet, tur, veri) {
+  const secildi = (a) => gonder(`${ozet}\n${adaySatiri(a)}`, { form_kaydi: { tur, veri, soru_id: String(a.soru_id) } });
   adayBekleniyor = true; ciz();
   try {
     const d = await api({ oturum: oturum.jeton, mesajlar: [], konusmaId: s.konusmaId, konu: s.konu, adaylar: { tarih } });
@@ -283,9 +285,9 @@ async function adaylariGetir(tarih, ozet) {
     if (d.konusmaId) { s.konusmaId = d.konusmaId; kaydet(); }
     const liste = d.adaylar?.sorular ?? [];
     adayBekleniyor = false;
-    if (liste.length === 1) return gonder(`${ozet}\n${adaySatiri(liste[0])}`);
-    if (!liste.length) return gonder(`${ozet}\n(o tarihte panelde cevap görünmüyor)`);
-    adaylar = liste; formKuyrugu = ozet; ciz();
+    if (liste.length === 1) return secildi(liste[0]);
+    if (!liste.length) return gonder(`${ozet}\n(o tarihte panelde cevap görünmüyor)`, { form_kaydi: { tur, veri } });
+    adaylar = liste; formKuyrugu = secildi; ciz();
   } catch {
     adayBekleniyor = false;
     gonder(ozet);   // liste gelmediyse sohbetten devam
@@ -297,7 +299,7 @@ function adayCiz() {
     el("h3", { text: "Hangi soru için?" }),
     el("p", { class: "soluk", text: "Saatler sorunun soruluş saatidir, cevapladığınız saat biraz sonra olabilir." }),
     ...adaylar.map((a) => el("button", { type: "button", class: "aday", disabled: yaziyor, onclick: () => {
-      const ozet = formKuyrugu ?? ""; adaylar = null; formKuyrugu = null; gonder(`${ozet}\n${adaySatiri(a)}`);
+      const secildi = formKuyrugu; adaylar = null; formKuyrugu = null; secildi?.(a);
     } }, document.createTextNode(a.tarih), el("small", { text: `${a.ders ?? ""}${a.durum ? ` · ${a.durum}` : ""}` }))),
   );
 }
