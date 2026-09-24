@@ -293,9 +293,11 @@ function adayCiz() {
 }
 
 /* ── mesaj gönderme (akışlı, patlarsa düz JSON) ── */
-async function gonder(metin, ek = {}) {
+/** elleYazildi: hata olursa metin yazı kutusuna geri konur (form özetleri konmaz). */
+async function gonder(metin, ek = {}, elleYazildi = false) {
   metin = String(metin ?? "").trim();
-  if (!metin || yaziyor || !oturumGecerli()) { if (!oturumGecerli()) cikisYap("Oturumunuzun süresi doldu, lütfen yeniden giriş yapın."); return; }
+  if (!oturumGecerli()) return cikisYap("Oturumunuzun süresi doldu, lütfen yeniden giriş yapın.");
+  if (!metin || yaziyor) return;
   const onceki = s.mesajlar;
   s.mesajlar = [...s.mesajlar, { role: "user", content: metin }];
   yaziyor = true; akan = ""; adimlar = []; sistemNotu = ""; form = null;
@@ -303,9 +305,10 @@ async function gonder(metin, ek = {}) {
   const govde = { oturum: oturum.jeton, mesajlar: s.mesajlar, konusmaId: s.konusmaId, konu: s.konu, ...ek };
   const bitir = (d) => {
     if (d?.error === "oturum_gecersiz") return cikisYap(d.message);
-    if (d?.error) { s.mesajlar = onceki; sistemNotu = d.message ?? "Bir sorun oluştu, tekrar dener misiniz?"; if (!ek.form_kaydi) $("mesaj").value = metin; return; }
+    if (d?.error) { s.mesajlar = onceki; sistemNotu = d.message ?? "Bir sorun oluştu, tekrar dener misiniz?"; if (elleYazildi) $("mesaj").value = metin; return; }
     s.mesajlar = d.mesajlar ?? s.mesajlar;
     if (d.konusmaId) s.konusmaId = d.konusmaId;
+    if (d.konu) s.konu = d.konu;
     if (d.formlar?.length) {
       const f = d.formlar[d.formlar.length - 1];
       form = { ...f, deger: Object.fromEntries(f.alanlar.map((a) => [a.ad, String(f.on_dolu?.[a.ad] ?? "")])) };
@@ -349,7 +352,7 @@ async function gonder(metin, ek = {}) {
     if (ek.form_kaydi) { s.mesajlar = onceki; sistemNotu = "Bağlantı koptu. Kaydınızın düşüp düşmediğini görmek için birkaç saniye sonra tekrar deneyin."; }
     else {
       try { bitir(await api(govde)); }
-      catch { s.mesajlar = onceki; $("mesaj").value = metin; sistemNotu = "Bağlantı sorunu oluştu, mesajınızı tekrar gönderir misiniz?"; }
+      catch { s.mesajlar = onceki; if (elleYazildi) $("mesaj").value = metin; sistemNotu = "Bağlantı sorunu oluştu, mesajınızı tekrar gönderir misiniz?"; }
     }
   } finally {
     yaziyor = false; akan = ""; adimlar = []; ciz();
@@ -361,7 +364,7 @@ $("mesajForm").addEventListener("submit", (e) => {
   const ta = $("mesaj"), t = ta.value.trim();
   if (!t) return;
   ta.value = ""; ta.style.height = "";
-  gonder(t);
+  gonder(t, {}, true);
 });
 $("mesaj").addEventListener("input", (e) => {
   const ta = e.target; ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 140) + "px";
