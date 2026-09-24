@@ -213,15 +213,19 @@ function bosKontrol(kok) { if (!kok.querySelector("section.sk[data-mod]") && kok
 // ---------- özet ----------
 async function ozet() {
   const gun = new Date(); gun.setHours(0, 0, 0, 0);
-  const [dur, turlar, bugun, bek, taslak, pasifN] = await Promise.all([
+  const [dur, turlar, bugun, bek, taslak, pasifN, kk, bk] = await Promise.all([
     q(sb.from("d_durum").select("*")),
     q(sb.from("d_tur").select("*").order("zaman", { ascending: false }).limit(15)),
     q(sb.from("d_sikayet").select("tur,son_karar,durum").gte("olusturma", gun.toISOString())),
     sb.from("d_sikayet").select("key", { count: "exact", head: true }).eq("durum", "bekliyor"),
     sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "taslak"),
     sb.from("d_ogretmen").select("id", { count: "exact", head: true }).eq("durum", "pasif"),
+    q(sb.from("d_karar").select("secim").eq("tip", "kontrol")),
+    q(sb.from("d_basvuru").select("kontrol_secim").not("kontrol_secim", "is", null)),
   ]);
   const D = Object.fromEntries(dur.map(x => [x.k, x]));
+  const kontrolN = kk.length + bk.length, dogruN = kk.filter(x => x.secim === "DOGRU").length + bk.filter(x => x.kontrol_secim === "DOGRU").length;
+  const dogruluk = kontrolN ? Math.round(dogruN / kontrolN * 100) : null;
   const son = D.son_gonderim ? new Date(D.son_gonderim.zaman) : null;
   const dk = son ? Math.round((Date.now() - son) / 60000) : null;
   const oturum = D.oturum?.v?.durum, say = f => bugun.filter(f).length;
@@ -235,6 +239,7 @@ async function ozet() {
       ${kutu(bek.count ?? 0, "kararını bekleyen", bek.count ? "uyari" : "", "oz-bekleyen")}
       ${kutu(taslak.count ?? 0, "onay bekleyen uyarı", taslak.count ? "uyari" : "")}
       ${kutu(pasifN.count ?? 0, "pasif öğretmen")}
+      ${kutu(dogruluk === null ? "—" : "%" + dogruluk, `otomatik karar doğruluğu (${kontrolN} kontrol)`, dogruluk !== null && dogruluk < 90 ? "uyari" : "", "oz-dogruluk")}
     </div>
     <h2 id="oz-kontroller">Son otomatik kontroller</h2>
     ${turlar.length ? turlar.map(t => `<div class="kart"><div class="kart-ust"><b>${tarih(t.zaman)}</b>
@@ -310,7 +315,7 @@ async function uyari() {
     <label>Başlık<input class="u-baslik" value="${e(u.title)}" ${u.durum !== "taslak" ? "disabled" : ""}></label>
     <label>Metin<textarea class="u-metin" rows="3" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
     ${(u.kanit || []).length ? `<details><summary>Kanıt: ${u.kanit.length} cevap</summary>${u.kanit.map(k => K[k] ? sikayetKart(K[k], "goster") : "").join("")}</details>` : ""}
-    <div class="kart-alt">${u.durum === "taslak" ? `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>` : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`;
+    <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`;
   const DUR = { gonderildi: ["Gönderildi", "ok"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
   $("#icerik").innerHTML = baslik("Uyarılar", "Şikayet sayılarına göre öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıkların en geç 20 dakika içinde gider. Aşağıda daha önce gönderilen bildirimlerin tamamı var.") + `
     <div id="u-acik">${acik.length ? acik.map(kart).join("") : '<div class="bos">Onay bekleyen uyarı yok. 👍</div>'}</div>
@@ -339,7 +344,7 @@ async function uyari() {
         if (error) return bildir("Metin kaydedilemedi: " + error.message);
       }
       const { error } = await sb.rpc("d_uyari_karar", { p_id: id, p_onay: onay });
-      if (error) return bildir("Olmadı: " + error.message);
+      if (error) return bildir(error.message === "sadece_yonetici" ? "Bunu yalnızca yöneticiler onaylayabilir." : "Olmadı: " + error.message);
       toast(onay ? "Onaylandı" : "Gönderilmeyecek", onay ? "En geç 20 dakika içinde gönderilecek." : ""); rozetler(); uyari();
     };
     k.querySelector(".u-onay")?.addEventListener("click", () => { if (k.querySelector(".etiket.hata") && !confirm("Bildirim gidecek ve öğretmenin hesabı pasife alınacak. Emin misin?")) return; karar(true); });
@@ -407,17 +412,42 @@ async function ogretmen(id) {
   $("#o-ara").oninput = ciz; $("#o-sira").onchange = ciz; ciz();
 }
 async function ogretmenDetay(id) {
-  const [o, S, U] = await Promise.all([
+  const [o, S, U, T, P] = await Promise.all([
     q(sb.from("d_ogretmen").select("*").eq("id", id).maybeSingle()),
-    q(sb.from("d_sikayet").select("*").eq("ogretmen_id", id).eq("tur", "c").order("olusturma", { ascending: false }).limit(60)),
+    q(sb.from("d_sikayet").select("*").eq("ogretmen_id", id).eq("tur", "c").order("olusturma", { ascending: false }).limit(200)),
     q(sb.from("d_uyari").select("*").eq("ogretmen_id", id).order("id", { ascending: false })),
+    q(sb.from("d_takip").select("*").eq("ogretmen_id", id).order("cevap_tarihi", { ascending: false })),
+    q(sb.from("d_solver_puan").select("*").eq("id", id).maybeSingle()),
   ]);
-  const seo = S.find(s => s.ogretmen_seo)?.ogretmen_seo;
+  const seo = S.find(s => s.ogretmen_seo)?.ogretmen_seo || P?.seo;
+  // tek akış: şikayet, bildirim, pasif/aktif, yakın takip, eksi puan
+  const A = [];
+  S.forEach(s => A.push({ z: s.olusturma, tur: "sikayet", renk: sonucRenk(s.son_karar), b: s.durum === "bekliyor" ? "Şikayet · karar bekliyor" : "Şikayet · " + sonucAdi("c", s.son_karar), m: `${s.ders || ""} — ${s.gerekce || ""}`, key: s.key }));
+  U.filter(u => u.durum !== "taslak").forEach(u => A.push({ z: u.gonderim || u.karar_zamani || u.olusturma, tur: "uyari", renk: u.kademe === "PASIF" ? "hata" : u.kademe === "AKTIF" ? "ok" : "uyari",
+    b: (KADEME[u.kademe] || u.kademe) + (u.durum === "gonderildi" ? " · bildirim gitti" : u.kademe === "AKTIF" ? "" : " · gönderilmedi"), m: u.kademe === "AKTIF" ? (u.description || "") : u.description }));
+  T.forEach(x => A.push({ z: x.cevap_tarihi, tur: "takip", renk: sonucRenk(x.sonuc), b: "Yakın takip · " + sonucAdi("c", x.sonuc), m: `${x.ders || ""} — ${x.gerekce || ""}` }));
+  if (P?.eksiye_dustu) A.push({ z: P.eksiye_dustu, tur: "eksi", renk: "hata", b: "Puan eksiye düştü", m: `Puan ${P.puan}` });
+  A.sort((a, b) => (b.z || "").localeCompare(a.z || ""));
+  const IK = { sikayet: "message-square-warning", uyari: "bell", takip: "eye", eksi: "trending-down" };
   $("#icerik").innerHTML = `<button class="geri" onclick="git('ogretmen')">← Öğretmenler</button>
-    <h2>${e(o?.ad || "Öğretmen " + id)} ${o ? `<span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span>` : ""}</h2>
-    <p class="aciklama">${o ? `${o.onay} şikayette öğrenci haklı, ${o.ret} şikayette öğretmen haklı bulundu.` : ""} ${seo ? `<a href="${ADMIN}/User/Detail/${e(seo)}" target="_blank" rel="noopener">Admin panelde profili aç</a>` : ""}</p>
-    <h2>Bildirimler</h2>${U.length ? U.map(u => `<div class="metin-kutu"><b>${tarih(u.gonderim || u.olusturma)} · ${KADEME[u.kademe]} · ${{ taslak: "onay bekliyor", onaylandi: "onaylandı", gonderildi: "gönderildi", iptal: "gönderilmedi", hata: "hata" }[u.durum]}</b>${e(u.description)}</div>`).join("") : '<p class="soluk">Bildirim yok.</p>'}
-    <h2>Şikayetler (${S.length})</h2>${S.map(s => sikayetKart(s, "goster")).join("") || '<p class="soluk">Şikayet yok.</p>'}`;
+    <div class="ust-cubuk"><div><h2>${e(o?.ad || P?.ad || "Öğretmen " + id)} ${o ? `<span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span>` : ""}</h2>
+    <p class="aciklama">${o ? `${o.onay} şikayette öğrenci, ${o.ret} şikayette öğretmen haklı bulundu.` : ""}${P ? ` Güncel puan: <b>${P.puan}</b>.` : ""} ${seo ? `<a href="${ADMIN}/User/Detail/${e(seo)}" target="_blank" rel="noopener">Admin panelde profili aç</a>` : ""}</p></div></div>
+    <div class="cipler" id="z-cip">${[["", "Hepsi"], ["sikayet", "Şikayetler"], ["uyari", "Bildirimler"], ["takip", "Yakın takip"], ["eksi", "Puan"]].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? A.filter(x => x.tur === v).length : A.length}</small></button>`).join("")}</div>
+    <div class="kart zaman" id="z-akis"></div>`;
+  const ciz = v => {
+    $("#z-akis").innerHTML = A.filter(x => !v || x.tur === v).map((x, i) => `<div class="z-satir" ${x.key ? `data-key="${e(x.key)}"` : ""}>
+      <div class="z-ikon ${x.renk}"><i data-lucide="${IK[x.tur]}"></i></div>
+      <div class="z-govde"><div class="z-bas"><b>${e(x.b)}</b><span class="soluk">${tarih(x.z)}</span></div><div class="klamp">${e(x.m)}</div>
+      ${x.key ? `<button class="devam z-ac">Görselleri ve detayı aç</button><div class="z-detay" hidden></div>` : ""}</div></div>`).join("") || '<p class="soluk">Kayıt yok.</p>';
+    ikon(); klampBagla($("#z-akis"));
+    $("#z-akis").querySelectorAll(".z-ac").forEach(b => b.onclick = () => {
+      const kutu = b.nextElementSibling, s = S.find(x => x.key === b.closest(".z-satir").dataset.key);
+      kutu.hidden = !kutu.hidden; b.textContent = kutu.hidden ? "Görselleri ve detayı aç" : "Kapat";
+      if (!kutu.innerHTML) { kutu.innerHTML = sikayetKart(s, "goster"); klampBagla(kutu); }
+    });
+  };
+  $("#z-cip").querySelectorAll(".cip").forEach(c => c.onclick = () => { $("#z-cip").querySelectorAll(".cip").forEach(x => x.classList.toggle("secili", x === c)); ciz(c.dataset.v); });
+  ciz("");
 }
 
 // ---------- tüm şikayetler ----------
@@ -557,6 +587,7 @@ async function ogrenci() {
 const REHBER = {
   ozet: [["#oz-kontrol", "Son otomatik kontrol", "Şikayetler 20 dakikada bir otomatik incelenir. Bu süre 50 dakikayı geçerse kutu turuncu olur; Ulaş'a haber ver."],
     ["#oz-baglanti", "Admin paneli bağlantısı", "Kararların admin paneline işlenebilmesi için bağlantı gerekir. \"Kopuk\" görürsen kararlar bağlantı gelene kadar sırada bekler."],
+    ["#oz-dogruluk", "Otomatik karar doğruluğu", "Haftalık kontrolde \"Karar doğru\" dediğin kararların oranı. %90'ın altına düşerse kutu turuncu olur; o zaman kuralları birlikte gözden geçiririz."],
     ["#oz-bekleyen", "Kararını bekleyen", "Otomatik incelemenin emin olamadığı ve senin kararını bekleyen şikayetler. Sol menüden Şikayetler › Kararını Bekleyenler'e git."],
     ["#oz-kontroller", "Son otomatik kontroller", "Her kontrolde kaç şikayet incelendi ve nasıl sonuçlandı. \"Neler oldu\"ya tıklayınca tek tek görürsün."]],
   gunluk: [["#gn-kutular", "30 günün toplamı", "Toplam şikayet ve bunların kaçının onaylandığı, reddedildiği, doğru derse aktarıldığı."], ["#gn-tablo", "Gün gün", "Her satır bir gün. Sağdaki çubuk o günün yoğunluğunu gösterir."]],
