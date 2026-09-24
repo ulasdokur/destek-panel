@@ -256,7 +256,7 @@ async function ozet() {
 async function tumSikayetler(gun) {
   const s = new Date(Date.now() - gun * 864e5).toISOString(); let L = [], i = 0;
   while (true) {
-    const d = await q(sb.from("d_sikayet").select("key,tur,son_karar,durum,olusturma,ogretmen,ogretmen_id,gerekce,question_id,ogrenci,ogrenci_id,ogrenci_seo").gte("olusturma", s).order("olusturma").range(i, i + 999));
+    const d = await q(sb.from("d_sikayet").select("key,tur,son_karar,durum,olusturma,ogretmen,ogretmen_id,gerekce,kategori,question_id,ogrenci,ogrenci_id,ogrenci_seo").gte("olusturma", s).order("olusturma").range(i, i + 999));
     L = L.concat(d); if (d.length < 1000) break; i += 1000;
   }
   return L;
@@ -295,7 +295,7 @@ async function haftalik() {
   ]);
   const bu = S.filter(s => s.olusturma >= iso(bas)), ge = S.filter(s => s.olusturma < iso(bas) && s.olusturma >= iso(onc));
   const onay = L => L.filter(s => s.son_karar === "ONAYLA" || s.son_karar === "HAVUZA_AKTAR").length;
-  const O = {}; bu.filter(s => s.tur === "c" && s.son_karar === "ONAYLA" && s.ogretmen_id).forEach(s => { const o = O[s.ogretmen_id] ||= { ad: s.ogretmen, n: 0, k: {} }; o.n++; kategori(s.gerekce).forEach(c => o.k[c] = (o.k[c] || 0) + 1); });
+  const O = {}; bu.filter(s => s.tur === "c" && s.son_karar === "ONAYLA" && s.ogretmen_id).forEach(s => { const o = O[s.ogretmen_id] ||= { ad: s.ogretmen, n: 0, k: {} }; o.n++; kategori(s).forEach(c => o.k[c] = (o.k[c] || 0) + 1); });
   const kN = K.length + KB.length, kD = K.filter(x => x.secim === "DOGRU").length + KB.filter(x => x.kontrol_secim === "DOGRU").length;
   const fark = (a, b) => `${a} <span class="soluk">(önceki hafta ${b})</span>`, sat = (a, b) => `<tr><td class="soluk">${a}</td><td><b>${b}</b></td></tr>`;
   const say = (L, f) => L.filter(f).length, tabl = (id, r) => `<div class="tablo-sar" ${id ? `id="${id}"` : ""}><table class="tablo sik">${r}</table></div>`;
@@ -407,16 +407,7 @@ function metinGoster(b, m) {
 }
 
 // ---------- öğretmenler ----------
-function kategori(g) {  // ~/tahta-sikayet/ortak.py kategori() ile aynı
-  g = (g || "").toLocaleLowerCase("tr"); const k = [];
-  if (/yapay|ai çıktı|chatgpt|markdown|latex/.test(g)) k.push("yapay_zeka");
-  if (/dijital|daktilo|düz metin|not uygulama/.test(g)) k.push("dijital_metin");
-  if (/üst(ü|ün)ne|üzerine|görseli üz/.test(g)) k.push("soru_ustune");
-  if (/yanlış|hatalı/.test(g) && /doğru(su|\s+cevap)|demiş|bulmuş/.test(g)) k.push("yanlis_cevap");
-  if (/okun|bulanık|loş|yan çek|yamuk|karanlık/.test(g)) k.push("okunaklilik");
-  if (/açıklan|gerekçe|eksik|yetersiz|adım/.test(g)) k.push("eksik_aciklama");
-  return k.length ? k : ["diger"];
-}
+const kategori = s => s.kategori || ["diger"];  // kategoriler Mac'te (ortak.py kategori) hesaplanıp kayda yazılır; tek kaynak
 async function ogretmen(id) {
   if (id) return ogretmenDetay(+id);
   const [O, U, S7] = await Promise.all([q(sb.from("d_ogretmen").select("*").limit(2000)), q(sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7)]);
@@ -430,7 +421,7 @@ async function ogretmen(id) {
   }
   for (const s of Object.values(Q)) {
     const h = H[s.ogretmen_id] ||= { onay: 0, top: 0, kat: {} }; h.top++;
-    if (s.son_karar === "ONAYLA") { h.onay++; for (const k of kategori(s.gerekce)) h.kat[k] = (h.kat[k] || 0) + 1; }
+    if (s.son_karar === "ONAYLA") { h.onay++; for (const k of kategori(s)) h.kat[k] = (h.kat[k] || 0) + 1; }
   }
   const yeniBildirim = o => son[o.id] && Date.now() - new Date(son[o.id].gonderim || son[o.id].olusturma) < 7 * 864e5;
   const esik = o => { const h = H[o.id]; if (!h || o.durum === "pasif") return null;  // UYARI_KURALLAR.md eşikleri (son 7 gün)
