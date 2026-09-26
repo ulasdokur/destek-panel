@@ -632,11 +632,16 @@ async function denetim() {
   const G = {}, O = {};
   L.forEach(x => { const g = x.olusturma ? gunu(x.olusturma) : "", o = G[g] ||= { n: 0, s: 0, y: 0 }; o.n++; if (x.sonuc === "SORUNLU") o.s++; if (x.sonuc === "YZ_KESIN") o.y++;
     const t = O[x.ogretmen_id] ||= { ad: x.ogretmen, n: 0, s: 0, y: 0 }; t.n++; if (x.sonuc === "SORUNLU") t.s++; if (x.sonuc === "YZ_KESIN") t.y++; });
-  const top = L.length, sor = L.filter(x => x.sonuc !== "TEMIZ").length;
-  $("#icerik").innerHTML = baslik("Rastgele denetim", "Şikayet gelmese de her gün son 24 saatte verilen cevaplardan rastgele 50 tanesi kontrol edilir; bir öğretmenden en fazla 3 cevap alınır. Böylece öğrencinin şikayet etmediği kötü cevaplar da görünür. Yapay zekâ kesin görülürse hesabı kapatma önerisi Uyarılar'a düşer.") + `
+  // genel oran yalnız tamamen rastgele seçilenlerden (riskli gruplar oranı şişirir); eski kayıtlarda seçim türü yok
+  const R = L.filter(x => x.secim === "rastgele"), taban = R.length ? R : L.filter(x => !x.secim);
+  const top = taban.length, sor = taban.filter(x => x.sonuc !== "TEMIZ").length;
+  const GA = { rastgele: "Tamamen rastgele", sikayetli: "Son 7 günde şikayeti onaylanan", denetlenmemis: "14 gündür denetlenmemiş", yeni: "Yeni öğretmen" };
+  const grupT = Object.entries(GA).map(([g, ad]) => { const x = L.filter(y => y.secim === g); return x.length ? `<tr><td>${ad}</td><td>${x.length}</td><td>${x.filter(y => y.sonuc !== "TEMIZ").length} (%${Math.round(x.filter(y => y.sonuc !== "TEMIZ").length / x.length * 100)})</td></tr>` : ""; }).join("");
+  $("#icerik").innerHTML = baslik("Rastgele denetim", "Şikayet gelmese de her gün son 24 saatte verilen cevaplardan 50 tanesi kontrol edilir: 30'u tamamen rastgele, 20'si riskli gruplardan (şikayeti onaylanan, uzun süredir denetlenmeyen, yeni öğretmenler). Böylece öğrencinin şikayet etmediği kötü cevaplar da görünür. Yapay zekâ kesin görülürse hesabı kapatma önerisi Uyarılar'a düşer.") + `
     <div class="kutular"><div class="kutu"><div class="s">${top}</div><div class="e">denetlenen cevap</div></div>
       <div class="kutu ${top && sor / top > .2 ? "uyari" : ""}"><div class="s">%${top ? Math.round(sor / top * 100) : 0}</div><div class="e">sorunlu oranı (${sor} cevap)</div></div>
       <div class="kutu ${L.some(x => x.sonuc === "YZ_KESIN") ? "hata" : ""}"><div class="s">${L.filter(x => x.sonuc === "YZ_KESIN").length}</div><div class="e">yapay zekâ (kesin)</div></div></div>
+    ${grupT ? `<h2>Seçim türüne göre</h2><p class="aciklama">Her gün 30 cevap tamamen rastgele seçilir (üstteki oran bunlardan), 20 cevap riskli gruplardan. Riskli gruplarda oranın yüksek çıkması beklenir.</p><div class="tablo-sar"><table class="tablo sik"><tr><th>Seçim</th><th>Denetlenen</th><th>Sorunlu</th></tr>${grupT}</table></div>` : ""}
     <h2>Gün gün</h2><div class="tablo-sar" id="d-gun"><table class="tablo sik"><tr><th>Gün</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
     ${Object.keys(G).sort().reverse().map(g => `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td>${G[g].n}</td><td>${G[g].s}</td><td>${G[g].y}</td></tr>`).join("") || '<tr><td colspan="4" class="soluk">Henüz denetim yapılmadı. İlk denetim bugün içinde çalışacak.</td></tr>'}</table></div>
     <h2>Sorunlu çıkan öğretmenler</h2><div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
