@@ -12,7 +12,7 @@ const SEBEP = { 7: "Yapılan çözümler hatalı", 8: "Format kurallarına uyulm
 const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı", EKSI: "Puan eksiye düştü", KUCUK: "Küçük hatırlatma", GERI: "Günlük geri bildirim" };
 const KAT = { yapay_zeka: "yapay zekâ", dijital_metin: "dijital metin", soru_ustune: "soru üstüne yazma", yanlis_cevap: "yanlış cevap", okunaklilik: "okunaklılık", eksik_aciklama: "eksik açıklama", diger: "diğer" };
 const GERI_AL_SN = 30;  // Mac tarafı (senk.py GERI_AL_SN) bu süre dolmadan karara dokunmaz
-let ben = null, sekme = "ozet";
+let ben = null, sekme = "bugun";
 
 // karar adları şikayet türüne göre (CS için açık)
 const kararAdi = (tur, k) => tur === "s"
@@ -124,7 +124,7 @@ function git(s, alt) {
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
   menuKapat(); window.scrollTo(0, 0);
-  const f = { ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim }[s] || ozet;
+  const f = { bugun, ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim }[s] || bugun;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>';
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
@@ -236,6 +236,38 @@ function saglikTablo(S, bugun, M) {
   return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün size düşen: ${insana} / ${bugun.length} şikayet${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}. Bu oran zamanla düşmeli.${mal}</p>
     <div class="tablo-sar"><table class="tablo sik"><tr><th>Adım</th><th>Son çalışma</th><th>Son sonuç</th></tr>${satir}</table></div>`;
 }
+// ---------- bugün: günlük 10 dakikalık iş listesi ----------
+async function bugun() {
+  const h = haftaNo();
+  const [bek, kon, konB, tas, bas, hata, dur] = await Promise.all([
+    q(sb.from("d_sikayet").select("key,d_karar(tip)").eq("durum", "bekliyor")),
+    q(sb.from("d_sikayet").select("key,d_karar(tip)").eq("kontrol_hafta", h)),
+    sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", h).is("kontrol_secim", null),
+    q(sb.from("d_uyari").select("kademe").eq("durum", "taslak")),
+    sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("durum", "bekliyor").is("insan_karar", null),
+    sb.from("d_sikayet").select("key", { count: "exact", head: true }).eq("durum", "hata"),
+    q(sb.from("d_durum").select("*").eq("k", "saglik")),
+  ]);
+  const nBek = bek.filter(x => !x.d_karar.some(k => k.tip === "bekleyen")).length;
+  const nKon = kon.filter(x => !x.d_karar.some(k => k.tip === "kontrol")).length + (konB.count || 0);
+  const nPas = tas.filter(t => t.kademe === "PASIF").length, nTas = tas.length - nPas;
+  const S = dur[0]?.v || {}, sinir = { cek: 60, isle: 1440, ajan_sikayet: 1440 };
+  const eski = Object.entries(sinir).filter(([k, m]) => S[k] && (Date.now() / 1000 - S[k].zaman) / 60 > m).map(([k]) => ({ cek: "şikayet çekme", isle: "admin'e yazma", ajan_sikayet: "şikayet ajanları" })[k]);
+  const is = [
+    ["bekleyen", "Kararını bekleyen şikayetler", nBek, 0.5, "Ajanın emin olamadığı şikayetler. Görsellere bakıp karar verin; notunuz kurallara eklenir."],
+    ["uyari", "Hesap kapatma önerileri", nPas, 1, "Yapay zekâ kanıtını dikkatle inceleyin; onay hesabı kapatır."],
+    ["uyari", "Onay bekleyen bildirim taslakları", nTas, 0.2, "Geri bildirim, küçük hatırlatma ve uyarılar. Okuyup onaylayın ya da \"gönderme\" deyin."],
+    ["basvuru", "Kararınızı bekleyen solver başvuruları", bas.count || 0, 1, "Ajanın emin olamadığı başvurular."],
+    ["kontrol", "Bugünün kontrolü", nKon, 0.3, "Otomatik kararlardan rastgele seçilenler: doğru mu, yanlış mı?"],
+    ["sikayet", "Admin'de kontrol edilecek", hata.count || 0, 1, "Admin'e yazılırken yanıt alınamayan şikayetler. Admin'de sonucuna bakın."],
+  ];
+  const kalan = is.filter(x => x[2] > 0), dk = Math.max(1, Math.round(kalan.reduce((a, x) => a + x[2] * x[3], 0)));
+  $("#icerik").innerHTML = baslik("Bugün", "Günlük kontrolünüz için tek liste. Yukarıdan aşağı ilerleyin; her satır ilgili sayfayı açar. Hepsi tamamlanınca sistem kendi başına çalışır, sorun olursa SMS gelir.") + `
+    <div class="bilgi-serit">${kalan.length ? `<i data-lucide="list-checks"></i>${kalan.length} iş bekliyor, tahmini ${dk} dakika.` : '<i data-lucide="check"></i>Bugün için yapılacak iş kalmadı.'}${eski.length ? ` <span class="etiket uyari">Uzun süredir çalışmayan adım: ${e(eski.join(", "))}</span>` : ""}</div>
+    <div class="tablo-sar"><table class="tablo sik">${is.map(([s, ad, n, , acik]) => `<tr class="${n ? "tik" : ""}" ${n ? `onclick="git('${s}')"` : ""}>
+      <td>${n ? `<span class="etiket uyari">${n}</span>` : '<span class="etiket ok">Tamam</span>'}</td><td><b>${ad}</b><div class="soluk">${acik}</div></td><td>${n ? "Aç ›" : ""}</td></tr>`).join("")}</table></div>`;
+}
+
 async function ozet() {
   const gun = new Date(); gun.setHours(0, 0, 0, 0);
   const [dur, turlar, bugun, bek, taslak, pasifN, kk, bk] = await Promise.all([
