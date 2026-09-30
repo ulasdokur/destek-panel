@@ -242,3 +242,5 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .z-detay .sk{box-shadow:none;border:0;padding:8px 0 0;margin:0;background:transparent}
 
 .metin-dlg p { white-space: pre-line; }
+
+.tablo tr.sik-uyari td{background:hsl(var(--warning)/.10)}.tablo tr.sik-uyari:hover td{background:hsl(var(--warning)/.18)}

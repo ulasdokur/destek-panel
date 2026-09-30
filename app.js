@@ -9,6 +9,12 @@ const ADMIN = "https://admin.tahtaapp.com";
 const $ = (s, el = document) => el.querySelector(s);
 const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const SEBEP = { 7: "Yapılan çözümler hatalı", 8: "Format kurallarına uyulmamış", 6: "Soruların çoğunluğu çözülmemiş", 4: "Yetersiz açıklama", 5: "Çözüm aşamaları anlaşılır değil", 1: "Görüntü kalitesi kötü", 2: "Yazı okunamıyor", 3: "Yapay zeka veya dış kaynak kullanımı", 9: "Uygunsuz içerik" };  // admin RejectSolver sebep kodları
+const SIK_UYARI = 3, UYARI_TUR = ["F", "Y", "G", "GERI", "PASIF"];  // son 30 günde bu kadar uyarı alan "sık uyarı" sayılır
+async function uyariSayilari() {
+  const L = await q(sb.from("d_uyari").select("ogretmen_id,kademe,gonderim").eq("durum", "gonderildi").in("kademe", UYARI_TUR).gte("gonderim", new Date(Date.now() - 30 * 864e5).toISOString()).limit(5000));
+  const N = {}; L.forEach(u => N[u.ogretmen_id] = (N[u.ogretmen_id] || 0) + 1); return N;
+}
+const sikEtiket = n => n >= SIK_UYARI ? ` <span class="etiket uyari" data-ipucu="Son 30 günde ${n} uyarı bildirimi gönderildi">Sık uyarı · ${n}</span>` : "";
 const KADEME = { F: "Format hatırlatması", Y: "Yapay zekâ uyarısı", G: "Genel uyarı", PASIF: "Hesabı pasife alma", AKTIF: "Hesap yeniden açıldı", EKSI: "Puan eksiye düştü", KUCUK: "Küçük hatırlatma", GERI: "Günlük geri bildirim" };
 const KAT = { yapay_zeka: "yapay zekâ", dijital_metin: "dijital metin", soru_ustune: "soru üstüne yazma", yanlis_cevap: "yanlış cevap", okunaklilik: "okunaklılık", eksik_aciklama: "eksik açıklama", diger: "diğer" };
 const GERI_AL_SN = 30;  // Mac tarafı (senk.py GERI_AL_SN) bu süre dolmadan karara dokunmaz
@@ -394,14 +400,14 @@ async function uyari() {
   const [acik, gecmis] = await Promise.all([
     q(sb.from("d_uyari").select("*").in("durum", ["taslak", "onaylandi"]).order("id")),
     q(sb.from("d_uyari").select("*").in("durum", ["gonderildi", "gonderiliyor", "iptal", "hata"]).order("id", { ascending: false }).limit(300)),
-  ]);
+  ]), NU = await uyariSayilari();
   const kanitlar = [...new Set(acik.flatMap(u => u.kanit || []))];
   const ks = kanitlar.filter(k => !k.startsWith("t:")), kt = kanitlar.filter(k => k.startsWith("t:")).map(k => k.slice(2));
   const K = Object.fromEntries([
     ...(ks.length ? (await q(sb.from("d_sikayet").select("*").in("key", ks))).map(s => [s.key, s]) : []),
     ...(kt.length ? (await q(sb.from("d_takip").select("*").in("key", kt))).map(s => ["t:" + s.key, takipKayit(s)]) : [])]);
   const kart = u => `<section class="kart" data-id="${u.id}" data-durum="${e(u.durum)}">
-    <div class="kart-ust"><b>${e(u.ad)}</b><span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe] || e(u.kademe)}</span>
+    <div class="kart-ust"><b>${e(u.ad)}</b>${sikEtiket(NU[u.ogretmen_id] || 0)}<span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe] || e(u.kademe)}</span>
       <a class="soluk" href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">öğretmenin geçmişi</a>
       ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), birazdan gidecek</span>` : ""}</div>
     ${u.kademe === "PASIF" ? '<p class="bilgi"><span>Onaylarsan:</span> öğretmene bu bildirim gider ve hesabı pasife alınır.</p>' : ""}
@@ -463,7 +469,7 @@ function metinGoster(b, m) {
 const kategori = s => s.kategori || ["diger"];  // kategoriler Mac'te (ortak.py kategori) hesaplanıp kayda yazılır; tek kaynak
 async function ogretmen(id) {
   if (id) return ogretmenDetay(+id);
-  const [O, U, S7] = await Promise.all([q(sb.from("d_ogretmen").select("*").limit(2000)), q(sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7)]);
+  const [O, U, S7, NU] = await Promise.all([q(sb.from("d_ogretmen").select("*").limit(2000)), q(sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7), uyariSayilari()]);
   const son = {}, bekleyenU = {}, H = {};
   for (const u of U) { if (u.durum === "gonderildi" || u.kademe === "AKTIF") son[u.ogretmen_id] = u; if (u.durum === "taslak" || u.durum === "onaylandi") bekleyenU[u.ogretmen_id] = u; }
   const Q = {};  // öğretmen başına aynı soru tek sayılır, onaylanan varsa o (uyari.py plan() ile aynı)
@@ -487,8 +493,8 @@ async function ogretmen(id) {
     if (u) return `<span class="etiket ok" data-ipucu="${e(tarih(u.gonderim || u.olusturma))}">${KADEME[u.kademe]}</span>`;
     return '<span class="soluk">—</span>';
   };
-  const F = { "": ["Hepsi", () => true], takip: ["Takip gerekli", takipGerekli], bildirim: ["Bildirim gitti", o => !!son[o.id]], aktif: ["Aktif", o => o.durum !== "pasif"], pasif: ["Pasif", o => o.durum === "pasif"] };
-  $("#icerik").innerHTML = baslik("Öğretmenler", "Cevaplarına şikayet gelen öğretmenler. Onay: şikayette öğrenci haklı bulundu. \"Takip gerekli\": son 7 günde uyarı eşiğini aştı ama henüz bildirim gitmedi. Bir satıra tıklayınca öğretmenin bütün şikayetleri ve aldığı bildirimler açılır.") + `
+  const F = { "": ["Hepsi", () => true], takip: ["Takip gerekli", takipGerekli], sik: ["Sık uyarı alan", o => (NU[o.id] || 0) >= SIK_UYARI], bildirim: ["Bildirim gitti", o => !!son[o.id]], aktif: ["Aktif", o => o.durum !== "pasif"], pasif: ["Pasif", o => o.durum === "pasif"] };
+  $("#icerik").innerHTML = baslik("Öğretmenler", "Cevaplarına şikayet gelen öğretmenler. Onay: şikayette öğrenci haklı bulundu. \"Takip gerekli\": son 7 günde uyarı eşiğini aştı ama henüz bildirim gitmedi. \"Sık uyarı\" (turuncu satır): son 30 günde 3 ya da daha fazla uyarı bildirimi gönderildi. Bir satıra tıklayınca öğretmenin bütün şikayetleri ve aldığı bildirimler açılır.") + `
     <div class="cipler" id="o-cip">${Object.entries(F).map(([v, [a, f]]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${O.filter(f).length}</small></button>`).join("")}</div>
     <div class="filtre"><input id="o-ara" placeholder="İsimle ara"><select id="o-sira"><option value="h">Son 7 gündeki onaya göre sırala</option><option value="t">Toplam onaya göre sırala</option></select></div>
     <div class="tablo-sar"><table class="tablo sik" id="o-tablo"></table></div>`;
@@ -498,7 +504,7 @@ async function ogretmen(id) {
     const S = O.filter(o => F[fv][1](o) && (!a || o.ad.toLocaleLowerCase("tr").includes(a)))
       .sort($("#o-sira").value === "h" ? (x, y) => (H[y.id]?.onay || 0) - (H[x.id]?.onay || 0) || y.onay - x.onay : (x, y) => y.onay - x.onay);
     $("#o-tablo").innerHTML = `<tr><th>Öğretmen</th><th>Durum</th><th>Son 7 gün onay</th><th>Toplam onay / ret</th><th>Onaylanan şikayetlerin sebebi</th><th>Takip / bildirim</th></tr>` +
-      (S.map(o => `<tr class="tik" data-id="${o.id}"><td>${e(o.ad)}</td><td><span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span></td>
+      (S.map(o => `<tr class="tik${(NU[o.id] || 0) >= SIK_UYARI ? " sik-uyari" : ""}" data-id="${o.id}"><td>${e(o.ad)}${sikEtiket(NU[o.id] || 0)}</td><td><span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span></td>
         <td>${H[o.id] ? `<b>${H[o.id].onay}</b> / ${H[o.id].top}` : '<span class="soluk">—</span>'}</td><td>${o.onay} / ${o.ret}</td>
         <td class="soluk">${Object.entries(o.kategoriler || {}).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${KAT[k] || k} ${v}`).join(", ")}</td><td>${takipDurum(o)}</td></tr>`).join("") || '<tr><td colspan="6" class="soluk">Kayıt yok.</td></tr>');
     $("#o-tablo").querySelectorAll("tr.tik").forEach(r => r.onclick = () => git("ogretmen", r.dataset.id));
@@ -684,9 +690,9 @@ async function denetim() {
 
 // ---------- eksi puanlı solverlar ----------
 async function eksi() {
-  const L = await q(sb.from("d_solver_puan").select("*").order("puan").limit(1000));
+  const [L, NU] = await Promise.all([q(sb.from("d_solver_puan").select("*").order("puan").limit(1000)), uyariSayilari()]);
   const ek = L.filter(x => x.puan < 0), risk = L.filter(x => x.puan >= 0 && x.puan < 20), son = L.reduce((a, x) => x.son_okuma > a ? x.son_okuma : a, "");
-  const satir = x => `<tr><td>${kisiLink(x.seo, x.ad)}</td><td><b>${Number(x.puan)}</b></td><td>${x.onceki_puan ?? "—"}</td><td>${x.son_3gun_cevap ?? ""}</td>
+  const satir = x => `<tr class="${(NU[x.id] || 0) >= SIK_UYARI ? "sik-uyari" : ""}"><td>${kisiLink(x.seo, x.ad)}${sikEtiket(NU[x.id] || 0)}</td><td><b>${Number(x.puan)}</b></td><td>${x.onceki_puan ?? "—"}</td><td>${x.son_3gun_cevap ?? ""}</td>
     <td>${x.eksiye_dustu ? tarih(x.eksiye_dustu) : '<span class="soluk">—</span>'}</td><td>${x.bildirim_zamani ? `<span class="etiket ok">Gitti · ${tarih(x.bildirim_zamani)}</span>` : '<span class="soluk">—</span>'}</td></tr>`;
   const bas = `<tr><th>Solver</th><th>Puan</th><th>Önceki okuma</th><th>Son 3 gün cevap</th><th>Eksiye düştü</th><th>Bildirim</th></tr>`;
   $("#icerik").innerHTML = baslik("Eksi puanlı solverlar", "Puanı eksideki solver çözdüğü sorudan ücret alamaz. Son 3 günde cevap veren solverların puanı okunur: puanı 10'un altında olanlar saatte bir, 10–50 arası günde bir, üstü haftada bir. Puanı artıdan eksiye düşen solvera otomatik kısa bir bildirim gider. Özellikle yeni solverlar ilk günlerde kolay eksiye düşer; listede uzun süre kalan olursa Ulaş'a haber ver.") + `
