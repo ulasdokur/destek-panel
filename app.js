@@ -690,14 +690,29 @@ async function denetim() {
 
 // ---------- eksi puanlı solverlar ----------
 async function eksi() {
-  const [L, NU] = await Promise.all([q(sb.from("d_solver_puan").select("*").order("puan").limit(1000)), uyariSayilari()]);
+  const [L, NU, GE] = await Promise.all([q(sb.from("d_solver_puan").select("*").order("puan").limit(1000)), uyariSayilari(),
+    q(sb.from("d_solver_puan_gecmis").select("solver_id,zaman,puan,onceki,fark,dogru,sikayet,diger,kaynak").gte("zaman", new Date(Date.now() - 7 * 864e5).toISOString()).order("zaman").limit(5000))]);
+  const G = {}; GE.forEach(g => (G[g.solver_id] ||= []).push(g));
+  // son 7 günün dökümü: doğru cevap +1, onaylanan şikayet −3, kalan "diğer" (soruyu bırakma, süre aşımı ya da elle düzeltme)
+  const dokum = id => {
+    const R = (G[id] || []).filter(g => g.fark != null); if (!R.length) return '<span class="soluk">—</span>';
+    const t = k => R.reduce((a, g) => a + (Number(g[k]) || 0), 0), bilinmeyen = R.filter(g => g.kaynak !== "elle" && g.diger == null).reduce((a, g) => a + Number(g.fark), 0);
+    const elle = R.filter(g => g.kaynak === "elle").reduce((a, g) => a + Number(g.fark), 0), diger = R.filter(g => g.kaynak !== "elle").reduce((a, g) => a + (Number(g.diger) || 0), 0);
+    const isr = n => (n > 0 ? "+" : "") + n, P = [];
+    if (t("dogru")) P.push(`${t("dogru")} doğru cevap (+${t("dogru")})`);
+    if (t("sikayet")) P.push(`<span class="etiket hata">${t("sikayet")} onaylı şikayet (−${3 * t("sikayet")})</span>`);
+    if (diger) P.push(`<span class="etiket uyari" data-ipucu="Admin panelde kaydı görünmeyen puan değişimi: soruyu bırakma, süre aşımı gibi cezalar.">diğer ${isr(diger)}</span>`);
+    if (elle) P.push(`<span class="etiket ok" data-ipucu="Bizim elle yaptığımız düzeltme.">düzeltme ${isr(elle)}</span>`);
+    if (bilinmeyen) P.push(`<span class="soluk" data-ipucu="Bu değişimin dökümü henüz çıkarılamadı (ilk okuma).">dökümsüz ${isr(bilinmeyen)}</span>`);
+    return P.join(" · ") || '<span class="soluk">—</span>';
+  };
   const ek = L.filter(x => x.puan < 0), risk = L.filter(x => x.puan >= 0 && x.puan < 20), son = L.reduce((a, x) => x.son_okuma > a ? x.son_okuma : a, "");
   const satir = x => `<tr class="${(NU[x.id] || 0) >= SIK_UYARI ? "sik-uyari" : ""}"><td>${kisiLink(x.seo, x.ad)}${sikEtiket(NU[x.id] || 0)}</td><td><b>${Number(x.puan)}</b></td><td>${x.onceki_puan ?? "—"}</td><td>${x.son_3gun_cevap ?? ""}</td>
-    <td>${x.eksiye_dustu ? tarih(x.eksiye_dustu) : '<span class="soluk">—</span>'}</td><td>${x.bildirim_zamani ? `<span class="etiket ok">Gitti · ${tarih(x.bildirim_zamani)}</span>` : '<span class="soluk">—</span>'}</td></tr>`;
-  const bas = `<tr><th>Solver</th><th>Puan</th><th>Önceki okuma</th><th>Son 3 gün cevap</th><th>Eksiye düştü</th><th>Bildirim</th></tr>`;
-  $("#icerik").innerHTML = baslik("Eksi puanlı solverlar", "Puanı eksideki solver çözdüğü sorudan ücret alamaz. Son 3 günde cevap veren solverların puanı okunur: puanı 10'un altında olanlar saatte bir, 10–50 arası günde bir, üstü haftada bir. Puanı artıdan eksiye düşen solvera otomatik kısa bir bildirim gider. Özellikle yeni solverlar ilk günlerde kolay eksiye düşer; listede uzun süre kalan olursa Ulaş'a haber ver.") + `
+    <td>${dokum(x.id)}</td><td>${x.eksiye_dustu ? tarih(x.eksiye_dustu) : '<span class="soluk">—</span>'}</td><td>${x.bildirim_zamani ? `<span class="etiket ok">Gitti · ${tarih(x.bildirim_zamani)}</span>` : '<span class="soluk">—</span>'}</td></tr>`;
+  const bas = `<tr><th>Solver</th><th>Puan</th><th>Önceki okuma</th><th>Son 3 gün cevap</th><th>Son 7 günde puan neden değişti</th><th>Eksiye düştü</th><th>Bildirim</th></tr>`;
+  $("#icerik").innerHTML = baslik("Eksi puanlı solverlar", "Puanı eksideki solver çözdüğü sorudan ücret alamaz. Son 3 günde cevap veren solverların puanı okunur: puanı 10'un altında olanlar saatte bir, 10–50 arası günde bir, üstü haftada bir. Puanı 20'nin altında olup cevap vermeyenler de gece bir kez yeniden okunur. \"Son 7 günde puan neden değişti\" sütunu puan değişimini doğru cevap, onaylı şikayet ve diğer (soruyu bırakma, süre aşımı gibi görünmeyen cezalar) olarak ayırır. Puanı artıdan eksiye düşen solvera otomatik kısa bir bildirim gider. Özellikle yeni solverlar ilk günlerde kolay eksiye düşer; listede uzun süre kalan olursa Ulaş'a haber ver.") + `
     <div class="bilgi-serit"><i data-lucide="clock"></i>Son okuma: ${son ? tarih(son) : "—"} · ${L.length} aktif solver</div>
-    <h2>Şu an eksi puanda (${ek.length})</h2><div class="tablo-sar" id="e-eksi"><table class="tablo sik">${bas}${ek.map(satir).join("") || '<tr><td colspan="6" class="soluk">Eksi puanlı solver yok.</td></tr>'}</table></div>
+    <h2>Şu an eksi puanda (${ek.length})</h2><div class="tablo-sar" id="e-eksi"><table class="tablo sik">${bas}${ek.map(satir).join("") || '<tr><td colspan="7" class="soluk">Eksi puanlı solver yok.</td></tr>'}</table></div>
     <h2>Risk grubu: puanı 0–19 arası (${risk.length})</h2><p class="aciklama">Bir onaylanan şikayet (−3 puan) ya da bir cezayla eksiye düşebilirler.</p>
     <div class="tablo-sar"><table class="tablo sik">${bas}${risk.map(satir).join("")}</table></div>`;
 }
