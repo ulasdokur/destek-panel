@@ -402,10 +402,12 @@ async function uyari() {
     q(sb.from("d_uyari").select("*").in("durum", ["gonderildi", "gonderiliyor", "iptal", "hata"]).order("id", { ascending: false }).limit(300)),
   ]), NU = await uyariSayilari();
   const kanitlar = [...new Set(acik.flatMap(u => u.kanit || []))];
-  const ks = kanitlar.filter(k => !k.startsWith("t:")), kt = kanitlar.filter(k => k.startsWith("t:")).map(k => k.slice(2));
-  const K = Object.fromEntries([
-    ...(ks.length ? (await q(sb.from("d_sikayet").select("*").in("key", ks))).map(s => [s.key, s]) : []),
-    ...(kt.length ? (await q(sb.from("d_takip").select("*").in("key", kt))).map(s => ["t:" + s.key, takipKayit(s)]) : [])]);
+  // kanıt anahtarı: "c123" şikayet · "t:…" takip/denetim · "k:…" küçük hatırlatma notu (şikayet ya da denetim kaydı)
+  const coz = k => { const a = k.replace(/^[tk]:/, ""); return k.startsWith("t:") || !/^[cs]\d+$/.test(a) ? ["t", a] : ["s", a]; };
+  const ks = [...new Set(kanitlar.filter(k => coz(k)[0] === "s").map(k => coz(k)[1]))], kt = [...new Set(kanitlar.filter(k => coz(k)[0] === "t").map(k => coz(k)[1]))];
+  const KS = Object.fromEntries(ks.length ? (await q(sb.from("d_sikayet").select("*").in("key", ks))).map(s => [s.key, s]) : []);
+  const KT = Object.fromEntries(kt.length ? (await q(sb.from("d_takip").select("*").in("key", kt))).map(s => [s.key, takipKayit(s)]) : []);
+  const K = Object.fromEntries(kanitlar.map(k => [k, coz(k)[0] === "s" ? KS[coz(k)[1]] : KT[coz(k)[1]]]));
   const kart = u => `<section class="kart" data-id="${u.id}" data-durum="${e(u.durum)}">
     <div class="kart-ust"><b>${e(u.ad)}</b>${sikEtiket(NU[u.ogretmen_id] || 0)}<span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" ? "uyari" : ""}">${KADEME[u.kademe] || e(u.kademe)}</span>
       <a class="soluk" href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">öğretmenin geçmişi</a>
@@ -413,11 +415,12 @@ async function uyari() {
     ${u.kademe === "PASIF" ? '<p class="bilgi"><span>Onaylarsan:</span> öğretmene bu bildirim gider ve hesabı pasife alınır.</p>' : ""}
     <label>Başlık<input class="u-baslik" value="${e(u.title)}" ${u.durum !== "taslak" ? "disabled" : ""}></label>
     <label>Metin<textarea class="u-metin" rows="${Math.min(9, Math.max(3, (u.description || "").split("\n").length + 2))}" ${u.durum !== "taslak" ? "disabled" : ""}>${e(u.description)}</textarea></label>
-    ${(u.kanit || []).length ? `<details><summary>Kanıt: ${u.kanit.length} cevap</summary>${u.kanit.map(k => K[k] ? sikayetKart(K[k], "goster") : "").join("")}</details>` : ""}
+    ${(u.kanit || []).length ? `<details open><summary>Bildirimde geçen sorular (${u.kanit.filter(k => K[k]).length})</summary>${u.kanit.map(k => K[k] ? sikayetKart(K[k], "goster") : "").join("")}</details>` : '<p class="soluk">Bu taslağa soru bağlanmamış (eski kayıt).</p>'}
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="ince u-iptal">Gönderme</button><button class="birincil kucuk u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`;
   const DUR = { gonderildi: ["Gönderildi", "ok"], gonderiliyor: ["Gönderiliyor", "uyari"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
-  $("#icerik").innerHTML = baslik("Uyarılar", "Şikayet sayılarına göre öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Aşağıda daha önce gönderilen bildirimlerin tamamı var.") + `
+  $("#icerik").innerHTML = baslik("Uyarılar", "Şikayet sayılarına göre öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Her taslağın altında bildirimde geçen sorular ve cevaplar görünür. Aşağıda daha önce gönderilen bildirimlerin tamamı var.") + `
     <div class="bilgi-serit"><i data-lucide="moon"></i>Gece 23:00 ile sabah 09:00 arası kimseye bildirim gönderilmez. Bu saatlerde onayladıklarınız sabah 09:00'dan sonra gider.</div>
+    <div class="bilgi-serit"><i data-lucide="calendar"></i>Geri bildirim, format hatırlatması ve küçük hatırlatmalar her gün değil, Pazartesi ve Perşembe toplu olarak buraya düşer. Yapay zekâ uyarısı, genel uyarı ve hesap kapatma önerisi beklemez, her gün düşer.</div>
     <div id="u-acik">${acik.length ? acik.map(kart).join("") : '<div class="bos">Onay bekleyen uyarı yok.</div>'}</div>
     <h2>Gönderilen bildirimler</h2>
     <div class="cipler" id="u-dur"><span class="cip-bas">Durum</span>${[["", "Hepsi"], ["gonderildi", "Gönderildi"], ["iptal", "Gönderilmedi"], ["hata", "Hata"]].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? gecmis.filter(u => u.durum === v).length : gecmis.length}</small></button>`).join("")}</div>
