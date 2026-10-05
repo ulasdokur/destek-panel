@@ -244,3 +244,8 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .metin-dlg p { white-space: pre-line; }
 
 .tablo tr.sik-uyari td{background:hsl(var(--warning)/.10)}.tablo tr.sik-uyari:hover td{background:hsl(var(--warning)/.18)}
+
+/* uzaklaştırılanların ödemeleri */
+.od-hesap{display:flex;flex-direction:column;gap:2px;font-size:13px}.od-hesap span{color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums}
+.od-hesap .od-kopya{align-self:flex-start;margin-top:4px}.od-islem{white-space:nowrap}.od-islem .ince{margin-left:8px}
+.kucuk-yazi{font-size:12px}.ince.kucuk{height:28px;padding:0 10px;font-size:12px}

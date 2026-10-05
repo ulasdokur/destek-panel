@@ -130,7 +130,7 @@ function git(s, alt) {
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
   menuKapat(); window.scrollTo(0, 0);
-  const f = { bugun, ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim }[s] || bugun;
+  const f = { bugun, ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme }[s] || bugun;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>';
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
@@ -146,6 +146,8 @@ async function rozetler() {
   $("#r-kontrol").textContent = ((k.data || []).filter(x => !x.d_karar.some(k => k.tip === "kontrol")).length + (kb.count || 0)) || "";
   $("#r-uyari").textContent = u.count || "";
   const rb = document.getElementById("r-basvuru"); if (rb) rb.textContent = bb.count || "";
+  const ro = document.getElementById("r-odeme");
+  if (ro && ben?.rol === "yonetici") { const od = await sb.from("d_odeme").select("id", { count: "exact", head: true }).eq("durum", "odenecek").not("odenecek", "is", null); ro.textContent = od.count || ""; }
   const top = ids => ids.reduce((a, i) => a + (+$(i).textContent || 0), 0) || "";
   $("#r-sikayet-grup").textContent = top(["#r-bekleyen", "#r-kontrol"]); $("#r-ogretmen-grup").textContent = top(["#r-uyari"]);
 }
@@ -718,6 +720,43 @@ async function eksi() {
     <h2>Şu an eksi puanda (${ek.length})</h2><div class="tablo-sar" id="e-eksi"><table class="tablo sik">${bas}${ek.map(satir).join("") || '<tr><td colspan="7" class="soluk">Eksi puanlı solver yok.</td></tr>'}</table></div>
     <h2>Risk grubu: puanı 0–19 arası (${risk.length})</h2><p class="aciklama">Bir onaylanan şikayet (−3 puan) ya da bir cezayla eksiye düşebilirler.</p>
     <div class="tablo-sar"><table class="tablo sik">${bas}${risk.map(satir).join("")}</table></div>`;
+}
+
+// ---------- uzaklaştırılanların ödemeleri ----------
+const tl = n => n == null ? '<span class="soluk">—</span>' : Number(n).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+async function odeme() {
+  if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Uzaklaştırılanların ödemeleri", "Bu sayfada kimlik ve hesap bilgileri bulunduğu için yalnız yöneticiler görebilir."); return; }
+  const L = await q(sb.from("d_odeme").select("*").order("olusturma", { ascending: false }).limit(500));
+  const bekleyen = L.filter(x => x.durum === "odenecek"), bilgi = L.filter(x => x.durum === "bilgi_bekleniyor"), biten = L.filter(x => x.durum === "odendi");
+  const hazir = bekleyen.filter(x => x.odenecek != null), toplam = hazir.reduce((a, x) => a + Number(x.odenecek), 0);
+  const hesap = x => x.iban ? `<div class="od-hesap"><b>${e(x.hesap_sahibi || x.ad)}</b><span>${e(x.iban)}</span><span>TC ${e(x.tc || "—")} · ${e(x.il || "—")}</span>
+      <button class="ince kucuk od-kopya" data-metin="${e([x.hesap_sahibi || x.ad, x.iban, x.tc, x.il].filter(Boolean).join("\n"))}">Kopyala</button></div>` : '<span class="soluk">Henüz göndermedi</span>';
+  const kesinti = x => x.kesinti == null ? '<span class="etiket uyari" data-ipucu="Sakıncalı cevapların kazancı henüz hesaplanmadı. Hesaplanmadan ödeme yapılmaz.">Hesaplanmadı</span>'
+    : `${tl(x.kesinti)}${x.kesinti_notu ? `<div class="soluk kucuk-yazi">${e(x.kesinti_notu)}</div>` : ""}`;
+  const islem = x => x.durum === "odendi" ? `<span class="etiket ok">Ödendi · ${tarih(x.odeme_zamani)}</span><button class="ince kucuk od-geri" data-id="${x.id}">Geri al</button>`
+    : (x.durum === "odenecek" && x.odenecek != null ? `<button class="birincil kucuk od-odendi" data-id="${x.id}" data-ad="${e(x.ad)}" data-tutar="${tl(x.odenecek)}">Ödendi olarak işaretle</button>`
+      : `<span class="soluk">${x.durum === "odenecek" ? "Kesinti hesaplanınca ödenebilir" : "Ödeme bilgisi bekleniyor"}</span>`);
+  const satir = x => `<tr><td><b>${e(x.ad)}</b><div class="soluk kucuk-yazi">${e(x.telefon || "")}</div></td><td>${e(x.sebep || "—")}${x.pasif_tarihi ? `<div class="soluk kucuk-yazi">${new Date(x.pasif_tarihi).toLocaleDateString("tr-TR")}</div>` : ""}</td>
+    <td>${tl(x.bakiye)}</td><td>${kesinti(x)}</td><td><b>${tl(x.odenecek)}</b></td><td>${hesap(x)}</td><td class="od-islem">${islem(x)}</td></tr>`;
+  const bas = `<tr><th>Solver</th><th>Uzaklaştırma nedeni</th><th>Bakiye</th><th>Kesinti</th><th>Ödenecek</th><th>Hesap bilgisi</th><th></th></tr>`;
+  const tablo = (R, bos) => `<div class="tablo-sar"><table class="tablo sik">${bas}${R.map(satir).join("") || `<tr><td colspan="7" class="soluk">${bos}</td></tr>`}</table></div>`;
+  $("#icerik").innerHTML = baslik("Uzaklaştırılanların ödemeleri", "Hesabı uzaklaştırılan solverın kalan bakiyesi, sakıncalı cevapların kazancı düşüldükten sonra ay sonu ödemesiyle gönderilir. Ödeme bilgisini destek hattı toplar ve buraya işler. Ödemeyi yaptıktan sonra \"Ödendi olarak işaretle\"ye bas; yanlışlıkla bastıysan \"Geri al\" ile düzeltebilirsin.") + `
+    <div class="bilgi-serit"><i data-lucide="wallet"></i>Ödemeye hazır ${hazir.length} kişi · toplam ${tl(toplam)}${bekleyen.length - hazir.length ? ` · ${bekleyen.length - hazir.length} kişinin kesintisi hesaplanmadı` : ""}</div>
+    <h2>Ödenecekler (${bekleyen.length})</h2>${tablo(bekleyen, "Ödenecek kayıt yok.")}
+    <h2>Ödeme bilgisi bekleniyor (${bilgi.length})</h2><p class="aciklama">Destek hattı bu kişilerden ad soyad, IBAN, TC kimlik numarası ve il/ilçe bilgisini istedi; henüz göndermediler.</p>${tablo(bilgi, "Bekleyen yok.")}
+    <h2>Ödenenler (${biten.length})</h2>${tablo(biten, "Henüz ödenmiş kayıt yok.")}`;
+  $("#icerik").querySelectorAll(".od-kopya").forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.metin); toast("Kopyalandı"); } catch { bildir("Kopyalanamadı; elle seç."); } });
+  $("#icerik").querySelectorAll(".od-odendi").forEach(b => b.onclick = async () => {
+    if (!confirm(`${b.dataset.ad} için ${b.dataset.tutar.replace(/<[^>]+>/g, "")} ödendi olarak işaretlensin mi?`)) return;
+    b.disabled = true; const { error } = await sb.rpc("d_odeme_isaretle", { p_id: Number(b.dataset.id), p_odendi: true });
+    if (error) { b.disabled = false; return bildir(error.message === "eksik_bilgi" ? "Tutar ya da hesap bilgisi eksik." : "Hata: " + error.message); }
+    toast("Ödendi olarak işaretlendi", b.dataset.ad); rozetler(); odeme().then(() => ikon());
+  });
+  $("#icerik").querySelectorAll(".od-geri").forEach(b => b.onclick = async () => {
+    b.disabled = true; const { error } = await sb.rpc("d_odeme_isaretle", { p_id: Number(b.dataset.id), p_odendi: false });
+    if (error) { b.disabled = false; return bildir("Hata: " + error.message); }
+    toast("Geri alındı"); rozetler(); odeme().then(() => ikon());
+  });
 }
 
 // ---------- öğrenciler ----------
