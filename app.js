@@ -130,7 +130,7 @@ function git(s, alt) {
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   document.querySelectorAll("#sekmeler .grup").forEach(g => { const ic = !!g.querySelector(`button[data-s="${s}"]`); g.classList.toggle("aktif", ic); if (ic) g.classList.add("acik"); });
   menuKapat(); window.scrollTo(0, 0);
-  const f = { bugun, ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme }[s] || bugun;
+  const f = { bugun, ozet, gunluk, haftalik, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti }[s] || bugun;
   $("#icerik").innerHTML = '<p class="aciklama">Yükleniyor…</p>';
   Promise.resolve(f(alt)).then(() => { ikon(); klampBagla(); });
 }
@@ -148,6 +148,8 @@ async function rozetler() {
   const rb = document.getElementById("r-basvuru"); if (rb) rb.textContent = bb.count || "";
   const ro = document.getElementById("r-odeme");
   if (ro && ben?.rol === "yonetici") { const od = await sb.from("d_odeme").select("id", { count: "exact", head: true }).eq("durum", "odenecek").not("odenecek", "is", null); ro.textContent = od.count || ""; }
+  const rk = document.getElementById("r-kesinti");
+  if (rk && ben?.rol === "yonetici") { const ks = await sb.from("d_kesinti").select("ogretmen_id", { count: "exact", head: true }).eq("durum", "hazir"); rk.textContent = ks.count || ""; }
   const top = ids => ids.reduce((a, i) => a + (+$(i).textContent || 0), 0) || "";
   $("#r-sikayet-grup").textContent = top(["#r-bekleyen", "#r-kontrol"]); $("#r-ogretmen-grup").textContent = top(["#r-uyari"]);
 }
@@ -756,6 +758,77 @@ async function odeme() {
     b.disabled = true; const { error } = await sb.rpc("d_odeme_isaretle", { p_id: Number(b.dataset.id), p_odendi: false });
     if (error) { b.disabled = false; return bildir("Hata: " + error.message); }
     toast("Geri alındı"); rozetler(); odeme().then(() => ikon());
+  });
+}
+
+// ---------- kapatılmış hesap kesintileri ----------
+// Sunucu (kesinti.py) hesabı kapalı ve bakiyesi duran öğretmenin son çekim talebinden sonraki cevaplarını inceler; burada yalnız onay verilir.
+const gunAy = t => t ? new Date(t).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : "";
+async function kesinti() {
+  if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Kapatılmış hesap kesintileri", "Bu sayfayı yalnız yöneticiler görebilir."); return; }
+  const L = await q(sb.from("d_kesinti").select("*").order("olusturma", { ascending: false }).limit(500));
+  const D = d => L.filter(x => x.durum === d);
+  const kutular = x => `<div class="kutular ks-kutular"><div class="kutu"><div class="s">${tl(x.bakiye)}</div><div class="e">bakiye</div></div>
+      <div class="kutu"><div class="s">${x.incelenen}</div><div class="e">incelenen cevap</div></div>
+      <div class="kutu ${Number(x.kesinti) > 0 ? "uyari" : ""}"><div class="s">${tl(x.kesinti)}</div><div class="e">kesinti</div></div>
+      <div class="kutu"><div class="s">${tl(x.odenecek)}</div><div class="e">ödenecek kalan</div></div></div>`;
+  const donem = x => `Hesap ${gunAy(x.pasif_tarihi)} tarihinde kapatıldı. ${x.son_cekim ? `Son para çekme talebi ${gunAy(x.son_cekim)}; bu tarihten sonraki ${x.cevap_sayisi} cevaba bakıldı.` : `Hiç para çekme talebi yok; bütün cevaplarına (${x.cevap_sayisi}) bakıldı.`}`;
+  const kart = x => `<section class="kart ks" data-id="${x.ogretmen_id}" data-ad="${e(x.ad)}"><div class="ks-ust"><b>${e(x.ad)}</b>${x.durum === "hazir" ? '<span class="etiket uyari">Onay bekliyor</span>' : x.durum === "onaylandi" ? '<span class="etiket">Onaylandı, işleniyor</span>' : x.durum === "uygulandi" ? '<span class="etiket ok">Tamamlandı</span>' : '<span class="etiket hata">Sorun var</span>'}</div>
+    <p class="aciklama">${donem(x)}</p>${kutular(x)}
+    ${x.durum_notu ? `<p class="ks-not">${e(x.durum_notu)}</p>` : ""}
+    ${x.durum === "hazir" ? `<label class="ks-paylasim"><input type="checkbox" class="ks-pay" ${x.hesap_paylasimi ? "checked" : ""}> Hesap paylaşımı var (cevapları başkası yazmış). İşaretlenirse bakiyenin tamamı silinir, ödeme yapılmaz.</label>` : (x.hesap_paylasimi ? '<p class="ks-not">Hesap paylaşımı nedeniyle bakiyenin tamamı silindi.</p>' : "")}
+    <details class="ks-cevap"><summary>Cevapları tek tek gör</summary><div class="ks-liste soluk">Yükleniyor…</div></details>
+    ${x.durum === "hazir" ? `<div class="ks-alt"><button class="birincil ks-onay">Onayla: ${tl(x.kesinti)} kesilsin, ${tl(x.odenecek)} ödensin</button></div>`
+      : x.durum === "uygulandi" ? `<p class="soluk kucuk-yazi">Kesinti ${tarih(x.uygulama_zamani)} tarihinde bakiyeden düşüldü. Kalan tutar <a href="#odeme" onclick="git('odeme');return false">Uzaklaştırılanların Ödemeleri</a> sayfasında.</p>` : ""}</section>`;
+  const sade = (R, bos) => `<div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Bakiye</th><th>Durum</th></tr>${R.map(x => `<tr><td><b>${e(x.ad)}</b></td><td>${tl(x.bakiye)}</td><td>${e(x.durum_notu || "")}</td></tr>`).join("") || `<tr><td colspan="3" class="soluk">${bos}</td></tr>`}</table></div>`;
+  const diger = [...D("acik_hesap"), ...D("bakiye_yok")];
+  $("#icerik").innerHTML = baslik("Kapatılmış hesap kesintileri", "Hesabı kapatılan ve bakiyesi duran öğretmenlerin son para çekme talebinden sonraki cevapları incelenir. Hazır metin ya da yapay zekâ çıktısı olan cevapların ücreti bakiyeden kesilir; öğretmenin kendi yazdığı çözüm kesilmez. Yalnız sistemin otomatik değerlendirdiği cevaplar kesilebilir; öğrencinin kendisinin değerlendirdiği cevaplar kesilmez. Sen onaylayınca kesinti bakiyeden düşülür ve kalan tutar ödenecekler listesine eklenir.") + `
+    <h2>Onay bekleyenler (${D("hazir").length})</h2>${D("hazir").map(kart).join("") || '<div class="bos">Onay bekleyen kesinti yok.</div>'}
+    ${D("onaylandi").length ? `<h2>Onaylandı, işleniyor (${D("onaylandi").length})</h2>${D("onaylandi").map(kart).join("")}` : ""}
+    ${D("sorun").length ? `<h2>Sorun çıkanlar (${D("sorun").length})</h2><p class="aciklama">Bu kayıtlarda kesinti uygulanamadı; nedeni kartta yazıyor.</p>${D("sorun").map(kart).join("")}` : ""}
+    ${D("inceleniyor").length ? `<h2>İnceleniyor (${D("inceleniyor").length})</h2>${sade(D("inceleniyor"), "")}` : ""}
+    <h2>Tamamlananlar (${D("uygulandi").length})</h2>${D("uygulandi").map(kart).join("") || '<div class="bos">Henüz tamamlanan kesinti yok.</div>'}
+    ${diger.length ? `<details><summary>İşlem gerekmeyenler (${diger.length})</summary>${sade(diger, "")}</details>` : ""}`;
+  const yenile = () => { rozetler(); kesinti().then(() => ikon()); };
+  const hata = m => bildir({ degistirilemez: "Bu kayıt artık değiştirilemiyor; sayfayı yenile.", kesilemez: "Bu cevap kesintiye eklenemez: yalnız sistemin otomatik değerlendirdiği, kazanç getirmiş cevaplar kesilebilir.", sadece_yonetici: "Bu işlemi yalnız yöneticiler yapabilir." }[m] || "Hata: " + m);
+  $("#icerik").querySelectorAll(".ks").forEach(k => {
+    const id = Number(k.dataset.id), x = L.find(y => y.ogretmen_id === id), acik = x.durum === "hazir";
+    k.querySelector(".ks-cevap").addEventListener("toggle", async ev => {
+      if (!ev.target.open || ev.target.dataset.yuklu) return; ev.target.dataset.yuklu = 1;
+      const C = await q(sb.from("d_kesinti_cevap").select("*").eq("ogretmen_id", id).order("cevap_tarihi", { ascending: false }).limit(3000));
+      const medya = c => { const M = [...(c.soru_url || []), ...(c.cevap_url || []), ...(c.video_url ? [c.video_url] : [])], ns = (c.soru_url || []).length;
+        return M.length ? `<div class="ks-medya" data-medya="${e(JSON.stringify(M))}">${M.map((u, i) => /\.(mp4|mov)(\?|$)/i.test(u) ? `<button class="ince kucuk" data-galeri="${i}">Videoyu aç</button>` : `<figure><img loading="lazy" src="${e(u)}" data-galeri="${i}" alt=""><figcaption>${i < ns ? "Soru" : "Cevap"}</figcaption></figure>`).join("")}</div>` : ""; };
+      const satir = c => `<div class="ks-satir"><div class="ks-s-ust"><span><b>${new Date(c.cevap_tarihi).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}</b> · ${e(c.ders || "")} · ${tl(c.tutar)}</span>
+          ${acik && c.degerlendiren === "otomatik" && Number(c.tutar) > 0 ? `<label><input type="checkbox" class="ks-tik" data-c="${c.id}" ${c.kesilsin ? "checked" : ""}> Kesintiye dahil</label>` : ""}</div>
+        ${c.gerekce ? `<p>${e(c.gerekce)}</p>` : ""}${c.cevap_metni ? `<p class="klamp soluk">${e(c.cevap_metni)}</p>` : ""}${medya(c)}</div>`;
+      const kes = C.filter(c => c.kesilsin), temiz = C.filter(c => !c.kesilsin && c.sonuc), ogr = C.filter(c => c.degerlendiren === "ogrenci"), bek = C.filter(c => !c.degerlendiren), sifir = C.filter(c => c.degerlendiren === "otomatik" && !c.sonuc);
+      ev.target.querySelector(".ks-liste").classList.remove("soluk");
+      ev.target.querySelector(".ks-liste").innerHTML = `<h4>Kesinti sayılan cevaplar (${kes.length})</h4>${kes.map(satir).join("") || '<p class="soluk">Kesinti sayılan cevap yok.</p>'}
+        <details><summary>İncelenip kesinti sayılmayan cevaplar (${temiz.length})</summary>${temiz.map(satir).join("") || '<p class="soluk">Yok.</p>'}</details>
+        <p class="soluk kucuk-yazi">Kural gereği incelenmeyenler: öğrencinin kendisinin değerlendirdiği ${ogr.length} cevap, henüz değerlendirilmemiş ${bek.length} cevap${sifir.length ? `, kazanç getirmemiş ${sifir.length} cevap` : ""}.</p>`;
+      klampBagla(ev.target);
+      ev.target.querySelectorAll(".ks-tik").forEach(t => t.onchange = async () => {
+        t.disabled = true; const { error } = await sb.rpc("d_kesinti_isaretle", { p_cevap: Number(t.dataset.c), p_kesilsin: t.checked });
+        if (error) { t.checked = !t.checked; t.disabled = false; return hata(error.message); }
+        toast(t.checked ? "Cevap kesintiye eklendi" : "Cevap kesintiden çıkarıldı", "Tutarlar güncellendi"); yenile();
+      });
+    });
+    const pay = k.querySelector(".ks-pay");
+    if (pay) pay.onchange = async () => {
+      if (pay.checked && !confirm(`${k.dataset.ad}: hesap paylaşımı işaretlensin mi? Bakiyenin tamamı silinir ve ödeme yapılmaz.`)) { pay.checked = false; return; }
+      pay.disabled = true; const { error } = await sb.rpc("d_kesinti_paylasim", { p_ogretmen: id, p_var: pay.checked });
+      if (error) { pay.checked = !pay.checked; pay.disabled = false; return hata(error.message); }
+      yenile();
+    };
+    const onay = k.querySelector(".ks-onay");
+    if (onay) onay.onclick = async () => {
+      const duz = s => String(s).replace(/<[^>]+>/g, "");
+      if (!confirm(`${k.dataset.ad}\n\nBakiye: ${duz(tl(x.bakiye))}\nKesilecek: ${duz(tl(x.kesinti))}\nÖdenecek kalan: ${duz(tl(x.odenecek))}\n\nOnaylıyor musun? Kesinti bakiyeden düşülecek.`)) return;
+      onay.disabled = true; const { error } = await sb.rpc("d_kesinti_onayla", { p_ogretmen: id, p_onay: true });
+      if (error) { onay.disabled = false; return hata(error.message); }
+      toast("Kesinti onaylandı", k.dataset.ad, async () => { const g = await sb.rpc("d_kesinti_onayla", { p_ogretmen: id, p_onay: false }); if (g.error) hata(g.error.message); else toast("Onay geri alındı"); yenile(); });
+      yenile();
+    };
   });
 }
 

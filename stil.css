@@ -249,3 +249,9 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .od-hesap{display:flex;flex-direction:column;gap:2px;font-size:13px}.od-hesap span{color:hsl(var(--muted-foreground));font-variant-numeric:tabular-nums}
 .od-hesap .od-kopya{align-self:flex-start;margin-top:4px}.od-islem{white-space:nowrap}.od-islem .ince{margin-left:8px}
 .kucuk-yazi{font-size:12px}.ince.kucuk{height:28px;padding:0 10px;font-size:12px}
+.ks-ust{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:16px}.ks-kutular{margin:12px 0}.ks-kutular .kutu{box-shadow:none;padding:12px}.ks-kutular .kutu .s{font-size:20px}
+.ks-not{font-size:13px;background:hsl(var(--warning)/.12);border-radius:8px;padding:8px 12px;margin:0 0 10px}.ks-paylasim{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:0 0 8px}
+.ks-alt{margin-top:12px;display:flex;justify-content:flex-end}.ks-liste h4{margin:12px 0 6px;font-size:14px}.ks-satir{border-top:1px solid hsl(var(--border)/.6);padding:10px 0;font-size:13px}.ks-satir p{margin:4px 0}
+.ks-s-ust{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.ks-s-ust label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+.ks-medya{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}.ks-medya figure{margin:0}.ks-medya img{height:150px;max-width:240px;object-fit:contain;border-radius:8px;border:1px solid hsl(var(--border));background:hsl(var(--muted));cursor:zoom-in;display:block}.ks-medya figcaption{font-size:11px;color:hsl(var(--muted-foreground));text-align:center}
+.ks input[type=checkbox]{width:16px;height:16px;flex:none;margin:2px 0 0;padding:0}.ks-paylasim{justify-content:flex-start}
