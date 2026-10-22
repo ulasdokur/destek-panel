@@ -866,17 +866,31 @@ const DEG = { yeterli: ["Yeterli", "ok", "Öğrenci yeterli buldu"], yetersiz: [
   bekliyor: ["Bekliyor", "uyari", "Henüz değerlendirme yok"], degerlendirilmedi: ["Değerlendirilmedi", "", "7 günde değerlendirme gelmedi"] };
 const yuzde = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
 const sayi = n => Number(n || 0).toLocaleString("tr-TR");
-let gsSebep = "bugun";
+let gsSebep = "bugun", gsAr = { tur: "7" }, gsV = null;
+const gunStr = d => d.toLocaleDateString("sv-SE"), gunEkle = (g, n) => gunStr(new Date(new Date(g + "T12:00").getTime() + n * 864e5));
+const gkisa = g => new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const tlStr = n => Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+// soru başı ödeme: o derste insan öğretmenlere gerçekten ödenen ortalama (en az 10 örnek), yoksa bütün derslerin ortalaması
+function gsUcret(ders) {
+  const U = gsV.Z.ucret || {}, d = U[ders], g = U._genel || {};
+  if (d && d.n >= 10) return { tl: d.ort, n: d.n, kaynak: "ders" };
+  if (g.n >= 10) return { tl: g.ort, n: g.n, kaynak: "genel" };
+  return { tl: null, n: 0, kaynak: "yok" };
+}
+const gsTasarruf = L => L.reduce((a, x) => a + (gsUcret(x.ders).tl || 0), 0);
+function gsAralik() {
+  const bugun = gunStr(new Date()), ilk = gsV.Z.gunler[0].gun;
+  const t = gsAr.tur;
+  if (t === "ozel") return [gsAr.bas || ilk, gsAr.son || bugun];
+  return { bugun: [bugun, bugun], dun: [gunEkle(bugun, -1), gunEkle(bugun, -1)], 7: [gunEkle(bugun, -6), bugun], 30: [gunEkle(bugun, -29), bugun], hepsi: [ilk, bugun] }[t];
+}
 async function gonderici() {
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Cevap Gönderici", "Bu sayfayı yalnız yöneticiler görebilir."); return; }
-  const gun14 = new Date(Date.now() - 14 * 864e5).toLocaleDateString("sv-SE");
-  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman")), q(sb.from("d_gonderici_cevap").select("*").gte("zaman", gun14).order("zaman", { ascending: false }).limit(1500))]);
+  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman")), q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000))]);
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), senk = O.reduce((a, x) => x.zaman > a ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Cevap Gönderici", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
-  const G = Z.gunler, B = G[G.length - 1], H = Z.saglik, bugun = B.gun;
-  const son7 = new Date(Date.now() - 7 * 864e5).toLocaleDateString("sv-SE"), C7 = C.filter(x => x.zaman.slice(0, 10) > son7);
-  const d7 = k => C7.filter(x => x.deg === k).length, ogr7 = d7("yeterli") + d7("yetersiz");
-  // sağlık
+  gsV = { Z, C };
+  const H = Z.saglik;
   const dk = H.son_olay ? Math.round((Date.now() - new Date(H.son_olay)) / 6e4) : null, canli = dk != null && dk <= 15 && H.surec >= 2;
   const ob = H.olay_bugun || {}, K = H.kota, V = H.vision, S = H.scaleway;
   const cip = (ok, metin, ipucu) => `<span class="gs-cip ${ok === true ? "ok" : ok === false ? "hata" : ""}" ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}>${metin}</span>`;
@@ -888,27 +902,41 @@ async function gonderici() {
     ${cip(V.calisiyor ? true : null, `Banka yeniden okuma <b>${sayi(V.okunan)}</b> / ${(V.toplam / 1e6).toLocaleString("tr-TR")} M · %${(V.okunan / V.toplam * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}${V.calisiyor ? "" : " · duruyor"}`, "Bankadaki fotoğrafların yeni okuyucuyla baştan okunması. Bitince eşleşme oranı artar.")}
     ${cip(S.sunucu ? true : null, `Kiralık Mac: ${S.sunucu ? S.sunucu + " açık" : S.bekci_acik ? "stok bekleniyor" : "bekçi kapalı"}`, S.son || "")}
     <span class="soluk gs-senk">Güncelleme ${tarih(senk)}</span></div>`;
-  const kutu = (s, et, ipucu, cls = "") => `<div class="kutu ${cls}" ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}><div class="s">${s}</div><div class="e">${et}</div></div>`;
-  const gercek = C7.reduce((a, x) => a + Number(x.kazanc || 0), 0).toLocaleString("tr-TR", { maximumFractionDigits: 2 });
-  const kutular = `<div class="gs-gruplar" id="gs-kutular">
-    <div class="gs-grup"><div class="gs-grup-bas">Bugün</div><div class="gs-kutu-sira">
-      ${kutu(sayi(B.bakilan), "soruya bakıldı")}
-      ${kutu(sayi(B.gonderilen), `cevap · ${B.foto || 0} foto, ${B.video || 0} video`)}
-      ${kutu(yuzde(B.gonderilen, B.bakilan), "eşleşme oranı", "Bakılan sorulardan kaçına bankadan cevap gönderildi.")}
-      ${kutu(sayi(B.kazanc) + " TL", "tahmini kazanç", `Cevap başı 7 TL varsayımıyla. Değerlendirmede yazan gerçek kazanç son 7 günde ${gercek} TL.`)}</div></div>
-    <div class="gs-grup"><div class="gs-grup-bas">Öğrenci değerlendirmesi · son 7 gün</div><div class="gs-kutu-sira">
-      ${kutu(d7("yeterli"), "yeterli", "Öğrenci cevabı yeterli buldu.", "ok")}
-      ${kutu(d7("yetersiz"), "yetersiz", "Öğrenci cevabı yetersiz buldu. Aşağıdaki listede en üstte ve kırmızı.", d7("yetersiz") ? "hata" : "")}
-      ${kutu(d7("bekliyor"), "bekliyor", "Henüz değerlendirme gelmedi; genelde ertesi gün gelir.")}
-      ${kutu(d7("otomatik"), "otomatik onay", "Öğrenci bakmadı, sistem süre dolunca onayladı. Orana katılmaz.")}
-      ${kutu(yuzde(d7("yeterli"), ogr7), "yeterli oranı", "Yalnız öğrencinin kendi verdiği değerlendirmeler.")}</div></div></div>`;
   const bolum = (id, cls = "") => `<section class="kart gs-k ${cls}" id="${id}"></section>`;
-  $("#icerik").innerHTML = baslik("Cevap Gönderici", "Bankadan otomatik cevap gönderen sistemin durumu. Yalnız izleme; durdurma ve ayar burada yok.") + serit + kutular + `
-    <div class="gs-izgara">${bolum("gs-sebep")}${bolum("gs-benz")}${bolum("gs-14")}${bolum("gs-ders")}</div>
-    <div class="gs-izgara gs-alt"><section class="kart gs-k"><div class="gs-bas"><h3>Son gönderilenler</h3></div>
-      <p class="gs-acikla">Son 14 gün. Yetersiz bulunanlar en üstte ve kırmızı. Satıra tıklayınca öğrencinin sorusu ile gönderilen cevap yan yana açılır.</p>
-      <div id="gs-liste"></div></section>${bolum("gs-yorum")}</div>`;
-  gsSebepCiz(Z); gsBenzCiz(Z); gs14Ciz(G); gsDersCiz(Z.ders_7 || []); gsYorumCiz(Z.yorum || {}); gsListe(C);
+  $("#icerik").innerHTML = baslik("Cevap Gönderici", "Bankadan otomatik cevap gönderen sistemin durumu. Yalnız izleme; durdurma ve ayar burada yok.") + serit + `
+    <div class="gs-aralik" id="gs-aralik"></div><div id="gs-kutular"></div>
+    <div class="gs-izgara">${bolum("gs-ders", "gs-tam")}</div>
+    <div class="gs-izgara">${bolum("gs-sebep")}${bolum("gs-benz")}${bolum("gs-14")}${bolum("gs-yorum")}</div>
+    <section class="kart gs-k"><div class="gs-bas"><h3>Gönderilen cevaplar</h3></div>
+      <p class="gs-acikla" id="gs-liste-acikla"></p><div id="gs-liste"></div></section>`;
+  gsAralikCiz(); gsSebepCiz(Z); gsBenzCiz(Z); gs14Ciz(Z.gunler); gsYorumCiz(Z.yorum || {});
+}
+function gsAralikCiz() {
+  const { Z, C } = gsV, [bas, son] = gsAralik(), ilk = Z.gunler[0].gun, bugun = gunStr(new Date());
+  $("#gs-aralik").innerHTML = `<span class="cipler">${[["bugun", "Bugün"], ["dun", "Dün"], ["7", "Son 7 gün"], ["30", "Son 30 gün"], ["hepsi", "Başından beri"]].map(([v, a]) => `<button class="cip ${gsAr.tur === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span>
+    <span class="gs-tarihler"><input type="date" id="gs-bas" value="${bas}" min="${ilk}" max="${bugun}"><span>–</span><input type="date" id="gs-son" value="${son}" min="${ilk}" max="${bugun}"></span>`;
+  $("#gs-aralik").querySelectorAll(".cip").forEach(b => b.onclick = () => { gsAr = { tur: b.dataset.v }; gsAralikCiz(); });
+  ["#gs-bas", "#gs-son"].forEach(s => $(s).onchange = () => { gsAr = { tur: "ozel", bas: $("#gs-bas").value, son: $("#gs-son").value }; if (gsAr.bas > gsAr.son) [gsAr.bas, gsAr.son] = [gsAr.son, gsAr.bas]; gsAralikCiz(); });
+  const G = Z.gunler.filter(g => g.gun >= bas && g.gun <= son), top = k => G.reduce((a, g) => a + (g[k] || 0), 0);
+  const L = C.filter(x => x.zaman.slice(0, 10) >= bas && x.zaman.slice(0, 10) <= son), d = k => L.filter(x => x.deg === k).length, ogr = d("yeterli") + d("yetersiz");
+  const tas = gsTasarruf(L), olcul = L.filter(x => gsUcret(x.ders).tl != null).length;
+  const kutu = (s, et, ipucu, cls = "") => `<div class="kutu ${cls}" ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}><div class="s">${s}</div><div class="e">${et}</div></div>`;
+  const ad = bas === son ? gkisa(bas) : `${gkisa(bas)} – ${gkisa(son)}`;
+  $("#gs-kutular").innerHTML = `<div class="gs-gruplar">
+    <div class="gs-grup"><div class="gs-grup-bas">${ad} · ${G.length} gün</div><div class="gs-kutu-sira">
+      ${kutu(sayi(top("bakilan")), "soruya bakıldı")}
+      ${kutu(sayi(L.length), `cevap gönderildi · ${L.filter(x => !x.video).length} foto, ${L.filter(x => x.video).length} video`)}
+      ${kutu(yuzde(top("gonderilen"), top("bakilan")), "eşleşme oranı", "Bakılan sorulardan kaçına bankadan cevap gönderildi.")}
+      ${kutu(olcul ? tlStr(tas) : "—", olcul ? `tasarruf · soru başı ${tlStr(tas / olcul)}` : "tasarruf · ödeme örneği toplanıyor", "Bu sorular öğretmenlere gitseydi ödenecek tutar. Her cevap kendi dersinde öğretmenlere gerçekten ödenen ortalamayla hesaplanır (aşağıdaki tablo)." + (olcul < L.length ? ` ${L.length - olcul} cevabın dersinde henüz yeterli ödeme örneği yok, toplama katılmadı.` : ""), "ok")}</div></div>
+    <div class="gs-grup"><div class="gs-grup-bas">Öğrenci değerlendirmesi · aynı aralıkta gönderilenler</div><div class="gs-kutu-sira">
+      ${kutu(d("yeterli"), "yeterli", "Öğrenci cevabı yeterli buldu.", "ok")}
+      ${kutu(d("yetersiz"), "yetersiz", "Öğrenci cevabı yetersiz buldu. Aşağıdaki listede en üstte ve kırmızı.", d("yetersiz") ? "hata" : "")}
+      ${kutu(d("bekliyor"), "bekliyor", "Henüz değerlendirme gelmedi; genelde ertesi gün gelir.")}
+      ${kutu(d("otomatik"), "otomatik onay", "Öğrenci bakmadı, sistem süre dolunca onayladı. Orana katılmaz.")}
+      ${kutu(yuzde(d("yeterli"), ogr), "yeterli oranı", "Yalnız öğrencinin kendi verdiği değerlendirmeler.")}</div></div></div>`;
+  gsDersCiz(L, Z.ders_7 || []);
+  $("#gs-liste-acikla").textContent = `${ad}. Yetersiz bulunanlar en üstte ve kırmızı. Satıra tıklayınca öğrencinin sorusu ile gönderilen cevap yan yana açılır.`;
+  gsListe(L);
 }
 function gsSebepCiz(Z) {
   const S = gsSebep === "bugun" ? Z.sebep_bugun : Z.sebep_7, T = {};
@@ -937,25 +965,34 @@ function gsBenzCiz(Z) {
     <div class="gs-eks"><span>0,30</span><span style="left:${(.5 - .3) / .7 * 100}%">0,50</span><span style="left:${(.7 - .3) / .7 * 100}%">0,70</span><span class="gs-eks-esik" style="left:${ex}%">eşik ${String(es).replace(".", ",")}</span></div>
     <p class="gs-not" data-ipucu="Bu sorular bankadakine çok benziyor ama eşiğin altında kaldığı için gönderilmedi. Eşik düşürülürse bunlar da gönderilir; ama yanlış soru eşleşmesi riski artar.">Eşiğin hemen altında (0,75–${String(es).replace(".", ",")}): <b>${al.bugun || 0}</b> bugün · <b>${al.son7 || 0}</b> son 7 günde</p>`;
 }
-function gs14Ciz(G) {
-  const gk = g => new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
-  const kucuk = (ad, f, bic, ipucu) => { const v = G.map(f), mx = Math.max(1, ...v.filter(x => x != null)), son = [...v].reverse().find(x => x != null);
-    return `<div class="gs-mini"><div class="gs-mini-bas"><span>${ad}</span><b>${son == null ? "—" : bic(son)}</b></div>
-      <div class="gs-cubuklar">${v.map((x, i) => `<span data-ipucu="${gk(G[i].gun)}: ${x == null ? "veri yok" : bic(x)}" style="height:${x == null ? 0 : Math.max(2, x / mx * 100)}%" class="${x == null ? "gs-yok" : ""}"></span>`).join("")}</div></div>`; };
-  const yz = x => x == null ? null : Math.round(x);
-  $("#gs-14").innerHTML = `<div class="gs-bas"><h3>Son 14 gün</h3></div><p class="gs-acikla">${gk(G[0].gun)} – ${gk(G[G.length - 1].gun)}. Her çubuk bir gün, koyu çubuk bugün; sağdaki sayı en son değer.</p><div class="gs-minis">
-    ${kucuk("Gönderilen cevap", g => g.gonderilen || 0, sayi)}
-    ${kucuk("Eşleşme oranı", g => g.bakilan ? g.gonderilen / g.bakilan * 100 : null, x => "%" + yz(x))}
-    ${kucuk("Yeterli oranı", g => (g.yeterli || 0) + (g.yetersiz || 0) ? g.yeterli / (g.yeterli + (g.yetersiz || 0)) * 100 : null, x => "%" + yz(x))}
-    ${kucuk("Tahmini kazanç", g => g.kazanc || 0, x => sayi(x) + " TL")}</div>`;
+function gs14Ciz(T) {
+  const G = T.slice(-14), C = gsV.C, gk = gkisa;
+  const kucuk = (ad, f, ozet, bic) => { const v = G.map(f), mx = Math.max(1, ...v.filter(x => x != null));
+    return `<div class="gs-mini"><div class="gs-mini-bas"><span>${ad}</span><b>${ozet == null ? "—" : bic(ozet)}</b></div>
+      <div class="gs-cubuklar">${v.map((x, i) => `<span data-ipucu="${gk(G[i].gun)}: ${x == null ? "veri yok" : bic(x)}" style="height:${x == null ? 0 : Math.max(2, x / mx * 100)}%" class="${x == null ? "gs-yok" : ""}"></span>`).join("")}</div>
+      <div class="gs-mini-alt"><span>${gk(G[0].gun)}</span><span>bugün</span></div></div>`; };
+  const top = k => G.reduce((a, g) => a + (g[k] || 0), 0), oran = (a, b) => b ? a / b * 100 : null, yz = x => "%" + Math.round(x);
+  const tg = g => gsTasarruf(C.filter(x => x.zaman.slice(0, 10) === g.gun));
+  $("#gs-14").innerHTML = `<div class="gs-bas"><h3>Son 14 gün</h3></div><p class="gs-acikla">Her çubuk bir gün, en sağdaki bugün; üstüne gelince o günün değeri çıkar. Sağdaki sayı 14 günün toplamı ya da ortalaması.</p><div class="gs-minis">
+    ${kucuk("Gönderilen cevap · toplam", g => g.gonderilen || 0, top("gonderilen"), sayi)}
+    ${kucuk("Eşleşme oranı · ortalama", g => oran(g.gonderilen || 0, g.bakilan), oran(top("gonderilen"), top("bakilan")), yz)}
+    ${kucuk("Yeterli oranı · ortalama", g => oran(g.yeterli || 0, (g.yeterli || 0) + (g.yetersiz || 0)), oran(top("yeterli"), top("yeterli") + top("yetersiz")), yz)}
+    ${kucuk("Tasarruf · toplam", tg, G.reduce((a, g) => a + tg(g), 0), x => sayi(Math.round(x)) + " TL")}</div>`;
 }
-function gsDersCiz(L) {
-  L = L.filter(x => x.gonderilen || x.ornek >= 3).sort((a, b) => (b.ornek || 0) - (a.ornek || 0) || (b.gonderilen || 0) - (a.gonderilen || 0)).slice(0, 8);
-  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında · 7 gün</h3></div><p class="gs-acikla">Bankanın hangi derste güçlü, hangisinde zayıf olduğu.</p>
-    ${L.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th data-ipucu="Bakılan soruların üçte birinden alınan örnekle hesaplanır.">Bakılan ≈</th><th>Gönderilen</th><th>Eşleşme</th><th>Yeterli / yetersiz</th></tr>
-    ${L.map(x => { const o = x.ornek >= 9 ? x.ornek_gon / x.ornek : null, zayif = x.ornek >= 9 && o < .05;
-      return `<tr class="${zayif ? "gs-zayif" : ""}"><td>${e(x.ders)}</td><td>${x.ornek >= 9 ? sayi(x.ornek * 3) : "—"}</td><td>${x.gonderilen || 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td><td>${x.yeterli || 0} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td></tr>`; }).join("")}</table>
-    <p class="soluk gs-dip">Turuncu satır: bankanın zayıf kaldığı ders (eşleşme %5'in altında). Az örneği olan derste oran "—".</p>` : '<p class="soluk">Ders bilgisi birikiyor; ilk saatlerde boş görünebilir.</p>'}`;
+function gsDersCiz(L, D7) {
+  const R = {};
+  for (const x of L) { const r = R[x.ders || "Bilinmiyor"] ||= { ders: x.ders || "Bilinmiyor", gon: 0, yeterli: 0, yetersiz: 0 }; r.gon++; if (x.deg === "yeterli" || x.deg === "yetersiz") r[x.deg]++; }
+  for (const x of D7) if (!R[x.ders] && x.ornek >= 9) R[x.ders] = { ders: x.ders, gon: 0, yeterli: 0, yetersiz: 0 };
+  const E = Object.fromEntries(D7.map(x => [x.ders, x]));
+  const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[b.ders]?.ornek || 0) - (E[a.ders]?.ornek || 0)).slice(0, 12);
+  const g = (gsV.Z.ucret || {})._genel || {};
+  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında tasarruf</h3></div><p class="gs-acikla">Seçilen aralıkta her derste kaç cevap gitti ve öğretmene gitseydi ne ödenecekti. Soru başı ödeme, o derste son 30 günde öğretmenlere gerçekten ödenen tutarların ortalaması (öğretmenin ligine göre 3,80–9,50 TL arası değişiyor).</p>
+    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu derste öğretmenlerin cevapladığı sorulardan örnek alınıp değerlendirmede yazan gerçek kazanç ortalanır. 10'dan az örnek varsa bütün derslerin ortalaması kullanılır.">Soru başı ödeme</th><th>Tasarruf</th><th>Yeterli / yetersiz</th><th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme · 7 gün</th></tr>
+    ${S.map(x => { const u = gsUcret(x.ders), o = E[x.ders]?.ornek >= 9 ? E[x.ders].ornek_gon / E[x.ders].ornek : null, zayif = o != null && o < .05;
+      return `<tr class="${zayif ? "gs-zayif" : ""}"><td title="${e(x.ders)}">${e(x.ders)}</td><td>${x.gon}</td>
+        <td>${u.tl == null ? '<span class="soluk">ölçülüyor</span>' : `${tlStr(u.tl)} <span class="soluk">${u.kaynak === "ders" ? `(${u.n} örnek)` : "(genel ort.)"}</span>`}</td>
+        <td><b>${u.tl == null ? "—" : tlStr(u.tl * x.gon)}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
+    <p class="soluk gs-dip">Genel ortalama ${g.ort ? tlStr(g.ort) + ` (${g.n} örnek)` : "henüz ölçülüyor"}. Ödeme örnekleri her saat birkaç düzine artıyor; ilk gün bazı derslerde "ölçülüyor" görünür. Turuncu satır: bankanın zayıf kaldığı ders (eşleşme %5'in altında).</p>` : '<p class="soluk">Bu aralıkta gönderilen cevap yok.</p>'}`;
 }
 function gsYorumCiz(Y) {
   const L = (Y.son || []).slice(0, 6);
@@ -968,7 +1005,7 @@ function gsListe(C, n = 15) {
     ${L.map(x => { const d = DEG[x.deg] || [x.deg, ""];
       return `<tr class="tik ${x.deg === "yetersiz" ? "gs-yetersiz" : ""}" data-id="${x.soru_id}"><td class="nw">${tarih(x.zaman)}</td><td>${soruLink(x.soru_id, x.soru_id)}</td><td>${e(x.ders || "—")}</td>
         <td>${x.benzerlik == null ? "—" : Number(x.benzerlik).toFixed(2).replace(".", ",")}</td><td>${x.video ? "Video" : "Fotoğraf"}</td>
-        <td><span class="etiket ${d[1]}" ${x.deg_metin || d[2] ? `data-ipucu="${e(x.deg_metin || d[2])}"` : ""}>${d[0]}</span></td><td><span class="ok-ikon">›</span></td></tr>`; }).join("")}</table>${T.length > n ? `<button class="gs-daha">Tümünü göster (${T.length})</button>` : ""}` : '<div class="bos">Son 14 günde gönderilen cevap yok.</div>';
+        <td><span class="etiket ${d[1]}" ${x.deg_metin || d[2] ? `data-ipucu="${e(x.deg_metin || d[2])}"` : ""}>${d[0]}</span></td><td><span class="ok-ikon">›</span></td></tr>`; }).join("")}</table>${T.length > n ? `<button class="gs-daha">Tümünü göster (${T.length})</button>` : ""}` : '<div class="bos">Bu aralıkta gönderilen cevap yok.</div>';
   const d = $("#gs-liste .gs-daha"); if (d) d.onclick = ev => { ev.stopPropagation(); gsListe(C, 500); };
   $("#gs-liste").onclick = ev => {
     if (ev.target.closest("a")) return;
@@ -1007,7 +1044,9 @@ const REHBER = {
   takip: [[".tablo-sar", "İzlenen öğretmenler", "Kaç cevabının kontrol edildiği ve sonuçları. Satıra tıklayınca öğretmenin sayfası açılır."]],
   eksi: [["#e-eksi", "Eksidekiler", "Bu solverlar şu an soru başına ücret alamıyor. Bildirim sütunu, eksiye düştüğünde otomatik bildirimin gidip gitmediğini gösterir."]],
   gonderici: [["#gs-saglik", "Sağlık şeridi", "Kırmızı bir şey varsa gönderici takılmış olabilir; Ulaş'a haber ver. Üstüne gelince her birinin açıklaması çıkar."],
-    ["#gs-kutular", "Bugün", "Bugün kaç soruya bakıldı, kaçına cevap gitti. Değerlendirmeler ertesi gün geldiği için son 7 güne bakılır."],
+    ["#gs-aralik", "Tarih aralığı", "Hazır aralıklardan birini seç ya da iki tarihi kendin gir. Kartlar, ders tablosu ve cevap listesi bu aralığa göre değişir."],
+    ["#gs-kutular", "Seçilen aralığın özeti", "Kaç soruya bakıldı, kaçına cevap gitti, öğretmenlere gitseydi ne ödenecekti (tasarruf) ve öğrenciler ne dedi."],
+    ["#gs-ders", "Ders bazında tasarruf", "Her derste öğretmenlere ödenen ortalama farklı; tasarruf her ders kendi ortalamasıyla hesaplanır."],
     ["#gs-sebep", "Neden atlandı?", "Hangi sebebin en çok soru kaçırdığı. En üstteki çubuk en büyük kayıp."],
     ["#gs-benz", "Eşleşme kalitesi", "Dikey çizgi eşik. Çizginin hemen solundaki gri yığın, eşik düşürülürse gönderilecek sorular."],
     ["#gs-liste", "Son gönderilenler", "Yetersiz bulunanlar en üstte ve kırmızı. Satıra tıklayınca soru ile gönderilen cevap yan yana açılır."]],
