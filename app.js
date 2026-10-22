@@ -871,8 +871,13 @@ const gunStr = d => d.toLocaleDateString("sv-SE"), gunEkle = (g, n) => gunStr(ne
 const gkisa = g => new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const tlStr = n => Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 // soru başı ödeme: o derste insan öğretmenlere gerçekten ödenen ortalama (en az 10 örnek), yoksa bütün derslerin ortalaması
+const dersAnahtar = d => String(d || "Bilinmiyor").toLocaleLowerCase("tr").replace(/\s+/g, " ").trim();  // "MATEMATİK (12)" = "Matematik (12)"
+let gsUN = null;
 function gsUcret(ders) {
-  const U = gsV.Z.ucret || {}, d = U[ders], g = U._genel || {};
+  const U = gsV.Z.ucret || {}, g = U._genel || {};
+  if (!gsUN) { gsUN = {}; for (const [k, v] of Object.entries(U)) { if (k === "_genel") continue; const a = gsUN[dersAnahtar(k)] ||= { top: 0, n: 0 }; a.top += v.ort * v.n; a.n += v.n; }
+    for (const a of Object.values(gsUN)) a.ort = a.top / a.n; }
+  const d = gsUN[dersAnahtar(ders)];
   if (d && d.n >= 10) return { tl: d.ort, n: d.n, kaynak: "ders" };
   if (g.n >= 10) return { tl: g.ort, n: g.n, kaynak: "genel" };
   return { tl: null, n: 0, kaynak: "yok" };
@@ -889,7 +894,7 @@ async function gonderici() {
   const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman")), q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000))]);
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), senk = O.reduce((a, x) => x.zaman > a ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Cevap Gönderici", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
-  gsV = { Z, C };
+  gsV = { Z, C }; gsUN = null;
   const H = Z.saglik;
   const dk = H.son_olay ? Math.round((Date.now() - new Date(H.son_olay)) / 6e4) : null, canli = dk != null && dk <= 15 && H.surec >= 2;
   const ob = H.olay_bugun || {}, K = H.kota, V = H.vision, S = H.scaleway;
@@ -981,14 +986,15 @@ function gs14Ciz(T) {
 }
 function gsDersCiz(L, D7) {
   const R = {};
-  for (const x of L) { const r = R[x.ders || "Bilinmiyor"] ||= { ders: x.ders || "Bilinmiyor", gon: 0, yeterli: 0, yetersiz: 0 }; r.gon++; if (x.deg === "yeterli" || x.deg === "yetersiz") r[x.deg]++; }
-  for (const x of D7) if (!R[x.ders] && x.ornek >= 9) R[x.ders] = { ders: x.ders, gon: 0, yeterli: 0, yetersiz: 0 };
-  const E = Object.fromEntries(D7.map(x => [x.ders, x]));
-  const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[b.ders]?.ornek || 0) - (E[a.ders]?.ornek || 0)).slice(0, 12);
+  const yaz = d => /[a-zçğıöşü]/.test(d || "") ? d : null;   // tamamı büyük harf yazılmış eski adı göstermemek için
+  for (const x of L) { const k = dersAnahtar(x.ders), r = R[k] ||= { ders: x.ders || "Bilinmiyor", gon: 0, yeterli: 0, yetersiz: 0 }; if (yaz(x.ders) && !yaz(r.ders)) r.ders = x.ders; r.gon++; if (x.deg === "yeterli" || x.deg === "yetersiz") r[x.deg]++; }
+  const E = {}; for (const x of D7) { const a = E[dersAnahtar(x.ders)] ||= { ornek: 0, ornek_gon: 0 }; a.ornek += x.ornek || 0; a.ornek_gon += x.ornek_gon || 0; }
+  for (const x of D7) { const k = dersAnahtar(x.ders); if (!R[k] && E[k].ornek >= 9) R[k] = { ders: x.ders, gon: 0, yeterli: 0, yetersiz: 0 }; }
+  const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[dersAnahtar(b.ders)]?.ornek || 0) - (E[dersAnahtar(a.ders)]?.ornek || 0)).slice(0, 12);
   const g = (gsV.Z.ucret || {})._genel || {};
   $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında tasarruf</h3></div><p class="gs-acikla">Seçilen aralıkta her derste kaç cevap gitti ve öğretmene gitseydi ne ödenecekti. Soru başı ödeme, o derste son 30 günde öğretmenlere gerçekten ödenen tutarların ortalaması (öğretmenin ligine göre 3,80–9,50 TL arası değişiyor).</p>
     ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu derste öğretmenlerin cevapladığı sorulardan örnek alınıp değerlendirmede yazan gerçek kazanç ortalanır. 10'dan az örnek varsa bütün derslerin ortalaması kullanılır.">Soru başı ödeme</th><th>Tasarruf</th><th>Yeterli / yetersiz</th><th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme · 7 gün</th></tr>
-    ${S.map(x => { const u = gsUcret(x.ders), o = E[x.ders]?.ornek >= 9 ? E[x.ders].ornek_gon / E[x.ders].ornek : null, zayif = o != null && o < .05;
+    ${S.map(x => { const u = gsUcret(x.ders), ek = E[dersAnahtar(x.ders)], o = ek?.ornek >= 9 ? ek.ornek_gon / ek.ornek : null, zayif = o != null && o < .05;
       return `<tr class="${zayif ? "gs-zayif" : ""}"><td title="${e(x.ders)}">${e(x.ders)}</td><td>${x.gon}</td>
         <td>${u.tl == null ? '<span class="soluk">ölçülüyor</span>' : `${tlStr(u.tl)} <span class="soluk">${u.kaynak === "ders" ? `(${u.n} örnek)` : "(genel ort.)"}</span>`}</td>
         <td><b>${u.tl == null ? "—" : tlStr(u.tl * x.gon)}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
