@@ -882,7 +882,8 @@ function gsUcret(ders) {
   if (g.n >= 10) return { tl: g.ort, n: g.n, kaynak: "genel" };
   return { tl: null, n: 0, kaynak: "yok" };
 }
-const gsTasarruf = L => L.reduce((a, x) => a + (gsUcret(x.ders).tl || 0), 0);
+const STOPAJ = 0.20;  // öğretmene ödenen tutarın ÜSTÜNE ekstra ödenen gelir vergisi stopajı; gerçek maliyet = ödeme × 1,20
+const gsTasarruf = L => L.reduce((a, x) => a + (gsUcret(x.ders).tl || 0), 0) * (1 + STOPAJ);
 function gsAralik() {
   const bugun = gunStr(new Date()), ilk = gsV.Z.gunler[0].gun;
   const t = gsAr.tur;
@@ -932,7 +933,7 @@ function gsAralikCiz() {
       ${kutu(sayi(top("bakilan")), "soruya bakıldı")}
       ${kutu(sayi(L.length), `cevap gönderildi · ${L.filter(x => !x.video).length} foto, ${L.filter(x => x.video).length} video`)}
       ${kutu(yuzde(top("gonderilen"), top("bakilan")), "eşleşme oranı", "Bakılan sorulardan kaçına bankadan cevap gönderildi.")}
-      ${kutu(olcul ? tlStr(tas) : "—", olcul ? `tasarruf · soru başı ${tlStr(tas / olcul)}` : "tasarruf · ödeme örneği toplanıyor", "Bu sorular öğretmenlere gitseydi ödenecek tutar. Her cevap kendi dersinde öğretmenlere gerçekten ödenen ortalamayla hesaplanır (aşağıdaki tablo)." + (olcul < L.length ? ` ${L.length - olcul} cevabın dersinde henüz yeterli ödeme örneği yok, toplama katılmadı.` : ""), "ok")}</div></div>
+      ${kutu(olcul ? tlStr(tas) : "—", olcul ? `tasarruf · soru başı ${tlStr(tas / olcul)}` : "tasarruf · ödeme örneği toplanıyor", "Bu sorular öğretmenlere gitseydi ödenecek gerçek tutar: her cevap kendi dersinde öğretmenlere ödenen ortalama + üstüne %20 stopaj (aşağıdaki tablo)." + (olcul < L.length ? ` ${L.length - olcul} cevabın dersinde henüz yeterli ödeme örneği yok, toplama katılmadı.` : ""), "ok")}</div></div>
     <div class="gs-grup"><div class="gs-grup-bas">Öğrenci değerlendirmesi · aynı aralıkta gönderilenler</div><div class="gs-kutu-sira">
       ${kutu(d("yeterli"), "yeterli", "Öğrenci cevabı yeterli buldu.", "ok")}
       ${kutu(d("yetersiz"), "yetersiz", "Öğrenci cevabı yetersiz buldu. Aşağıdaki listede en üstte ve kırmızı.", d("yetersiz") ? "hata" : "")}
@@ -992,12 +993,12 @@ function gsDersCiz(L, D7) {
   for (const x of D7) { const k = dersAnahtar(x.ders); if (!R[k] && E[k].ornek >= 9) R[k] = { ders: x.ders, gon: 0, yeterli: 0, yetersiz: 0 }; }
   const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[dersAnahtar(b.ders)]?.ornek || 0) - (E[dersAnahtar(a.ders)]?.ornek || 0)).slice(0, 12);
   const g = (gsV.Z.ucret || {})._genel || {};
-  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında tasarruf</h3></div><p class="gs-acikla">Seçilen aralıkta her derste kaç cevap gitti ve öğretmene gitseydi ne ödenecekti. Soru başı ödeme, o derste son 30 günde öğretmenlere gerçekten ödenen tutarların ortalaması (öğretmenin ligine göre 3,80–9,50 TL arası değişiyor).</p>
-    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu derste öğretmenlerin cevapladığı sorulardan örnek alınıp değerlendirmede yazan gerçek kazanç ortalanır. 10'dan az örnek varsa bütün derslerin ortalaması kullanılır.">Soru başı ödeme</th><th>Tasarruf</th><th>Yeterli / yetersiz</th><th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme · 7 gün</th></tr>
+  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında tasarruf</h3></div><p class="gs-acikla">Seçilen aralıkta her derste kaç cevap gitti ve öğretmene gitseydi ne ödenecekti. Soru başı ödeme, o derste son 30 günde öğretmenlere gerçekten ödenen tutarların ortalaması (öğretmenin ligine göre 3,80–9,50 TL arası). Tasarruf, bu ödemenin üstüne %20 stopaj eklenmiş gerçek maliyettir.</p>
+    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu derste öğretmenlerin cevapladığı sorulardan örnek alınıp değerlendirmede yazan gerçek kazanç ortalanır. 10'dan az örnek varsa bütün derslerin ortalaması kullanılır. Stopaj hariç, öğretmenin eline geçen.">Soru başı ödeme</th><th data-ipucu="Soru başı ödeme × gönderilen × 1,20 (üstüne %20 stopaj dahil).">Tasarruf</th><th>Yeterli / yetersiz</th><th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme · 7 gün</th></tr>
     ${S.map(x => { const u = gsUcret(x.ders), ek = E[dersAnahtar(x.ders)], o = ek?.ornek >= 9 ? ek.ornek_gon / ek.ornek : null, zayif = o != null && o < .05;
       return `<tr class="${zayif ? "gs-zayif" : ""}"><td title="${e(x.ders)}">${e(x.ders)}</td><td>${x.gon}</td>
         <td>${u.tl == null ? '<span class="soluk">ölçülüyor</span>' : `${tlStr(u.tl)} <span class="soluk">${u.kaynak === "ders" ? `(${u.n} örnek)` : "(genel ort.)"}</span>`}</td>
-        <td><b>${u.tl == null ? "—" : tlStr(u.tl * x.gon)}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
+        <td><b>${u.tl == null ? "—" : tlStr(u.tl * x.gon * (1 + STOPAJ))}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
     <p class="soluk gs-dip">Genel ortalama ${g.ort ? tlStr(g.ort) + ` (${g.n} örnek)` : "henüz ölçülüyor"}. Ödeme örnekleri her saat birkaç düzine artıyor; ilk gün bazı derslerde "ölçülüyor" görünür. Turuncu satır: bankanın zayıf kaldığı ders (eşleşme %5'in altında).</p>` : '<p class="soluk">Bu aralıkta gönderilen cevap yok.</p>'}`;
 }
 function gsYorumCiz(Y) {
