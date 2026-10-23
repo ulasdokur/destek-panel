@@ -320,6 +320,14 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .gs-kaps-p>b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
 .gs-kaps-p small{font-size:11px;color:hsl(var(--muted-foreground));white-space:nowrap}
 .gs-kaps-top>b{color:hsl(var(--primary))}
+/* gözcü kontrol kararı: yetersiz satırda bizim cevabımız gerçekten yanlış mıydı yoksa öğrenci mi haksız */
+.etiket.gs-knt-y{background:hsl(var(--success)/.14);color:hsl(142 64% 36%)}
+.etiket.gs-knt-k{background:hsl(38 90% 50%/.16);color:hsl(34 88% 44%)}
+.etiket.gs-knt-n{background:hsl(var(--muted)/.6);color:hsl(var(--muted-foreground))}
+.gs-knt-kutu{margin-top:10px;padding:9px 12px;border-radius:9px;font-size:13px;line-height:1.5;border:1px solid hsl(var(--border));background:hsl(var(--muted)/.3)}
+.gs-knt-kutu.gs-knt-y{border-color:hsl(var(--success)/.35);background:hsl(var(--success)/.09)}
+.gs-knt-kutu.gs-knt-k{border-color:hsl(38 80% 50%/.4);background:hsl(38 85% 50%/.1)}
+.gs-knt-kutu b{color:hsl(var(--foreground))}
 .gs-tarihler{display:inline-flex;align-items:center;gap:6px;margin-left:auto}.gs-tarihler input{height:30px;width:auto;padding:0 8px;font-size:13px;border-radius:8px;background:hsl(var(--card))}
 .gs-tam{grid-column:1/-1}.gs-mini-alt{display:flex;justify-content:space-between;font-size:10.5px;color:hsl(var(--muted-foreground));margin-top:3px}
 .gs-tablo td:first-child{max-width:260px}

@@ -1063,12 +1063,14 @@ function gsYorumCiz(Y) {
     ${L.length ? L.map(y => `<div class="gs-yor ${y.kim}"><span class="soluk">${tarih(y.zaman)} · ${y.kim === "biz" ? "bizim yanıt" : "öğrenci"} · ${soruLink(y.soru, "soru " + y.soru)}</span><div class="klamp">${e(y.metin)}</div></div>`).join("") : '<p class="soluk">Henüz yorum yok.</p>'}`;
 }
 function gsListe(C, n = 15) {
+  const K = gsV.Z.kontrol || {}, KNT = { banka_yanlis: ["Cevabımız yanlıştı", "gs-knt-k"], cevap_dogru: ["Cevabımız doğru", "gs-knt-y"], belirsiz: ["Belirsiz", "gs-knt-n"] };
+  const kntRoz = id => { const k = K[id]; if (!k) return ""; const m = KNT[k.karar] || [k.karar, "gs-knt-n"]; return ` <span class="etiket ${m[1]}" data-ipucu="Senin kontrolün: ${e(k.aciklama)}">${m[0]}</span>`; };
   const sira = { yetersiz: 0 }, T = [...C].sort((a, b) => (sira[a.deg] ?? 1) - (sira[b.deg] ?? 1) || (a.zaman < b.zaman ? 1 : -1)), L = T.slice(0, n);
   $("#gs-liste").innerHTML = L.length ? `<table class="tablo sik gs-liste-t"><tr><th>Saat</th><th>Soru</th><th>Ders</th><th>Benzerlik</th><th>Tür</th><th>Değerlendirme</th><th></th></tr>
     ${L.map(x => { const d = DEG[x.deg] || [x.deg, ""];
       return `<tr class="tik ${x.deg === "yetersiz" ? "gs-yetersiz" : ""}" data-id="${x.soru_id}"><td class="nw">${tarih(x.zaman)}</td><td>${soruLink(x.soru_id, x.soru_id)}</td><td>${e(x.ders || "—")}</td>
         <td>${x.benzerlik == null ? "—" : Number(x.benzerlik).toFixed(2).replace(".", ",")}</td><td>${x.video ? "Video" : "Fotoğraf"}${x.banka_id == -1 ? ' <span class="etiket" data-ipucu="Bankadan değil, yapay zekânın el yazısıyla hazırladığı cevap.">Yapay zekâ</span>' : ""}</td>
-        <td><span class="etiket ${d[1]}" ${x.deg_metin || d[2] ? `data-ipucu="${e(x.deg_metin || d[2])}"` : ""}>${d[0]}</span></td><td><span class="ok-ikon">›</span></td></tr>`; }).join("")}</table>${T.length > n ? `<button class="gs-daha">Tümünü göster (${T.length})</button>` : ""}` : '<div class="bos">Bu aralıkta gönderilen cevap yok.</div>';
+        <td><span class="etiket ${d[1]}" ${x.deg_metin || d[2] ? `data-ipucu="${e(x.deg_metin || d[2])}"` : ""}>${d[0]}</span>${kntRoz(x.soru_id)}</td><td><span class="ok-ikon">›</span></td></tr>`; }).join("")}</table>${T.length > n ? `<button class="gs-daha">Tümünü göster (${T.length})</button>` : ""}` : '<div class="bos">Bu aralıkta gönderilen cevap yok.</div>';
   const d = $("#gs-liste .gs-daha"); if (d) d.onclick = ev => { ev.stopPropagation(); gsListe(C, 500); };
   $("#gs-liste").onclick = ev => {
     if (ev.target.closest("a")) return;
@@ -1079,6 +1081,7 @@ function gsListe(C, n = 15) {
     tr.classList.add("acik-satir");
     tr.insertAdjacentHTML("afterend", `<tr class="acilir"><td colspan="7"><div class="gs-acik">${medya(x.soru_foto, vid ? [] : x.cevap_foto, vid, x.banka_id == -1 ? "Gönderilen cevap (yapay zekâ)" : "Gönderilen cevap")}
       <div class="soluk">${[x.unite, x.konu].filter(Boolean).map(e).join(" › ")}${x.sik ? ` · şık <b>${e(x.sik)}</b>` : ""}${x.deg_metin ? ` · ${e(x.deg_metin)}` : ""}${x.soru_foto.length ? "" : " · öğrencinin fotoğrafı henüz çekilmedi"}</div>
+      ${K[x.soru_id] ? `<div class="gs-knt-kutu ${(KNT[K[x.soru_id].karar] || [])[1] || "gs-knt-n"}"><b>Kontrol — ${(KNT[K[x.soru_id].karar] || [K[x.soru_id].karar])[0]}:</b> ${e(K[x.soru_id].aciklama)}</div>` : ""}
       ${(x.yorumlar || []).length ? x.yorumlar.map(y => `<div class="gs-yor ${y.kim}"><span class="soluk">${y.kim === "biz" ? "Bizim yanıt" : "Öğrenci"} · ${tarih(y.zaman)}</span><div>${e(y.metin)}</div></div>`).join("") : ""}</div></td></tr>`);
   };
 }
