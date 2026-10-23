@@ -4,6 +4,19 @@
 const SB_URL = "https://rbjrnevngfuribasrnph.supabase.co";
 const SB_ANON = "sb_publishable_yK1dNA6CGKIQ88U3gp53xA_nBLQGNVJ";
 const sb = window.supabase.createClient(SB_URL, SB_ANON);
+// Cevap gönderici bot hesabı (914867, "Test Hesabı") panele düşmesin: bu hesabın
+// şikayet/uyarı/başvuru/kesinti/öğretmen kayıtları gerçek öğretmen değil, botun
+// soru bankası cevaplarına gelen değerlendirmeler. Tek noktadan tüm okumalardan dışlanır.
+const BOT_ID = 914867;
+const BOT_GIZLI = { d_sikayet: "ogretmen_id", d_uyari: "ogretmen_id", d_basvuru: "ogretmen_id", d_kesinti: "ogretmen_id", d_kesinti_cevap: "ogretmen_id", d_takip: "ogretmen_id", d_ogretmen: "id", d_solver_puan: "id" };
+{
+  const _from = sb.from.bind(sb);
+  sb.from = (t) => {
+    const b = _from(t), col = BOT_GIZLI[t];
+    if (col) { const _sel = b.select.bind(b); b.select = (...a) => _sel(...a).neq(col, BOT_ID); }
+    return b;
+  };
+}
 const ADMIN = "https://admin.tahtaapp.com";
 
 const $ = (s, el = document) => el.querySelector(s);
