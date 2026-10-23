@@ -314,6 +314,12 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 .gs-analiz[open]>summary::before{content:"▾"}
 .gs-analiz[open]>summary{border-bottom:1px solid hsl(var(--border))}
 .gs-analiz .gs-izgara{padding:12px}
+.gs-kapsama{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:11px 16px;margin:0 0 14px;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--card))}
+.gs-kaps-bas{font-size:13px;color:hsl(var(--muted-foreground));font-weight:500;margin-right:auto}.gs-kaps-bas b{color:hsl(var(--foreground))}
+.gs-kaps-p{display:flex;flex-direction:column;align-items:center;line-height:1.15}
+.gs-kaps-p>b{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.gs-kaps-p small{font-size:11px;color:hsl(var(--muted-foreground));white-space:nowrap}
+.gs-kaps-top>b{color:hsl(var(--primary))}
 .gs-tarihler{display:inline-flex;align-items:center;gap:6px;margin-left:auto}.gs-tarihler input{height:30px;width:auto;padding:0 8px;font-size:13px;border-radius:8px;background:hsl(var(--card))}
 .gs-tam{grid-column:1/-1}.gs-mini-alt{display:flex;justify-content:space-between;font-size:10.5px;color:hsl(var(--muted-foreground));margin-top:3px}
 .gs-tablo td:first-child{max-width:260px}

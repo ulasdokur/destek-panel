@@ -948,10 +948,16 @@ function gsCiz(bas, son) {
   const kutu = (s, et, ipucu, cls = "") => `<div class="kutu ${cls}" ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}><div class="s">${s}</div><div class="e">${et}</div></div>`;
   const dsay = (arr, k) => arr.filter(x => x.deg === k).length;
   const gv = $("#gs-govde");
+  const bak = top("bakilan"), bankaN = Lr.filter(x => x.banka_id != -1).length, aiN = Lr.filter(x => x.banka_id == -1).length;
+  const kaps = bak ? `<div class="gs-kapsama" data-ipucu="Bu aralıkta bakılan soruların ne kadarına cevap gönderildi: bankadan eşleşme ile ve yapay zekâ ile ayrı ayrı. Kalanı ise eşleşme/çözüm bulunamadığı için gönderilemedi.">
+    <span class="gs-kaps-bas">${ad} · sorulan <b>${sayi(bak)}</b> soru</span>
+    <span class="gs-kaps-p"><b>${yuzde(bankaN, bak)}</b><small>banka · ${sayi(bankaN)}</small></span>
+    <span class="gs-kaps-p"><b>${yuzde(aiN, bak)}</b><small>yapay zekâ · ${sayi(aiN)}</small></span>
+    <span class="gs-kaps-p gs-kaps-top"><b>${yuzde(bankaN + aiN, bak)}</b><small>toplam kapsama</small></span></div>` : "";
   if (gsGorunum === "ai") {
     const A = Lr.filter(x => x.banka_id == -1), ai = Z.ai || {}, g = (ai.gun || {})[gunStr(new Date())] || {}, ogr = dsay(A, "yeterli") + dsay(A, "yetersiz");
     const sebep = Object.entries(g.sebep || {}).sort((a, b) => b[1] - a[1]);
-    gv.innerHTML = `<p class="gs-acikla">Bankada eşi olmayan fotoğraflı soruları yapay zekâ el yazısıyla çözüp gönderir.${ai.durum_ne ? " Bugünkü ayar: " + e(ai.durum_ne) + "." : ""}</p>
+    gv.innerHTML = kaps + `<p class="gs-acikla">Bankada eşi olmayan fotoğraflı soruları yapay zekâ el yazısıyla çözüp gönderir.${ai.durum_ne ? " Bugünkü ayar: " + e(ai.durum_ne) + "." : ""}</p>
       <div class="gs-gruplar">
         <div class="gs-grup"><div class="gs-grup-bas">${ad} · yapay zekâ cevapları</div><div class="gs-kutu-sira">
           ${kutu(sayi(A.length), "gönderildi", "Seçilen aralıkta yapay zekânın gönderdiği cevap sayısı.")}
@@ -973,7 +979,7 @@ function gsCiz(bas, son) {
   }
   const B = Lr.filter(x => x.banka_id != -1), ogr = dsay(B, "yeterli") + dsay(B, "yetersiz");
   const tas = gsTasarruf(B), olcul = B.filter(x => gsUcret(x.ders).tl != null).length;
-  gv.innerHTML = `<div class="gs-gruplar">
+  gv.innerHTML = kaps + `<div class="gs-gruplar">
     <div class="gs-grup"><div class="gs-grup-bas">${ad} · ${G.length} gün</div><div class="gs-kutu-sira">
       ${kutu(sayi(top("bakilan")), "soruya bakıldı")}
       ${kutu(sayi(B.length), `cevap gönderildi · ${B.filter(x => !x.video).length} foto, ${B.filter(x => x.video).length} video`)}
