@@ -917,7 +917,8 @@ async function gonderici() {
   const ob = H.olay_bugun || {}, K = H.kota, V = H.vision, S = H.scaleway;
   const cip = (ok, metin, ipucu) => `<span class="gs-cip ${ok === true ? "ok" : ok === false ? "hata" : ""}" ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}>${metin}</span>`;
   const serit = `<div class="gs-serit" id="gs-saglik">
-    ${cip(canli, `<b>${canli ? "Çalışıyor" : "Durmuş olabilir"}</b> · son hareket ${dk == null ? "—" : dk < 1 ? "az önce" : dk + " dk önce"}`, canli ? "Gönderici açık ve son 15 dakikada iş yaptı." : "15 dakikadan uzun süredir hareket yok ya da program kapalı. Ulaş'a haber ver.")}
+    ${canli || !H.planli ? cip(canli, `<b>${canli ? "Çalışıyor" : "Durmuş olabilir"}</b> · son hareket ${dk == null ? "—" : dk < 1 ? "az önce" : dk + " dk önce"}`, canli ? "Gönderici açık ve son 15 dakikada iş yaptı." : "15 dakikadan uzun süredir hareket yok ya da program kapalı. Ulaş'a haber ver.")
+      : cip(null, `<b>Planlı durdu</b> · ${e(H.durum_ne || "")} · son hareket ${dk == null ? "—" : dk + " dk önce"}`, "Gönderici bilerek durduruldu, arıza değil.")}
     ${cip((ob.OTURUM_DUSTU || 0) > 4 ? false : null, `Oturum düştü <b>${ob.OTURUM_DUSTU || 0}</b> · kendi girdi <b>${ob.OTO_GIRIS || 0}</b>${ob.OTO_GIRIS_HATA ? ` · giremedi <b>${ob.OTO_GIRIS_HATA}</b>` : ""}`, "Bugün öğretmen hesabından kaç kez çıkış olduğu ve kaçında kendiliğinden yeniden girdiği.")}
     ${cip((ob.BAGLANTI_OLDU || 0) > 3 ? false : null, `Yeniden başladı <b>${ob.BAGLANTI_OLDU || 0}</b>`, "Tarayıcıyla bağlantısı koptuğu için kendini bugün kaç kez yeniden başlattı.")}
     ${cip(K.saat >= K.saat_sinir || K.gun >= K.gun_sinir ? false : null, `Saatlik <b>${K.saat}/${K.saat_sinir}</b> · günlük <b>${K.gun}/${K.gun_sinir}</b> · video <b>${K.video_gun}/${K.video_sinir}</b>`, "Gönderim sınırlarının ne kadarı doldu. Sınır dolunca gönderici bekler.")}
@@ -974,7 +975,10 @@ function gsCiz(bas, son) {
           ${kutu(g.gon || 0, "gönderildi")}
           ${kutu(g.atla || 0, "atlandı", "Yapay zekânın emin olmayıp geçtiği soru.")}
           ${kutu(g.hata || 0, "hata", Object.keys(hs).length ? "Cevabı gönderirken teknik hata olan denemeler: " + Object.entries(hs).map(([k, n]) => `${k} (${n})`).join(" · ") : "Yapay zekâ çözümü hazırladı ama gönderirken teknik hata oldu (ağ/oturum vb.). Soru tekrar denenir.", g.hata ? "hata" : "")}
-          ${kutu(ai.calisiyor ? "Açık" : "Kapalı", "durum", "", ai.calisiyor ? "ok" : "hata")}</div></div></div>
+          ${Object.keys(ai.hesap_durum || {}).length ? Object.entries(ai.hesap_durum).map(([h, d]) => {
+            const acik = (ai.hesap_canli || {})[h] !== false && d.durum != "DURDU" && ai.calisiyor, planli = !acik && d.planli;
+            return kutu(acik ? "Açık" : planli ? "Planlı durdu" : "Kapalı", h, planli ? (d.ne || "Bilerek durduruldu, arıza değil.") : acik ? "" : (d.ne || "Beklenmedik şekilde durdu."), acik ? "ok" : planli ? "" : "hata");
+          }).join("") : kutu(ai.calisiyor ? "Açık" : "Kapalı", "durum", "", ai.calisiyor ? "ok" : "hata")}</div></div></div>
       ${sebep.length ? `<section class="kart gs-k"><div class="gs-bas"><h3>Bugün neden atladı?</h3></div><p class="gs-acikla">Yapay zekânın çözmeyip geçtiği soruların sebepleri.</p>
         ${sebep.map(([k, n]) => `<div class="gs-sat"><span class="gs-et">${e(k)}</span><b>${n}</b></div>`).join("")}</section>` : ""}
       <section class="kart gs-k"><div class="gs-bas"><h3>Gönderilen yapay zekâ cevapları</h3></div>
