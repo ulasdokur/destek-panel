@@ -303,6 +303,17 @@ dialog.metin-dlg p{white-space:pre-wrap;font-size:14px;margin:10px 0 0}
 #gs-liste{margin:0 -14px -12px;border-top:1px solid hsl(var(--border))}
 .gs-daha{display:block;width:100%;padding:10px;font-size:13px;font-weight:500;color:hsl(var(--primary));border-top:1px solid hsl(var(--border))}.gs-daha:hover{background:hsl(var(--muted)/.5)}
 .gs-aralik{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0 0 10px}.gs-aralik .cipler{margin:0}
+.gs-sekme{display:flex;gap:4px;margin:0 0 14px;border-bottom:1px solid hsl(var(--border))}
+.gs-sekme .cip{height:36px;border:0;border-bottom:2px solid transparent;border-radius:8px 8px 0 0;background:transparent;font-size:14px;font-weight:600;color:hsl(var(--muted-foreground))}
+.gs-sekme .cip:hover{color:hsl(var(--foreground));background:hsl(var(--muted)/.5)}
+.gs-sekme .cip.secili{background:transparent;color:hsl(var(--primary));border-bottom-color:hsl(var(--primary))}
+.gs-analiz{margin-top:14px;border:1px solid hsl(var(--border));border-radius:12px;background:hsl(var(--card))}
+.gs-analiz>summary{cursor:pointer;padding:13px 16px;font-size:14px;font-weight:600;list-style:none;user-select:none;display:flex;align-items:center;gap:8px}
+.gs-analiz>summary::-webkit-details-marker{display:none}
+.gs-analiz>summary::before{content:"▸";color:hsl(var(--muted-foreground));font-size:11px}
+.gs-analiz[open]>summary::before{content:"▾"}
+.gs-analiz[open]>summary{border-bottom:1px solid hsl(var(--border))}
+.gs-analiz .gs-izgara{padding:12px}
 .gs-tarihler{display:inline-flex;align-items:center;gap:6px;margin-left:auto}.gs-tarihler input{height:30px;width:auto;padding:0 8px;font-size:13px;border-radius:8px;background:hsl(var(--card))}
 .gs-tam{grid-column:1/-1}.gs-mini-alt{display:flex;justify-content:space-between;font-size:10.5px;color:hsl(var(--muted-foreground));margin-top:3px}
 .gs-tablo td:first-child{max-width:260px}
