@@ -958,7 +958,10 @@ function gsCiz(bas, son) {
     const A = Lr.filter(x => x.banka_id == -1), ai = Z.ai || {}, g = (ai.gun || {})[gunStr(new Date())] || {}, ogr = dsay(A, "yeterli") + dsay(A, "yetersiz");
     const sebep = Object.entries(g.sebep || {}).sort((a, b) => b[1] - a[1]);
     const tasA = gsTasarruf(A), olcA = A.filter(x => gsUcret(x.ders).tl != null).length, hs = g.hata_sebep || {};
-    gv.innerHTML = kaps + `<p class="gs-acikla">Bankada eşi olmayan fotoğraflı soruları yapay zekâ el yazısıyla çözüp gönderir.${ai.durum_ne ? " Bugünkü ayar: " + e(ai.durum_ne) + "." : ""}</p>
+    const aig = ai.gun || {}, hesap = {};
+    Object.keys(aig).forEach(dd => { if (dd >= bas && dd <= son) Object.entries(aig[dd].hesap || {}).forEach(([k, v]) => hesap[k] = (hesap[k] || 0) + v); });
+    const hesapStr = Object.entries(hesap).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${e(k)} ${sayi(v)}`).join(" · ");
+    gv.innerHTML = kaps + `<p class="gs-acikla">Bankada eşi olmayan fotoğraflı soruları yapay zekâ el yazısıyla çözüp gönderir.${ai.durum_ne ? " Bugünkü ayar: " + e(ai.durum_ne) + "." : ""}${hesapStr ? ` <b>Hesap başına:</b> ${hesapStr}.` : ""}</p>
       <div class="gs-gruplar">
         <div class="gs-grup"><div class="gs-grup-bas">${ad} · yapay zekâ cevapları</div><div class="gs-kutu-sira">
           ${kutu(sayi(A.length), "gönderildi", "Seçilen aralıkta yapay zekânın gönderdiği cevap sayısı.")}
