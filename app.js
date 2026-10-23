@@ -885,6 +885,9 @@ const gkisa = g => new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "nu
 const tlStr = n => Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
 // soru başı ödeme: o derste insan öğretmenlere gerçekten ödenen ortalama (en az 10 örnek), yoksa bütün derslerin ortalaması
 const dersAnahtar = d => String(d || "Bilinmiyor").toLocaleLowerCase("tr").replace(/\s+/g, " ").trim();  // "MATEMATİK (12)" = "Matematik (12)"
+// Ders geneli: sınıf/düzey kırılımını at. "TYT Matematik (Mezun)" ve "Matematik (8. Sınıf)" → "Matematik"
+const dersGenel = d => (String(d || "Bilinmiyor").replace(/\([^)]*\)/g, "").replace(/^\s*(TYT|AYT|YKS|LGS|KPSS|DGS|ALES|MSÜ)\s+/i, "").replace(/\s+/g, " ").trim() || "Bilinmiyor");
+const dersGenelK = d => dersGenel(d).toLocaleLowerCase("tr");
 let gsUN = null;
 function gsUcret(ders) {
   const U = gsV.Z.ucret || {}, g = U._genel || {};
@@ -1035,17 +1038,17 @@ function gs14Ciz(T) {
 function gsDersCiz(L, D7) {
   const R = {};
   const yaz = d => /[a-zçğıöşü]/.test(d || "") ? d : null;   // tamamı büyük harf yazılmış eski adı göstermemek için
-  for (const x of L) { const k = dersAnahtar(x.ders), r = R[k] ||= { ders: x.ders || "Bilinmiyor", gon: 0, yeterli: 0, yetersiz: 0 }; if (yaz(x.ders) && !yaz(r.ders)) r.ders = x.ders; r.gon++; if (x.deg === "yeterli" || x.deg === "yetersiz") r[x.deg]++; }
-  const E = {}; for (const x of D7) { const a = E[dersAnahtar(x.ders)] ||= { ornek: 0, ornek_gon: 0 }; a.ornek += x.ornek || 0; a.ornek_gon += x.ornek_gon || 0; }
-  for (const x of D7) { const k = dersAnahtar(x.ders); if (!R[k] && E[k].ornek >= 9) R[k] = { ders: x.ders, gon: 0, yeterli: 0, yetersiz: 0 }; }
-  const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[dersAnahtar(b.ders)]?.ornek || 0) - (E[dersAnahtar(a.ders)]?.ornek || 0)).slice(0, 12);
+  for (const x of L) { const k = dersGenelK(x.ders), ad = dersGenel(x.ders), r = R[k] ||= { ders: ad, gon: 0, yeterli: 0, yetersiz: 0, odeme: 0, odeme_n: 0 }; if (yaz(ad) && !yaz(r.ders)) r.ders = ad; r.gon++; if (x.deg === "yeterli" || x.deg === "yetersiz") r[x.deg]++; const t = gsUcret(x.ders).tl; if (t != null) { r.odeme += t; r.odeme_n++; } }
+  const E = {}; for (const x of D7) { const a = E[dersGenelK(x.ders)] ||= { ornek: 0, ornek_gon: 0, ders: dersGenel(x.ders) }; a.ornek += x.ornek || 0; a.ornek_gon += x.ornek_gon || 0; }
+  for (const k in E) { if (!R[k] && E[k].ornek >= 9) R[k] = { ders: E[k].ders, gon: 0, yeterli: 0, yetersiz: 0, odeme: 0, odeme_n: 0 }; }
+  const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[dersGenelK(b.ders)]?.ornek || 0) - (E[dersGenelK(a.ders)]?.ornek || 0)).slice(0, 12);
   const g = (gsV.Z.ucret || {})._genel || {};
-  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında tasarruf</h3></div><p class="gs-acikla">Seçilen aralıkta her derste kaç cevap gitti ve öğretmene gitseydi ne ödenecekti. Soru başı ödeme, o derste son 30 günde öğretmenlere gerçekten ödenen tutarların ortalaması (öğretmenin ligine göre 3,80–9,50 TL arası). Tasarruf, bu ödemenin üstüne %20 stopaj eklenmiş gerçek maliyettir.</p>
-    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu derste öğretmenlerin cevapladığı sorulardan örnek alınıp değerlendirmede yazan gerçek kazanç ortalanır. 10'dan az örnek varsa bütün derslerin ortalaması kullanılır. Stopaj hariç, öğretmenin eline geçen.">Soru başı ödeme</th><th data-ipucu="Soru başı ödeme × gönderilen × 1,20 (üstüne %20 stopaj dahil).">Tasarruf</th><th>Yeterli / yetersiz</th><th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme · 7 gün</th></tr>
-    ${S.map(x => { const u = gsUcret(x.ders), ek = E[dersAnahtar(x.ders)], o = ek?.ornek >= 9 ? ek.ornek_gon / ek.ornek : null, zayif = o != null && o < .05;
+  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3>Ders bazında tasarruf</h3></div><p class="gs-acikla">Seçilen aralıkta her derste kaç cevap gitti ve öğretmene gitseydi ne ödenecekti. Dersler sınıf ayrımı olmadan geneldir (ör. TYT, mezun, 8. sınıf hepsi tek "Matematik"). Soru başı ödeme, o dersin cevaplarında öğretmenlere gerçekten ödenen tutarların ortalaması. Tasarruf, bu ödemenin üstüne %20 stopaj eklenmiş gerçek maliyettir.</p>
+    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu dersin cevaplarında öğretmenlere ödenen gerçek kazancın ortalaması. Stopaj hariç, öğretmenin eline geçen.">Soru başı ödeme</th><th data-ipucu="Soru başı ödeme × gönderilen × 1,20 (üstüne %20 stopaj dahil).">Tasarruf</th><th>Yeterli / yetersiz</th><th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme · 7 gün</th></tr>
+    ${S.map(x => { const sb = x.odeme_n ? x.odeme / x.odeme_n : null, ek = E[dersGenelK(x.ders)], o = ek?.ornek >= 9 ? ek.ornek_gon / ek.ornek : null, zayif = o != null && o < .05;
       return `<tr class="${zayif ? "gs-zayif" : ""}"><td title="${e(x.ders)}">${e(x.ders)}</td><td>${x.gon}</td>
-        <td>${u.tl == null ? '<span class="soluk">ölçülüyor</span>' : `${tlStr(u.tl)} <span class="soluk">${u.kaynak === "ders" ? `(${u.n} örnek)` : "(genel ort.)"}</span>`}</td>
-        <td><b>${u.tl == null ? "—" : tlStr(u.tl * x.gon * (1 + STOPAJ))}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
+        <td>${sb == null ? '<span class="soluk">ölçülüyor</span>' : `${tlStr(sb)} <span class="soluk">(${x.odeme_n} cevap)</span>`}</td>
+        <td><b>${sb == null ? "—" : tlStr(x.odeme * (1 + STOPAJ))}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
     <p class="soluk gs-dip">Genel ortalama ${g.ort ? tlStr(g.ort) + ` (${g.n} örnek)` : "henüz ölçülüyor"}. Ödeme örnekleri her saat birkaç düzine artıyor; ilk gün bazı derslerde "ölçülüyor" görünür. Turuncu satır: bankanın zayıf kaldığı ders (eşleşme %5'in altında).</p>` : '<p class="soluk">Bu aralıkta gönderilen cevap yok.</p>'}`;
 }
 function gsYorumCiz(Y) {
