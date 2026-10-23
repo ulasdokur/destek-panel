@@ -874,7 +874,7 @@ async function ogrenci() {
 // ---------- cevap gönderici (yalnız izleme; veri Mac'teki banka/panel_senk.py'den, 5 dk'da bir) ----------
 const GS_ADI = { benzeri_yok: "Bankada benzeri yok", esik_alti: "Benzer ama eşiğin altında", alinamadi: "Başka öğretmen önce aldı", baskasi_cevapladi: "Zaten cevaplanmış",
   okunamadi: "Fotoğraf okunamadı", banka_gorsel_yok: "Bankadaki cevabın görseli yok", video_sinir: "Günlük video sınırı doldu", video_hazirlanamadi: "Video hazırlanamadı",
-  video_istiyor: "Video istiyor (video kapalı)", gonderim_hatasi: "Gönderilemedi", hata: "Hata" };
+  video_istiyor: "Video istiyor (video kapalı)", gonderim_hatasi: "Gönderilemedi", zaten_cevapladik: "Bu soruyu zaten cevapladık", yeniden_ai: "Yeniden soruldu → yapay zekâya", coklu_soru: "Fotoğrafta birden çok soru", hata: "Başka sebep" };
 const DEG = { yeterli: ["Yeterli", "ok", "Öğrenci yeterli buldu"], yetersiz: ["Yetersiz", "hata", "Öğrenci yetersiz buldu"], otomatik: ["Otomatik onay", "", "Öğrenci değerlendirmedi, sistem süre dolunca otomatik onayladı"],
   bekliyor: ["Bekliyor", "uyari", "Henüz değerlendirme yok"], degerlendirilmedi: ["Değerlendirilmedi", "", "7 günde değerlendirme gelmedi"] };
 const yuzde = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
@@ -957,6 +957,7 @@ function gsCiz(bas, son) {
   if (gsGorunum === "ai") {
     const A = Lr.filter(x => x.banka_id == -1), ai = Z.ai || {}, g = (ai.gun || {})[gunStr(new Date())] || {}, ogr = dsay(A, "yeterli") + dsay(A, "yetersiz");
     const sebep = Object.entries(g.sebep || {}).sort((a, b) => b[1] - a[1]);
+    const tasA = gsTasarruf(A), olcA = A.filter(x => gsUcret(x.ders).tl != null).length, hs = g.hata_sebep || {};
     gv.innerHTML = kaps + `<p class="gs-acikla">Bankada eşi olmayan fotoğraflı soruları yapay zekâ el yazısıyla çözüp gönderir.${ai.durum_ne ? " Bugünkü ayar: " + e(ai.durum_ne) + "." : ""}</p>
       <div class="gs-gruplar">
         <div class="gs-grup"><div class="gs-grup-bas">${ad} · yapay zekâ cevapları</div><div class="gs-kutu-sira">
@@ -964,11 +965,12 @@ function gsCiz(bas, son) {
           ${kutu(dsay(A, "yeterli"), "yeterli", "Öğrenci yeterli buldu.", "ok")}
           ${kutu(dsay(A, "yetersiz"), "yetersiz", "Öğrenci yetersiz buldu. Listede en üstte ve kırmızı.", dsay(A, "yetersiz") ? "hata" : "")}
           ${kutu(dsay(A, "bekliyor"), "bekliyor", "Henüz değerlendirme gelmedi.")}
-          ${kutu(yuzde(dsay(A, "yeterli"), ogr), "yeterli oranı", "Yalnız öğrencinin verdiği değerlendirmeler.")}</div></div>
+          ${kutu(yuzde(dsay(A, "yeterli"), ogr), "yeterli oranı", "Yalnız öğrencinin verdiği değerlendirmeler.")}
+          ${kutu(olcA ? tlStr(tasA) : "—", olcA ? `tasarruf · soru başı ${tlStr(tasA / olcA)}` : "tasarruf · ölçülüyor", "Bu sorular öğretmenlere gitseydi ödenecek gerçek tutar (ortalama ödeme + %20 stopaj). Yapay zekâ, bankanın çözemediği soruları da kapsadığı için ek tasarruf.", "ok")}</div></div>
         <div class="gs-grup"><div class="gs-grup-bas">Bugün</div><div class="gs-kutu-sira">
           ${kutu(g.gon || 0, "gönderildi")}
           ${kutu(g.atla || 0, "atlandı", "Yapay zekânın emin olmayıp geçtiği soru.")}
-          ${kutu(g.hata || 0, "hata", "", g.hata ? "hata" : "")}
+          ${kutu(g.hata || 0, "hata", Object.keys(hs).length ? "Cevabı gönderirken teknik hata olan denemeler: " + Object.entries(hs).map(([k, n]) => `${k} (${n})`).join(" · ") : "Yapay zekâ çözümü hazırladı ama gönderirken teknik hata oldu (ağ/oturum vb.). Soru tekrar denenir.", g.hata ? "hata" : "")}
           ${kutu(ai.calisiyor ? "Açık" : "Kapalı", "durum", "", ai.calisiyor ? "ok" : "hata")}</div></div></div>
       ${sebep.length ? `<section class="kart gs-k"><div class="gs-bas"><h3>Bugün neden atladı?</h3></div><p class="gs-acikla">Yapay zekânın çözmeyip geçtiği soruların sebepleri.</p>
         ${sebep.map(([k, n]) => `<div class="gs-sat"><span class="gs-et">${e(k)}</span><b>${n}</b></div>`).join("")}</section>` : ""}
