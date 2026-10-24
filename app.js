@@ -994,7 +994,7 @@ const DEG = { yeterli: ["Yeterli", "ok", "Öğrenci yeterli buldu"], yetersiz: [
   bekliyor: ["Bekliyor", "uyari", "Henüz değerlendirme yok"], degerlendirilmedi: ["Değerlendirilmedi", "", "7 günde değerlendirme gelmedi"] };
 const yuzde = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
 const sayi = n => Number(n || 0).toLocaleString("tr-TR");
-let gsSebep = "bugun", gsAr = { tur: "7" }, gsV = null, gsGorunum = "banka";
+let gsYorSek = "bekleyen", gsSebep = "bugun", gsAr = { tur: "7" }, gsV = null, gsGorunum = "banka";
 const gunStr = d => d.toLocaleDateString("sv-SE"), gunEkle = (g, n) => gunStr(new Date(new Date(g + "T12:00").getTime() + n * 864e5));
 const gkisa = g => new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const tlStr = n => Number(n || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
@@ -1097,8 +1097,9 @@ function gsCiz(bas, son) {
       ${sebep.length ? `<section class="kart gs-k"><div class="gs-bas"><h3>Bugün neden atladı?</h3></div><p class="gs-acikla">Yapay zekânın çözmeyip geçtiği soruların sebepleri.</p>
         ${sebep.map(([k, n]) => `<div class="gs-sat"><span class="gs-et">${e(k)}</span><b>${n}</b></div>`).join("")}</section>` : ""}
       <section class="kart gs-k"><div class="gs-bas"><h3>Gönderilen yapay zekâ cevapları</h3></div>
-        <p class="gs-acikla">${ad}. Satıra tıklayınca soru ile gönderilen cevap yan yana açılır.</p><div id="gs-liste"></div></section>`;
-    gsListe(A);
+        <p class="gs-acikla">${ad}. Satıra tıklayınca soru ile gönderilen cevap yan yana açılır.</p><div id="gs-liste"></div></section>
+      <section class="kart gs-k" id="gs-yorumlar"></section>`;
+    gsListe(A); gsYorumlarCiz(Z.yorum || {});
     return;
   }
   const B = Lr.filter(x => x.banka_id != -1), ogr = dsay(B, "yeterli") + dsay(B, "yetersiz");
@@ -1118,11 +1119,12 @@ function gsCiz(bas, son) {
     <section class="kart gs-k gs-tam" id="gs-ders"></section>
     <section class="kart gs-k"><div class="gs-bas"><h3>Gönderilen cevaplar</h3></div>
       <p class="gs-acikla">${ad}. Yetersiz bulunanlar en üstte ve kırmızı. Satıra tıklayınca soru ile cevap yan yana açılır.</p><div id="gs-liste"></div></section>
+    <section class="kart gs-k" id="gs-yorumlar"></section>
     <details class="gs-analiz"><summary>Analiz ve grafikler</summary>
       <div class="gs-izgara"><section class="kart gs-k" id="gs-sebep"></section><section class="kart gs-k" id="gs-benz"></section><section class="kart gs-k" id="gs-14"></section><section class="kart gs-k" id="gs-yorum"></section></div></details>`;
   gsDersCiz(B, Z.ders_7 || []);
   gsListe(B);
-  gsSebepCiz(Z); gsBenzCiz(Z); gs14Ciz(Z.gunler); gsYorumCiz(Z.yorum || {});
+  gsSebepCiz(Z); gsBenzCiz(Z); gs14Ciz(Z.gunler); gsYorumCiz(Z.yorum || {}); gsYorumlarCiz(Z.yorum || {});
 }
 function gsSebepCiz(Z) {
   const S = gsSebep === "bugun" ? Z.sebep_bugun : Z.sebep_7, T = {};
@@ -1180,6 +1182,19 @@ function gsDersCiz(L, D7) {
         <td>${sb == null ? '<span class="soluk">ölçülüyor</span>' : `${tlStr(sb)} <span class="soluk">(${x.odeme_n} cevap)</span>`}</td>
         <td><b>${sb == null ? "—" : tlStr(x.odeme * (1 + STOPAJ))}</b></td><td>${x.yeterli} / ${x.yetersiz ? `<b class="gs-kirmizi">${x.yetersiz}</b>` : 0}</td><td>${o == null ? "—" : "%" + Math.round(o * 100)}</td></tr>`; }).join("")}</table>
     <p class="soluk gs-dip">Genel ortalama ${g.ort ? tlStr(g.ort) + ` (${g.n} örnek)` : "henüz ölçülüyor"}. Ödeme örnekleri her saat birkaç düzine artıyor; ilk gün bazı derslerde "ölçülüyor" görünür. Turuncu satır: bankanın zayıf kaldığı ders (eşleşme %5'in altında).</p>` : '<p class="soluk">Bu aralıkta gönderilen cevap yok.</p>'}`;
+}
+// 24 Eki: öğrenci yorumlarına yazdığımız yanıtlar. Bekleyen = gönderici kuyruğu (dakikada 1 gider), gönderilen = gitmiş yanıtlar.
+function gsYorumlarCiz(Y) {
+  const yer = $("#gs-yorumlar"); if (!yer) return;
+  const K = Y.kuyruk || [], G = Y.gonderilen || [], L = gsYorSek === "bekleyen" ? K : G;
+  const sat = y => `<div class="gs-ys"><div class="soluk gs-ys-bas">${soruLink(y.soru, "Soru " + y.soru)}${y.ders ? " · " + e(y.ders) : ""}${y.hesap ? ` · <span class="etiket">${e(y.hesap)}</span>` : ""}${y.zaman ? " · " + tarih(y.zaman) : ""}</div>
+    <div class="gs-yor"><span class="soluk">Öğrenci${y.ogrenci_zaman ? " · " + tarih(y.ogrenci_zaman) : ""}</span><div class="klamp">${y.ogrenci ? e(y.ogrenci) : '<span class="soluk">yorum metni henüz gelmedi</span>'}</div></div>
+    <div class="gs-yor biz"><span class="soluk">${gsYorSek === "bekleyen" ? "Gönderilecek yanıt" : "Gönderdiğimiz yanıt"}</span><div class="klamp">${e(y.yanit)}</div></div></div>`;
+  yer.innerHTML = `<div class="gs-bas"><h3>Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen · bugün ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
+    <p class="gs-acikla">${gsYorSek === "bekleyen" ? "Öğrenci yorumlarına yazılan, henüz gitmemiş yanıtlar. Gönderici dakikada bir yanıt gönderir. Yanıtı yalnız soruyu cevaplayan hesap gönderebilir." : "Öğrencilere gönderdiğimiz son yanıtlar, en yenisi üstte."} Metne tıklayınca tamamı açılır.</p>
+    ${L.length ? L.slice(0, 40).map(sat).join("") : `<p class="soluk">${gsYorSek === "bekleyen" ? "Bekleyen yanıt yok." : "Henüz gönderilen yanıt yok."}</p>`}`;
+  yer.querySelectorAll(".cip").forEach(b => b.onclick = () => { gsYorSek = b.dataset.v; gsYorumlarCiz(Y); });
+  yer.querySelectorAll(".klamp").forEach(k => k.onclick = () => k.classList.toggle("acik"));
 }
 function gsYorumCiz(Y) {
   const L = (Y.son || []).slice(0, 6);

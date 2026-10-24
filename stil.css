@@ -516,3 +516,5 @@ dialog.metin-dlg p{white-space:pre-line;font-size:14px;margin:10px 0 0}
 .gs-tam{grid-column:1/-1}.gs-mini-alt{display:flex;justify-content:space-between;font-size:10.5px;color:hsl(var(--muted-foreground));margin-top:3px}
 .gs-tablo td:first-child{max-width:260px}
 @media (max-width:760px){.gs-tarihler{margin-left:0}.gs-kutu-sira{grid-auto-flow:row;grid-template-columns:1fr 1fr}}
+
+.gs-ys{border-top:1px solid hsl(var(--border));padding:8px 0}.gs-ys:first-of-type{border-top:0}.gs-ys-bas{font-size:12px;margin-bottom:2px}.gs-ys .gs-yor{border-top:0;padding:3px 0}.gs-ys .klamp{cursor:pointer}
