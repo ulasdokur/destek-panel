@@ -1065,11 +1065,18 @@ function gsCiz(bas, son) {
   const dsay = (arr, k) => arr.filter(x => x.deg === k).length;
   const gv = $("#gs-govde");
   const bak = top("bakilan"), bankaN = Lr.filter(x => x.banka_id != -1).length, aiN = Lr.filter(x => x.banka_id == -1).length;
-  const kaps = bak ? `<div class="gs-kapsama" data-ipucu="Bu aralıkta bakılan soruların ne kadarına cevap gönderildi: bankadan eşleşme ile ve yapay zekâ ile ayrı ayrı. Kalanı ise eşleşme/çözüm bulunamadığı için gönderilemedi.">
-    <span class="gs-kaps-bas">${ad} · sorulan <b>${sayi(bak)}</b> soru</span>
-    <span class="gs-kaps-p"><b>${yuzde(bankaN, bak)}</b><small>banka · ${sayi(bankaN)}</small></span>
-    <span class="gs-kaps-p"><b>${yuzde(aiN, bak)}</b><small>yapay zekâ · ${sayi(aiN)}</small></span>
-    <span class="gs-kaps-p gs-kaps-top"><b>${yuzde(bankaN + aiN, bak)}</b><small>toplam kapsama</small></span></div>` : "";
+  // 24 Eki: iki oran. "Baktığımız" = banka göndericisi ∪ yapay zekânın gördüğü sorular; "gerçek" = admin online+offline listesindeki tekil soru (havuza dönüşler hariç).
+  const bakT = top("bakilan_tum") || bak, Gs = G.filter(g => g.sorulan), sor = Gs.reduce((a, g) => a + g.sorulan, 0), don = Gs.reduce((a, g) => a + (g.havuza_donus || 0), 0);
+  const gonS = Lr.filter(x => Gs.some(g => g.gun === x.zaman.slice(0, 10))).length;
+  const kaps = (bakT || sor) ? `<div class="gs-kapsama gs-kaps-iki">
+    <div class="gs-kaps-sat" data-ipucu="Bizim (banka göndericisi ya da yapay zekâ) baktığımız soruların ne kadarına cevap gönderdik.">
+      <span class="gs-kaps-bas">${ad} · baktığımız <b>${sayi(bakT)}</b> soru</span>
+      <span class="gs-kaps-p"><b>${yuzde(bankaN, bakT)}</b><small>banka · ${sayi(bankaN)}</small></span>
+      <span class="gs-kaps-p"><b>${yuzde(aiN, bakT)}</b><small>yapay zekâ · ${sayi(aiN)}</small></span>
+      <span class="gs-kaps-p gs-kaps-top"><b>${yuzde(bankaN + aiN, bakT)}</b><small>baktıklarımızın</small></span></div>
+    ${sor ? `<div class="gs-kaps-sat" data-ipucu="Admin panelindeki online ve offline listeye göre öğrencilerin sorduğu bütün sorular. Olumsuz değerlendirme sonrası havuza geri dönen kayıtlar ayrıca sayılmadı.${Gs.length < G.length ? " Bu sayım 24 Ekim'den beri tutuluyor; önceki günler oranın dışında." : ""}">
+      <span class="gs-kaps-bas">gerçekte sorulan <b>${sayi(sor)}</b> soru · havuza dönen ${sayi(don)}</span>
+      <span class="gs-kaps-p gs-kaps-top"><b>${yuzde(gonS, sor)}</b><small>gerçek kapsama · ${sayi(gonS)} cevap</small></span></div>` : ""}</div>` : "";
   if (gsGorunum === "ai") {
     const A = Lr.filter(x => x.banka_id == -1), ai = Z.ai || {}, g = (ai.gun || {})[gunStr(new Date())] || {}, ogr = dsay(A, "yeterli") + dsay(A, "yetersiz");
     const sebep = Object.entries(g.sebep || {}).sort((a, b) => b[1] - a[1]);
