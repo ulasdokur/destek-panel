@@ -1026,9 +1026,9 @@ function gsAralik() {
 async function gonderici() {
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Image Recog & AI Solver", "Bu sayfayı yalnız yöneticiler görebilir."); return; }
   const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman")), q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000))]);
-  const Z = Object.fromEntries(O.map(x => [x.k, x.v])), senk = O.reduce((a, x) => x.zaman > a ? x.zaman : a, "");
+  const Z = Object.fromEntries(O.map(x => [x.k, x.v])), simdi = new Date().toISOString(), senk = O.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Image Recog & AI Solver", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
-  gsV = { Z, C }; gsUN = null; gsSenk = senk;
+  gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
   gsCanliKur();
   $("#icerik").innerHTML = baslik("Image Recog & AI Solver", "") + `<div id="gs-serit-yer"></div>
     <div class="gs-arac"><div class="gs-sekme" id="gs-sekme"></div><div class="gs-aralik" id="gs-aralik"></div></div>
@@ -1037,24 +1037,28 @@ async function gonderici() {
   gsAralikCiz();
 }
 // 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.
-let gsSenk = "", gsZaman = null, gsSayac = {};
+let gsSenk = "", gsImza = "", gsZaman = null, gsSayac = {};
 function gsCanliKur() {
   if (gsZaman) return;
-  gsZaman = setInterval(async () => {
+  const tur = async () => {
     if (!$("#gs-govde")) { clearInterval(gsZaman); gsZaman = null; return; }
     if (document.hidden) return;
     gsSeritCiz();   // "son hareket x dk önce" her turda tazelensin
     const O = await sb.from("d_gonderici_ozet").select("k,v,zaman"); if (O.error || !O.data) return;
-    const senk = O.data.reduce((a, x) => x.zaman > a ? x.zaman : a, "");
-    if (senk === gsSenk) return;
+    // 25 Eki: değişiklik bütün satırların saatinden anlaşılır (tek bir satırın saati ileri yazılınca panel donuyordu); gösterilen saat ileri olamaz
+    const imza = O.data.map(x => x.k + x.zaman).sort().join("|"), simdi = new Date().toISOString();
+    if (imza === gsImza) return;
+    const senk = O.data.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
     const C = await sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000); if (C.error || !C.data) return;
-    gsSenk = senk; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C: C.data }; gsUN = null;
+    gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C: C.data }; gsUN = null;
     gsSeritCiz();
     if (document.activeElement?.closest("#gs-govde")) return;   // filtreye yazarken ekranı altından çekmeyelim; bir sonraki turda çizilir
     const acik = [...document.querySelectorAll("#gs-govde details[open]")].map(d => d.id).filter(Boolean);
     const [bas, son] = gsAralik(); gsCiz(bas, son);
     acik.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
-  }, 20000);
+  };
+  gsZaman = setInterval(tur, 15000);
+  document.onvisibilitychange = () => { if (!document.hidden && gsZaman) tur(); };
 }
 // sayılar: "1.234", "20%", "126,62 TL" gibi metnin sayı kısmını eskiden yeniye 0,8 sn'de say
 function gsSayacAkit() {
