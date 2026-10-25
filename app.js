@@ -274,7 +274,7 @@ function medya(soruL, cevapL, video, cevapEtiket, tekli) {
   return `<div class="medya ${tekli ? "tek" : ""}" data-medya='${e(JSON.stringify(hepsi))}'>${kutu(soruL, "Soru", false, 0)}${tekli ? "" : kutu(cevapL, cevapEtiket, true, ns, !cevapL?.length && video)}</div>`;
 }
 
-// ---------- şikayet kartı (kompakt) ----------
+// ---------- şikayet kartı (Figma web paneli "Soru Çözümleri" kartı gibi dikey; ızgarada yan yana) ----------
 function sikayetKart(s, mod) {
   const cevapli = s.tur === "c";
   const bilgi = cevapli
@@ -283,38 +283,44 @@ function sikayetKart(s, mod) {
     : [["Şikayet sebebi", s.sebep], ["Öğrencinin açıklaması", s.ogrenci_notu]];
   const durum = s.durum === "hata" ? '<span class="etiket hata" data-ipucu="Admin paneline yazılırken yanıt alınamadı ve kayıt artık bekleyenlerde değil. Admin panelde bu şikayetin sonucuna bakın.">Admin\'de kontrol et</span>' : s.durum === "islendi" ? `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>` : '<span class="etiket uyari">Karar bekliyor</span>';
   const hedef = s.hedef_ders ? ` → ${e(s.hedef_ders)}` : "";
-  const karar = `<div class="sk-karar"><div class="sk-karar-satir"><span class="kl">İlk inceleme: ${kararAdi(s.tur, s.ajan_karar).split(" · ")[0]}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}</span>
-    ${s.emin_degil ? '<span class="etiket uyari" data-ipucu="İlk inceleme bu kayıtta emin olamadı, bu yüzden karar sana bırakıldı.">emin değil</span>' : ""}
-    ${s.dogru_cevap ? `<span class="soluk">Doğru cevap: ${e(s.dogru_cevap)}${s.ogretmen_cevabi ? ` · Öğretmenin cevabı: ${e(s.ogretmen_cevabi)}` : ""}</span>` : ""}</div>
+  const karar = `<div class="sk-karar"><div class="sk-karar-satir"><span class="kl">İlk inceleme: <b>${kararAdi(s.tur, s.ajan_karar).split(" · ")[0]}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}</b></span>
+    ${s.emin_degil ? '<span class="etiket uyari" data-ipucu="İlk inceleme bu kayıtta emin olamadı, bu yüzden karar sana bırakıldı.">emin değil</span>' : ""}</div>
+    ${s.dogru_cevap ? `<div class="sk-karar-satir"><span class="soluk">Doğru cevap: ${e(s.dogru_cevap)}${s.ogretmen_cevabi ? ` · Öğretmenin cevabı: ${e(s.ogretmen_cevabi)}` : ""}</span></div>` : ""}
     <div class="klamp">${e(s.gerekce)}</div>
     ${s.oneri ? `<div class="sk-karar-satir"><span class="kl mor" data-ipucu="İlk inceleme emin olamayınca kayda ikinci kez bakıldı; bu, o ikinci bakışın önerisi.">İkinci kontrol: ${kararAdi(s.tur, s.oneri).split(" · ")[0]}</span></div><div class="klamp">${e(s.oneri_gerekce)}</div>` : ""}</div>`;
+  // seçim düğmesi: "Onayla · öğrenci haklı" → üstte kalın fiil, altta küçük açıklama
+  const secimBtn = (v, yazi, sinif) => { const [a, b] = yazi.split(" · "); return `<button class="secim ${sinif}" data-v="${v}"><b>${a}</b>${b ? `<small>${b}</small>` : ""}</button>`; };
   let alt = "";
   if (mod === "bekleyen") {
     const sec = ["ONAYLA", "REDDET"].concat(!cevapli && s.hedef_lecture_id ? ["HAVUZA_AKTAR"] : []);
-    alt = `<div class="aksiyon">${sec.map(x => `<button class="secim ${x === "REDDET" ? "ret" : "onay"}" data-v="${x}">${kararAdi(s.tur, x)}${x === "HAVUZA_AKTAR" ? hedef : ""}</button>`).join("")}
-      <input class="not" placeholder="Not (isteğe bağlı): neden bu karar?">${cevapli ? '<input class="kucuk-not" placeholder="Reddederken öğretmene küçük not (isteğe bağlı), ör. fotoğraf loş" data-ipucu="Şikayeti reddetseniz de cevapta küçük bir sorun varsa buraya yazın. Bu notlar birikir, öğretmene toplu hatırlatma olarak gider; ücreti ve puanı etkilemez.">' : ""}<button class="birincil kucuk kaydet">Kaydet</button></div>`;
+    alt = `<div class="aksiyon"><div class="sk-secimler">${sec.map(x => secimBtn(x, kararAdi(s.tur, x) + (x === "HAVUZA_AKTAR" ? hedef : ""), x === "REDDET" ? "ret" : "onay")).join("")}</div>
+      <div class="sk-not" hidden><input class="not" placeholder="Not (isteğe bağlı): neden bu karar?">${cevapli ? '<input class="kucuk-not" hidden placeholder="Öğretmene küçük not (isteğe bağlı), ör. fotoğraf loş" data-ipucu="Şikayeti reddetseniz de cevapta küçük bir sorun varsa buraya yazın. Bu notlar birikir, öğretmene toplu hatırlatma olarak gider; ücreti ve puanı etkilemez.">' : ""}<button class="birincil kaydet">Kaydet</button></div></div>`;
   } else if (mod === "kontrol") {
-    alt = `<div class="aksiyon"><button class="secim onay" data-v="DOGRU">Karar doğru</button><button class="secim ret" data-v="YANLIS">Karar yanlış</button>
-      <input placeholder="Yanlışsa neden? (zorunlu)"><button class="birincil kucuk kaydet">Kaydet</button></div>`;
+    alt = `<div class="aksiyon"><div class="sk-secimler">${secimBtn("DOGRU", "Karar doğru", "onay")}${secimBtn("YANLIS", "Karar yanlış", "ret")}</div>
+      <div class="sk-not" hidden><input placeholder="Yanlışsa neden? (zorunlu)"><button class="birincil kaydet">Kaydet</button></div></div>`;
   }
   const takipMi = String(s.key).startsWith("t:");
+  const tur = takipMi ? (s.kaynak === "denetim" ? "Rastgele denetim" : "Yakın takip") : cevapli ? "Cevap şikayeti" : "Soru şikayeti";
+  const ikonlar = `${s.ogretmen_id ? `<a class="ikon-btn" href="#" title="Öğretmenin geçmişi" aria-label="Öğretmenin geçmişi" onclick="event.preventDefault();git('ogretmen','${s.ogretmen_id}')"><i data-lucide="history"></i></a>` : ""}
+    ${s.question_id ? `<a class="ikon-btn" href="${ADMIN}/Question/Detail/${s.question_id}" target="_blank" rel="noopener" title="Soruyu admin panelde aç" aria-label="Soruyu aç"><i data-lucide="external-link"></i></a>` : ""}`;
+  const bilgiDolu = bilgi.filter(x => x[1]);
   return `<section class="kart sk" data-key="${e(s.key)}" data-mod="${mod}" data-tur="${s.tur}">
-    <div class="sk-ust"><span class="etiket">${takipMi ? (s.kaynak === "denetim" ? "Rastgele denetim" : "Yakın takip") : cevapli ? "Cevap şikayeti" : "Soru şikayeti"}</span><b>${e(s.ders)}</b>
-      <span class="soluk">${tarih(s.olusturma)}${takipMi ? "" : ` · şikayet no ${s.sikayet_id}`}</span><span class="sag">${durum}</span></div>
+    <div class="sk-ust"><div class="sk-baslik"><b>${e(s.ders)}</b><span>${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`}</span></div><span class="sk-tarih">${tarih(s.olusturma)}</span></div>
+    <div class="sk-durum">${durum}<div class="sk-ikonlar">${ikonlar}</div></div>
+    ${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}
     <div class="sk-kisiler">
-      ${takipMi ? "" : `<span>Öğrenci: ${kisiLink(s.ogrenci_seo, s.ogrenci)}</span>`}
-      <span>${cevapli ? "Öğretmen" : "Şikayet eden öğretmen"}: ${kisiLink(s.ogretmen_seo, s.ogretmen)}</span>
-      ${s.ogretmen_id ? `<a class="kucuk-link" href="#" onclick="event.preventDefault();git('ogretmen','${s.ogretmen_id}')">Öğretmenin geçmişi</a>` : ""}
-      ${s.question_id ? `<span class="kucuk-link">${soruLink(s.question_id, "Soruyu aç")}</span>` : ""}</div>
-    <div class="sk-govde">${bilgi.some(x => x[1]) ? `<dl class="sk-bilgi">${bilgi.filter(x => x[1]).map(([a, b]) => `<div><dt>${a}</dt><dd>${e(b)}</dd></div>`).join("")}</dl>` : "<div></div>"}
-    ${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}</div>
-    ${karar}${alt}</section>`;
+      ${takipMi ? "" : `<div><span>Öğrenci</span>${kisiLink(s.ogrenci_seo, s.ogrenci)}</div>`}
+      <div><span>${cevapli ? "Öğretmen" : "Şikayet eden"}</span>${kisiLink(s.ogretmen_seo, s.ogretmen)}</div></div>
+    ${bilgiDolu.length ? `<dl class="sk-bilgi">${bilgiDolu.map(([a, b]) => `<div><dt>${a}</dt><dd class="klamp">${e(b)}</dd></div>`).join("")}</dl>` : ""}
+    ${karar}
+    ${alt ? `<div class="sk-alt">${alt}</div>` : ""}</section>`;
 }
 function kartlariBagla(kok, yenile) {
   const s0 = sekme;
   kok.querySelectorAll("section.sk[data-mod=bekleyen],section.sk[data-mod=kontrol]").forEach(kart => {
     let secim = null;
-    kart.querySelectorAll(".secim").forEach(b => b.onclick = () => { secim = b.dataset.v; kart.querySelectorAll(".secim").forEach(x => x.classList.toggle("secili", x === b)); });
+    kart.querySelectorAll(".secim").forEach(b => b.onclick = () => { secim = b.dataset.v; kart.querySelectorAll(".secim").forEach(x => x.classList.toggle("secili", x === b));
+      const n = kart.querySelector(".sk-not"); n.hidden = false; const kn = n.querySelector(".kucuk-not"); if (kn) kn.hidden = secim !== "REDDET"; n.querySelector("input").focus(); });
     const k = kart.querySelector(".kaydet");
     k.onclick = async () => {
       if (!secim) return bildir("Önce bir seçim yap.");
@@ -496,7 +502,7 @@ async function bekleyen() {
     ${sirada ? `<div class="bilgi-serit"><i data-lucide="clock"></i>${sirada} kararın admin paneline işlenmeyi bekliyor.</div>
       <div class="tablo-sar"><table class="tablo sik"><tr><th>Şikayet</th><th>Verilen karar</th><th>Kim</th><th>Durum</th></tr>${L.filter(s => !acik.includes(s)).map(s => { const k = s.d_karar.filter(x => x.tip === "bekleyen").pop();
         return `<tr><td>${e(s.ogretmen || "")} <span class="soluk">${e(s.ders || "")}</span></td><td>${kararAdi(s.tur, k.secim)}</td><td class="soluk">${e(k.kim)}</td><td>${k.uygulama_notu ? `<span class="etiket hata">${e(k.uygulama_notu)}</span>` : '<span class="soluk">sırada</span>'}</td></tr>`; }).join("")}</table></div>` : ""}
-    <div class="bos-yer">${acik.length ? acik.map(s => sikayetKart(s, "bekleyen")).join("") : '<div class="bos">Bekleyen kayıt yok.</div>'}</div>`;
+    <div class="bos-yer sk-izgara">${acik.length ? acik.map(s => sikayetKart(s, "bekleyen")).join("") : '<div class="bos">Bekleyen kayıt yok.</div>'}</div>`;
   kartlariBagla($("#icerik"), bekleyen);
 }
 
@@ -507,7 +513,7 @@ async function kontrol() {
   const acik = L.filter(s => !s.d_karar.some(k => k.tip === "kontrol")), bacik = B.filter(b => !b.kontrol_secim);
   $("#icerik").innerHTML = baslik("Haftalık kontrol", "Otomatik kararların doğru olup olmadığını ölçmek için her hafta rastgele birkaç karar seçilir. Her birine bak: karar doğruysa \"Karar doğru\", yanlışsa \"Karar yanlış\" seç ve nedenini yaz. Yazdığın neden kurallara eklenir ve sonraki kararlarda dikkate alınır. Yanlış bir kararı admin panelinde ayrıca elle düzeltmen gerekir.") + `
     <div class="bilgi-serit"><i data-lucide="list-checks"></i>Şikayetler: ${L.length - acik.length}/${L.length} · Solver başvuruları: ${B.length - bacik.length}/${B.length} tamamlandı.</div>
-    <h2>Şikayet kararları</h2><div class="bos-yer">${acik.length ? acik.map(s => sikayetKart(s, "kontrol")).join("") : '<div class="bos">Bu haftanın şikayet kontrolleri bitti.</div>'}</div>
+    <h2>Şikayet kararları</h2><div class="bos-yer sk-izgara">${acik.length ? acik.map(s => sikayetKart(s, "kontrol")).join("") : '<div class="bos">Bu haftanın şikayet kontrolleri bitti.</div>'}</div>
     <h2>Solver başvuru kararları</h2><div class="bos-yer b-yer">${bacik.length ? bacik.map(b => basvuruKart(b, true)).join("") : '<div class="bos">Bu haftanın başvuru kontrolleri bitti.</div>'}</div>`;
   kartlariBagla($("#icerik"), kontrol); basvuruBagla(kontrol);
 }
@@ -681,7 +687,7 @@ async function ogretmenDetay(id) {
     $("#z-akis").querySelectorAll(".z-ac").forEach(b => b.onclick = () => {
       const kutu = b.nextElementSibling, s = S.find(x => x.key === b.closest(".z-satir").dataset.key);
       kutu.hidden = !kutu.hidden; b.textContent = kutu.hidden ? "Görselleri ve detayı aç" : "Kapat";
-      if (!kutu.innerHTML) { kutu.innerHTML = sikayetKart(s, "goster"); klampBagla(kutu); }
+      if (!kutu.innerHTML) { kutu.innerHTML = sikayetKart(s, "goster"); ikon(); klampBagla(kutu); }
     });
   };
   $("#z-cip").querySelectorAll(".cip").forEach(c => c.onclick = () => { $("#z-cip").querySelectorAll(".cip").forEach(x => x.classList.toggle("secili", x === c)); ciz(c.dataset.v); });
@@ -709,7 +715,7 @@ async function sikayet() {
         <tr class="acilir" hidden><td colspan="7"></td></tr>`).join("") || '<tr><td colspan="7" class="soluk">Kayıt yok.</td></tr>'}</table></div>`;
     $("#f-liste").querySelectorAll("tr.tik").forEach(t => t.onclick = ev => { if (ev.target.closest("a")) return;
       const alt = t.nextElementSibling; alt.hidden = !alt.hidden; t.classList.toggle("acik-satir", !alt.hidden);
-      if (!alt.hidden && !alt.firstElementChild.innerHTML) { alt.firstElementChild.innerHTML = sikayetKart(L.find(s => s.key === t.dataset.key), "goster"); klampBagla(alt); }
+      if (!alt.hidden && !alt.firstElementChild.innerHTML) { alt.firstElementChild.innerHTML = sikayetKart(L.find(s => s.key === t.dataset.key), "goster"); ikon(); klampBagla(alt); }
     });
   };
   const cip = (id, set) => $(id).querySelectorAll(".cip").forEach(c => c.onclick = () => { $(id).querySelectorAll(".cip").forEach(x => x.classList.toggle("secili", x === c)); set(c.dataset.v); yukle(); });
@@ -799,7 +805,7 @@ async function takip() {
     <div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Takip süresi</th><th>Kontrol edilen cevap</th><th>Temiz</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
     ${I.map(o => { const s = S[o.ogretmen_id] || { TEMIZ: 0, SORUNLU: 0, YZ_KESIN: 0 }; return `<tr class="tik" onclick="git('ogretmen','${o.ogretmen_id}')"><td>${e(o.ad)}</td><td class="soluk">${tarih(o.baslangic)} → ${tarih(o.bitis)}</td><td>${s.TEMIZ + s.SORUNLU + s.YZ_KESIN}</td><td>${s.TEMIZ}</td><td>${s.SORUNLU}</td><td><b>${s.YZ_KESIN}</b></td></tr>`; }).join("")}</table></div>
     <h2>Sorunlu bulunan cevaplar</h2>
-    ${T.filter(t => t.sonuc !== "TEMIZ").map(t => sikayetKart(takipKayit(t), "goster")).join("") || '<div class="bos">Sorunlu cevap yok.</div>'}`;
+    <div class="sk-izgara">${T.filter(t => t.sonuc !== "TEMIZ").map(t => sikayetKart(takipKayit(t), "goster")).join("") || '<div class="bos">Sorunlu cevap yok.</div>'}</div>`;
 }
 
 // ---------- rastgele denetim ----------
@@ -822,7 +828,7 @@ async function denetim() {
     ${Object.keys(G).sort().reverse().map(g => `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td>${G[g].n}</td><td>${G[g].s}</td><td>${G[g].y}</td></tr>`).join("") || '<tr><td colspan="4" class="soluk">Henüz denetim yapılmadı. İlk denetim bugün içinde çalışacak.</td></tr>'}</table></div>
     <h2>Sorunlu çıkan öğretmenler</h2><div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
     ${Object.entries(O).filter(([, o]) => o.s + o.y).sort((a, b) => (b[1].s + b[1].y) - (a[1].s + a[1].y)).map(([id, o]) => `<tr class="tik" onclick="git('ogretmen','${id}')"><td>${e(o.ad)}</td><td>${o.n}</td><td>${o.s}</td><td><b>${o.y}</b></td></tr>`).join("") || '<tr><td colspan="4" class="soluk">Yok.</td></tr>'}</table></div>
-    <h2>Sorunlu bulunan cevaplar</h2>${L.filter(x => x.sonuc !== "TEMIZ").slice(0, 40).map(x => sikayetKart(takipKayit(x), "goster")).join("") || '<div class="bos">Sorunlu cevap yok.</div>'}`;
+    <h2>Sorunlu bulunan cevaplar</h2><div class="sk-izgara">${L.filter(x => x.sonuc !== "TEMIZ").slice(0, 40).map(x => sikayetKart(takipKayit(x), "goster")).join("") || '<div class="bos">Sorunlu cevap yok.</div>'}</div>`;
 }
 
 // ---------- eksi puanlı solverlar ----------
