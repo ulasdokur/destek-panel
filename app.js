@@ -1116,7 +1116,9 @@ function gsCiz(bas, son) {
     <div class="gs-bar">${parca}</div><div class="gs-hb-alt">${sag}</div></div>`;
   const k1 = `<section class="gs-h gs-h1">
     <div class="gs-h-bas">${ai ? "Yapay zekâ cevapları" : "Banka cevapları"}</div>
-    <button class="gs-h-buyuk" data-f="hepsi" data-ipucu="Tıkla, hepsini gör"><span data-sayac="gonderildi">${sayi(B.length)}</span><small>cevap gönderildi</small></button>
+    <button class="gs-h-buyuk" data-f="hepsi" data-ipucu="Tıkla, hepsini gör"><span data-sayac="gonderildi">${sayi(B.length)}</span><small>cevap gönderildi</small></button>${(() => { const bg = gunStr(new Date()); if (bas !== bg || son !== bg) return ""; const dn = new Date(Date.now() - 864e5), dg = gunStr(dn), sa = String(new Date().getHours()).padStart(2, "0") + ":" + String(new Date().getMinutes()).padStart(2, "0");
+      const d = C.filter(x => x.zaman.slice(0, 10) === dg && x.zaman.slice(11, 16) <= sa && (ai ? x.banka_id == -1 : x.banka_id != -1)).length, f = B.length - d;
+      return `<div class="gs-dun" data-ipucu="Dün aynı saate kadar gönderilen">dün bu saatte <b>${sayi(d)}</b>${f ? ` <span class="${f > 0 ? "ok" : "hata"}">${f > 0 ? "▲" : "▼"} ${sayi(Math.abs(f))}</span>` : ""}</div>`; })()}
     <div class="gs-h-alt">${ai ? `<button class="gs-mcip" data-f="atla">${sayi(gB.atla || 0)} atlandı</button><button class="gs-mcip ${gB.hata ? "hata" : ""}" data-f="hata">${sayi(gB.hata || 0)} hata</button><span class="soluk">bugün</span>`
       : `${sayi(bak)} soruya bakıldı · ${sayi(B.filter(x => !x.video).length)} foto, ${sayi(B.filter(x => x.video).length)} video`}</div>
     <div class="gs-hbs">

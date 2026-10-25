@@ -656,3 +656,5 @@ body.gs-kilit{overflow:hidden}
 .gs-ys{padding:10px 0}.gs-ys-bas{display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:4px}.gs-ys-bas a{font-weight:600}
 .gs-ys-liste{max-height:420px}
 .gs-p-admin{font-size:12px;font-weight:500;margin-left:10px}
+
+.gs-dun{font-size:12px;color:hsl(var(--soluk));margin:-2px 0 6px}.gs-dun b{color:hsl(var(--metin))}.gs-dun .ok{color:hsl(var(--basari));font-weight:600}.gs-dun .hata{color:hsl(var(--hata));font-weight:600}
