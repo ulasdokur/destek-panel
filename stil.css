@@ -642,3 +642,17 @@ body.gs-kilit{overflow:hidden}
 .gs-uyg{border:1px solid hsl(var(--hata)/.45);background:hsl(var(--hata-zemin));border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12.5px;display:flex;flex-direction:column;gap:4px}.gs-uyg>b{color:hsl(var(--hata))}
 @media (max-width:1150px){.gs-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.gs-h3{grid-column:span 2}}
 @media (max-width:700px){.gs-hero{grid-template-columns:minmax(0,1fr)}.gs-h3{grid-column:auto}.gs-h-buyuk span{font-size:34px}}
+/* 25 Eki (3): öğretmen bölümü, sade yetersiz satırı, sohbet balonları */
+.gs-bar .b4,.gs-hb-alt i.b4{background:hsl(45 93% 52%)}.gs-hb-alt i.b3{background:hsl(var(--primary))}
+.tablo tr.gs-yetersiz td{background:none!important}.tablo tr.gs-yetersiz td:first-child{box-shadow:inset 2px 0 hsl(var(--hata)/.7)!important}
+.gs-sohbet{display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.gs-bl{max-width:86%;padding:7px 11px;border-radius:14px;font-size:13px;line-height:1.45}
+.gs-bl.ogr{align-self:flex-start;background:hsl(var(--muted)/.8);border-bottom-left-radius:4px}
+.gs-bl.biz{align-self:flex-end;background:hsl(var(--primary)/.13);border-bottom-right-radius:4px}
+.gs-bl.bek{border:1px dashed hsl(var(--primary)/.5);background:hsl(var(--primary)/.06)}
+.gs-bl-bas{font-size:11px;color:hsl(var(--muted-foreground));margin-bottom:2px}
+.gs-bl-m{white-space:pre-line;word-break:break-word}
+.gs-bl-et{font-size:10px;padding:1px 6px;border-radius:99px;background:hsl(var(--background)/.8);border:1px solid hsl(var(--border))}
+.gs-ys{padding:10px 0}.gs-ys-bas{display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:4px}.gs-ys-bas a{font-weight:600}
+.gs-ys-liste{max-height:420px}
+.gs-p-admin{font-size:12px;font-weight:500;margin-left:10px}

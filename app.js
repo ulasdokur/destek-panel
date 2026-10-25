@@ -1122,8 +1122,12 @@ function gsCiz(bas, son) {
     <div class="gs-hbs">
     ${bakT ? cubuk("Baktığımız sorular", yuzde(bankaN + aiN, bakT), `<span><i class="b1"></i>banka ${sayi(bankaN)}</span><span><i class="b2"></i>yapay zekâ ${sayi(aiN)}</span><span>${sayi(bakT)} soru</span>`,
       `<span class="b1" style="width:${yz(bankaN, bakT)}%"></span><span class="b2" style="width:${yz(aiN, bakT)}%"></span>`, "Banka göndericisinin ya da yapay zekânın baktığı soruların yüzde kaçına cevap gönderdik.") : ""}
-    ${sor ? cubuk("Bütün sorulan sorular", yuzde(gonS, sor), `<span>${sayi(gonS)} / ${sayi(sor)} soru</span><span>havuza dönen ${sayi(don)}</span>`,
-      `<span class="b3" style="width:${yz(gonS, sor)}%"></span>`, `Admin panelindeki online ve offline listeye göre o gün öğrencilerin sorduğu bütün soruların yüzde kaçını biz cevapladık.${Gs.length < G.length ? " Bu sayım 24 Ekim'den beri tutuluyor." : ""}`) : ""}
+    ${sor ? (() => { const ogN = Math.max(0, sor - gonS), UG = (Z.ucret || {})._genel || {}, DG = UG.deg || {}, dn = (DG.yeterli || 0) + (DG.yetersiz || 0);
+      const bizYet = Lr.filter(x => x.deg === "yetersiz" && Gs.some(g => g.gun === x.zaman.slice(0, 10))).length;
+      const oran = dn >= 20 ? `yeterli %${Math.round(DG.yeterli / dn * 100)} / yetersiz %${Math.round(DG.yetersiz / dn * 100)}` : ogN ? `yetersiz ~%${Math.round(Math.max(0, don - bizYet) / ogN * 100)} (havuza geri dönenlerden)` : "";
+      return cubuk("Bütün sorulan sorular", yuzde(gonS, sor), `<span><i class="b3"></i>biz ${sayi(gonS)}</span><span><i class="b4"></i>öğretmenler ${sayi(ogN)}</span><span>${sayi(sor)} soru</span>`,
+      `<span class="b3" style="width:${yz(gonS, sor)}%"></span><span class="b4" style="width:${yz(ogN, sor)}%"></span>`,
+      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı ortalama " + tlStr(UG.ort) : ""}. Henüz cevaplanmamış birkaç soru da bu kısımda. Sayım admin panelindeki online ve offline listeden.`); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
   const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz", "hsl(var(--hata))"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
@@ -1192,7 +1196,7 @@ function gsKart(x) {
     ${medya(x.soru_foto, vid ? [] : x.cevap_foto, vid, "Cevap")}
     ${x.deg_metin ? `<div class="gs-kart-not"><b>Değerlendirme:</b> ${e(x.deg_metin)}</div>` : ""}
     ${k ? `<div class="gs-knt-kutu ${(GS_KNT[k.karar] || [])[1] || "gs-knt-n"}"><b>${(GS_KNT[k.karar] || [k.karar])[0]}:</b> ${e(k.aciklama)}</div>` : ""}
-    ${(x.yorumlar || []).filter(y => y.kaynak !== "degerlendirme").map(y => `<div class="gs-yor ${y.kim}"><span class="soluk">${y.kim === "biz" ? "Bizim yanıt" : e(y.ad || "Öğrenci")} · ${tarih(y.zaman)}</span><div>${e(y.metin)}</div></div>`).join("")}
+    ${(x.yorumlar || []).some(y => y.kaynak !== "degerlendirme") || ((gsV.Z.yorum || {}).gonderilen || []).some(g => g.soru == x.soru_id) ? gsIplik({ ...x, yorumlar: (x.yorumlar || []).filter(y => y.kaynak !== "degerlendirme") }, [], false) : ""}
   </article>`;
 }
 function gsKartlar(baslikM, L, n = 24) {
@@ -1229,7 +1233,7 @@ function gsListe(C, n = 60) {
     ${L.map(x => { const d = DEG[x.deg] || [x.deg, ""], kn = (gsV.Z.kontrol || {})[x.soru_id];
       return `<tr class="tik ${x.deg === "yetersiz" ? "gs-yetersiz" : ""}" data-id="${x.soru_id}"><td class="nw">${tarih(x.zaman)}</td><td>${soruLink(x.soru_id, x.soru_id)}</td><td class="gs-ders-h" title="${e(x.ders || "")}">${e(dersGenel(x.ders))}</td>
         ${ai ? "" : `<td>${x.benzerlik == null ? "—" : Number(x.benzerlik).toFixed(2).replace(".", ",")}</td>`}<td>${x.video ? "Video" : "Fotoğraf"}</td>
-        <td><div class="gs-deg-h"><span class="etiket ${d[1]}" ${x.deg_metin ? `data-ipucu="${e(x.deg_metin)}"` : ""}>${d[0]}</span>${kn ? `<span class="etiket ${(GS_KNT[kn.karar] || [])[1] || "gs-knt-n"}" data-ipucu="${e(kn.aciklama)}">${(GS_KNT[kn.karar] || [kn.karar])[0]}</span>` : ""}</div></td></tr>`; }).join("")}
+        <td><div class="gs-deg-h"><span class="etiket ${d[1]}" data-ipucu="${e([x.deg_metin, kn && kn.aciklama].filter(Boolean).join(" — "))}">${d[0]}${kn ? ` · ${{ banka_yanlis: "cevap yanlış", cevap_dogru: "cevap doğru", belirsiz: "belirsiz" }[kn.karar] || e(kn.karar)}` : ""}</span></div></td></tr>`; }).join("")}
     </tbody></table>${L.length ? "" : '<div class="bos">Bu süzgece uyan cevap yok.</div>'}</div>${T.length > n ? `<button class="gs-daha">Daha fazla (${sayi(T.length - n)})</button>` : ""}`;
   const w = $("#gs-liste");
   w.querySelector(".gs-daha")?.addEventListener("click", () => gsListe(C, n + 100));
@@ -1305,19 +1309,39 @@ function gsDersCiz(L, D7) {
     <p class="soluk gs-dip">Genel ortalama ${g.ort ? tlStr(g.ort) + ` (${g.n} örnek)` : "ölçülüyor"} · turuncu satır: bankanın zayıf kaldığı ders</p>` : '<p class="soluk">Bu aralıkta gönderilen cevap yok.</p>'}`;
 }
 // 24 Eki: öğrenci yorumlarına yazdığımız yanıtlar. Bekleyen = gönderici kuyruğu (dakikada 1 gider), gönderilen = gitmiş yanıtlar.
+// 25 Eki: yorum akışı sohbet gibi — öğrenci solda gri, biz sağda mor; değerlendirme notu öğrenci balonunda etiketli
+function gsIplik(x, ek = [], degEkle = true) {
+  const Y = [...(x?.yorumlar || [])], bas = t => String(t || "").slice(0, 40);
+  // gönderdiğimiz yanıt admin'den henüz geri okunmadıysa gönderim kaydından ekle
+  if (x?.soru_id) for (const g of ((gsV.Z.yorum || {}).gonderilen || [])) if (g.soru == x.soru_id && !Y.some(y => y.kim === "biz" && bas(y.metin) === bas(g.yanit))) Y.push({ kim: "biz", metin: g.yanit, zaman: g.zaman, ad: g.hesap });
+  if (degEkle && x?.deg_metin && x.deg === "yetersiz" && !Y.some(y => y.kaynak === "degerlendirme")) Y.push({ kim: "ogrenci", metin: x.deg_metin, zaman: x.deg_zaman || x.zaman, kaynak: "degerlendirme" });
+  Y.sort((a, b) => (a.zaman || "") < (b.zaman || "") ? -1 : 1);
+  const ilk = s => String(s || "").split(/\s+/)[0];
+  const balon = y => `<div class="gs-bl ${y.kim === "biz" ? "biz" : "ogr"} ${y.bekliyor ? "bek" : ""}"><div class="gs-bl-bas">${y.kim === "biz" ? `Biz${y.ad ? " · " + e(ilk(y.ad)) : ""}` : e(y.ad ? ilk(y.ad) : "Öğrenci")}${y.kaynak === "degerlendirme" ? ' <span class="gs-bl-et">değerlendirme</span>' : ""}${y.bekliyor ? ' <span class="gs-bl-et">gönderilecek</span>' : ""} · ${y.zaman ? tarih(y.zaman) : "sırada"}</div><div class="gs-bl-m">${e(String(y.metin || "").replace(/^(Değerlendirme notu|Değerlendirme): /, ""))}</div></div>`;
+  return `<div class="gs-sohbet">${[...Y, ...ek].map(balon).join("") || '<p class="soluk">Henüz yorum yok.</p>'}</div>`;
+}
+function gsSoruAc(q) {
+  const x = (gsV.C || []).find(c => c.soru_id == q);
+  if (!x) return window.open(`${ADMIN}/Question/Detail/${q}`, "_blank", "noopener");
+  gsPencere(`Soru ${q} <a class="gs-p-admin" href="${ADMIN}/Question/Detail/${q}" target="_blank" rel="noopener">admin'de aç ↗</a>`, `<div class="gs-kartlar tek">${gsKart(x)}</div>`);
+}
 function gsYorumlarCiz(Y) {
   const yer = $("#gs-yorumlar"); if (!yer) return;
-  const K = Y.kuyruk || [], G = Y.gonderilen || [], L = gsYorSek === "bekleyen" ? K : G;
-  const sat = y => `<div class="gs-ys"><div class="soluk gs-ys-bas">${soruLink(y.soru, "Soru " + y.soru)}${y.ders ? " · " + e(y.ders) : ""}${y.hesap ? ` · <span class="etiket">${e(y.hesap)}</span>` : ""}${y.zaman ? " · " + tarih(y.zaman) : ""}</div>
-    <div class="gs-yor"><span class="soluk">Öğrenci${y.ogrenci_zaman ? " · " + tarih(y.ogrenci_zaman) : ""}</span><div class="klamp">${y.ogrenci ? e(y.ogrenci) : '<span class="soluk">yorum metni henüz gelmedi</span>'}</div></div>
-    <div class="gs-yor biz"><span class="soluk">${gsYorSek === "bekleyen" ? "Gönderilecek yanıt" : "Gönderdiğimiz yanıt"}</span><div class="klamp">${e(y.yanit)}</div></div></div>`;
+  const K = Y.kuyruk || [], G = Y.gonderilen || [], bek = gsYorSek === "bekleyen";
+  const gor = new Set(), L = (bek ? K : G).filter(y => { if (!bek && gor.has(y.soru)) return false; gor.add(y.soru); return true; });
+  const C = gsV.C || [];
+  const sat = y => { const x = C.find(c => c.soru_id == y.soru);
+    const ek = bek ? [{ kim: "biz", metin: y.yanit, bekliyor: true, ad: y.hesap }] : [];
+    const yedek = x ? null : [{ kim: "ogrenci", metin: y.ogrenci || "", zaman: y.ogrenci_zaman }, { kim: "biz", metin: y.yanit, zaman: y.zaman, ad: y.hesap }].filter(z => z.metin);
+    return `<div class="gs-ys"><div class="gs-ys-bas"><a href="#" class="gs-soru-ac" data-q="${y.soru}">Soru ${y.soru}</a><span class="soluk">${y.ders ? e(dersGenel(y.ders)) : ""}</span>${y.hesap ? `<span class="etiket">${e(y.hesap)}</span>` : ""}</div>
+      ${x ? gsIplik(x, ek) : gsIplik({ yorumlar: yedek }, ek)}</div>`; };
   const U = (Y.uygunsuz || []).filter(u => (Date.now() - new Date(u.t)) < 7 * 864e5);
-  const uyg = U.length ? `<div class="gs-uyg"><b>Uygunsuz yorum · ${U.length}</b> <span class="soluk">Yanıt yazılmadı. Öğrencinin kurumuna bildirilmeli.</span>${U.slice(-5).reverse().map(u => `<div>${soruLink(u.soru, "Soru " + u.soru)} · ${tarih(u.t)} — “${e(u.metin)}”</div>`).join("")}</div>` : "";
-  yer.innerHTML = uyg + `<div class="gs-bas"><h3 data-ipucu="Öğrenci yorumlarına yazdığımız yanıtlar. Bekleyenler dakikada bir gider; yanıtı yalnız soruyu cevaplayan hesap gönderebilir.">Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen · bugün ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
-    <div class="gs-ys-liste">${L.length ? L.slice(0, 40).map(sat).join("") : `<p class="soluk">${gsYorSek === "bekleyen" ? "Bekleyen yanıt yok." : "Henüz gönderilen yanıt yok."}</p>`}</div>`;
+  const uyg = U.length ? `<div class="gs-uyg"><b>Uygunsuz yorum · ${U.length}</b> <span class="soluk">Yanıt yazılmadı. Öğrencinin kurumuna bildirilmeli.</span>${U.slice(-5).reverse().map(u => `<div><a href="#" class="gs-soru-ac" data-q="${u.soru}">Soru ${u.soru}</a> · ${tarih(u.t)} — “${e(u.metin)}”</div>`).join("")}</div>` : "";
+  yer.innerHTML = uyg + `<div class="gs-bas"><h3 data-ipucu="Öğrenci yorumları ve yazdığımız yanıtlar, konuşma olarak. Bekleyenler dakikada bir gider.">Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen · bugün ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
+    <div class="gs-ys-liste">${L.length ? L.slice(0, 40).map(sat).join("") : `<p class="soluk">${bek ? "Bekleyen yanıt yok." : "Henüz gönderilen yanıt yok."}</p>`}</div>`;
   yer.querySelectorAll(".cip").forEach(b => b.onclick = () => { gsYorSek = b.dataset.v; gsYorumlarCiz(Y); });
-  yer.querySelectorAll(".klamp").forEach(k => k.onclick = () => k.classList.toggle("acik"));
 }
+document.addEventListener("click", ev => { const a = ev.target.closest && ev.target.closest(".gs-soru-ac"); if (!a) return; ev.preventDefault(); gsSoruAc(a.dataset.q); });
 function gsYorumCiz(Y) {
   const L = (Y.son || []).slice(0, 6);
   $("#gs-yorum").innerHTML = `<div class="gs-bas"><h3>Öğrenci yorumları</h3></div><p class="gs-acikla">Gelen <b>${Y.gelen || 0}</b> yorum, verilen <b>${Y.yanit || 0}</b> yanıt · bugün ${Y.gelen_bugun || 0} yorum, ${Y.yanit_bugun || 0} yanıt</p>
