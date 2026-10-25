@@ -520,3 +520,15 @@ dialog.metin-dlg p{white-space:pre-line;font-size:14px;margin:10px 0 0}
 .gs-ys{border-top:1px solid hsl(var(--border));padding:8px 0}.gs-ys:first-of-type{border-top:0}.gs-ys-bas{font-size:12px;margin-bottom:2px}.gs-ys .gs-yor{border-top:0;padding:3px 0}.gs-ys .klamp{cursor:pointer}
 
 .gs-kaps-iki{flex-direction:column;align-items:stretch;gap:8px}.gs-kaps-sat{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px}.gs-kaps-sat+.gs-kaps-sat{border-top:1px solid hsl(var(--border));padding-top:8px}
+/* 25 Eki: Cevap Gönderici kompakt düzen + büyük, canlı sayaçlar */
+.gs-yan{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:start;margin-bottom:10px}
+.gs-yan>.kart{margin:0;overflow-x:auto}
+.gs-yan .gs-tablo td:first-child{max-width:150px}
+@media (max-width:1100px){.gs-yan{grid-template-columns:1fr}}
+.gs-kutu-sira .kutu .s{font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+.gs-kutu-sira .kutu{padding:12px 14px}
+.gs-kaps-p>b{font-size:26px}
+.gs-akiyor{color:hsl(var(--basari))!important;transition:color .6s}
+.gs-nokta{display:inline-block;width:7px;height:7px;border-radius:50%;background:hsl(var(--basari));margin-right:6px;vertical-align:middle;animation:gs-nabiz 2s infinite}
+@keyframes gs-nabiz{0%,100%{opacity:1}50%{opacity:.3}}
+@media (max-width:760px){.gs-kutu-sira .kutu .s{font-size:24px}}
