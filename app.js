@@ -1025,7 +1025,7 @@ function gsAralik() {
 }
 async function gonderici() {
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Tebeşir", "Bu sayfayı yalnız yöneticiler görebilir."); return; }
-  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman")), q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000))]);
+  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%")), q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000))]);
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), simdi = new Date().toISOString(), senk = O.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
@@ -1044,7 +1044,7 @@ function gsCanliKur() {
     if (!$("#gs-govde")) { clearInterval(gsZaman); gsZaman = null; return; }
     if (document.hidden) return;
     gsSeritCiz();   // "son hareket x dk önce" her turda tazelensin
-    const O = await sb.from("d_gonderici_ozet").select("k,v,zaman"); if (O.error || !O.data) return;
+    const O = await sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%"); if (O.error || !O.data) return;
     // 25 Eki: değişiklik bütün satırların saatinden anlaşılır (tek bir satırın saati ileri yazılınca panel donuyordu); gösterilen saat ileri olamaz
     const imza = O.data.map(x => x.k + x.zaman).sort().join("|"), simdi = new Date().toISOString();
     if (imza === gsImza) return;
@@ -1095,7 +1095,7 @@ function gsSeritCiz() {
 }
 function gsAralikCiz() {
   const { Z } = gsV, [bas, son] = gsAralik(), ilk = Z.gunler[0].gun, bugun = gunStr(new Date()), ai = Z.ai || {};
-  $("#gs-sekme").innerHTML = [["banka", "Banka cevapları"], ["ai", `Yapay zekâ${ai.calisiyor === false ? " · kapalı" : ""}`]].map(([v, a]) => `<button class="cip ${gsGorunum === v ? "secili" : ""}" data-g="${v}">${a}</button>`).join("");
+  $("#gs-sekme").innerHTML = [["banka", "Banka cevapları"], ["ai", `Yapay zekâ${ai.calisiyor === false ? " · kapalı" : ""}`], ["sure", "Süreler"]].map(([v, a]) => `<button class="cip ${gsGorunum === v ? "secili" : ""}" data-g="${v}">${a}</button>`).join("");
   $("#gs-sekme").querySelectorAll(".cip").forEach(b => b.onclick = () => { gsGorunum = b.dataset.g; gsTF = { sira: null, f: {} }; gsAralikCiz(); });
   $("#gs-aralik").innerHTML = `<span class="cipler">${[["bugun", "Bugün"], ["dun", "Dün"], ["7", "7 gün"], ["30", "30 gün"], ["hepsi", "Tümü"]].map(([v, a]) => `<button class="cip ${gsAr.tur === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span>
     <span class="gs-tarihler"><input type="date" id="gs-bas" value="${bas}" min="${ilk}" max="${bugun}"><span>–</span><input type="date" id="gs-son" value="${son}" min="${ilk}" max="${bugun}"></span>`;
@@ -1103,7 +1103,91 @@ function gsAralikCiz() {
   ["#gs-bas", "#gs-son"].forEach(s => $(s).onchange = () => { gsAr = { tur: "ozel", bas: $("#gs-bas").value, son: $("#gs-son").value }; if (gsAr.bas > gsAr.son) [gsAr.bas, gsAr.son] = [gsAr.son, gsAr.bas]; gsAralikCiz(); });
   gsCiz(bas, son);
 }
+// 26 Eki: Tebeşir süreleri (Ulaş). Sisteme düşen HER soru (öğretmen + Tebeşir): düşme→cevap, düşme→çözüme alınma, alınma→cevap.
+// Mac'teki sure_izle.py dakikada bir d_gonderici_ozet'e gün başına 'sure_YYYY-MM-DD' yazar. Satır: [id, "SS:DD", ders, kurum, düşme→alınma, düşme→cevap, alınma→cevap, kim(0 öğretmen,1 banka,2 yapay zekâ), durum, vazgeçme]
+let sDahil = true, sKir = "ders", sVeri = {}, sImza = {}, sZaman = null;
+const sDk = m => m == null ? "—" : m < 1 ? "<1 dk" : m < 60 ? `${Math.round(m)} dk` : `${Math.floor(m / 60)} sa ${String(Math.round(m % 60)).padStart(2, "0")} dk`;
+const sSinif = d => { const m = String(d || "").match(/\(([^()]*(Sınıf|Mezun)[^()]*)\)\s*$/i); return m ? m[1].trim() : "Diğer"; };
+const sMed = v => { const s = [...v].sort((a, b) => a - b), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+const sOrt = (L, k) => { const v = L.map(x => x[k]).filter(v => v != null && v >= 0); return v.length ? { o: v.reduce((a, b) => a + b, 0) / v.length, md: sMed(v), n: v.length } : null; };
+async function sYukle(bas, son) {
+  const bugun = gunStr(new Date()), G = [];
+  for (let g = bas; g <= son && G.length < 62; g = gunEkle(g, 1)) if (!sVeri[g] || g >= gunEkle(bugun, -1)) G.push(g);
+  if (son === bugun && !G.includes(gunEkle(bugun, -1))) G.push(gunEkle(bugun, -1));   // şu an bekleyenler dünden de gelir
+  if (!G.length) return false;
+  const R = await sb.from("d_gonderici_ozet").select("k,v").in("k", G.map(g => "sure_" + g)); if (R.error || !R.data) return false;
+  let degisti = false;
+  for (const g of G) {
+    const v = (R.data.find(x => x.k === "sure_" + g) || {}).v;
+    if (!v) { if (!sVeri[g]) { sVeri[g] = []; degisti = true; } continue; }
+    if (sImza[g] === v.t) continue;
+    sImza[g] = v.t; degisti = true;
+    sVeri[g] = v.r.map(r => ({ id: r[0], g, sa: r[1], ders: v.ders[r[2]], kurum: v.kurum[r[3]] || "Kurumsuz", m2: r[4], m1: r[5], m3: r[6], kim: r[7], s: r[8], bir: r[9] }));
+  }
+  return degisti;
+}
+async function sureCiz(bas, son) {
+  if (!sVeri[bas]) $("#gs-govde").innerHTML = iskelet(6);
+  await sYukle(bas, son);
+  if (gsGorunum !== "sure" || !$("#gs-govde")) return;
+  sCiz(bas, son);
+  if (!sZaman) sZaman = setInterval(async () => {
+    if (!$("#gs-govde") || gsGorunum !== "sure") { clearInterval(sZaman); sZaman = null; return; }
+    if (document.hidden || document.activeElement?.closest("#gs-govde")) return;
+    const [b, s] = gsAralik(); if (await sYukle(b, s)) sCiz(b, s);
+  }, 30000);
+}
+function sCiz(bas, son) {
+  const T = []; for (let g = bas; g <= son; g = gunEkle(g, 1)) (sVeri[g] || []).forEach(x => T.push(x));
+  const ilk = Object.keys(sImza).sort()[0];
+  if (!T.length) { $("#gs-govde").innerHTML = `<div class="bos">Bu aralıkta süre ölçümü yok. Ölçüm 26 Eki 01:17'de başladı${ilk ? `, ilk veri ${gkisa(ilk)}` : ""}.</div>`; return; }
+  const H = T.filter(x => !x.kim), A = sDahil ? T : H, Tb = T.filter(x => x.kim), cev = T.filter(x => x.m1 != null);
+  const fark = (k, L1 = T, L2 = H, en = 10) => { const a = sOrt(L1, k), b = sOrt(L2, k); return a && b && b.n >= en && a.n - b.n >= 3 ? b.o - a.o : null; };   // az örnekte fark gürültü
+  const kart = (k, bas_, ipucu) => {
+    const o = sOrt(A, k), diger = sOrt(sDahil ? H : T, k), f = fark(k);
+    return `<section class="gs-h"><div class="gs-h-bas" data-ipucu="${e(ipucu)}">${bas_}</div>
+      <div class="gs-h-buyuk" style="cursor:default"><span data-sayac="s${k}">${sDk(o?.o)}</span><small>ortalama</small></div>
+      <div class="gs-h-alt">${o ? `ortanca ${sDk(o.md)} · ${sayi(o.n)} soru` : "henüz ölçülmedi"}</div>
+      <div class="gs-dun">${sDahil ? "Tebeşir hariç" : "Tebeşir dahil"} <b>${sDk(diger?.o)}</b>${f != null && Math.abs(f) >= 0.5 ? ` <span class="${f > 0 ? "ok" : "hata"}" data-ipucu="Tebeşir hariç ortalama ile dahil ortalama arasındaki fark">${f > 0 ? "▼" : "▲"} Tebeşir ${sDk(Math.abs(f))} ${f > 0 ? "kısaltıyor" : "uzatıyor"}</span>` : ""}</div></section>`;
+  };
+  const bugun = gunStr(new Date()), simdi = new Date();
+  const bek = son === bugun ? [...(sVeri[gunEkle(bugun, -1)] || []), ...(sVeri[bugun] || [])].filter(x => x.s !== "A") : [];
+  const yas = x => (simdi - new Date(`${x.g}T${x.sa}:00`)) / 6e4, enEski = bek.length ? Math.max(...bek.map(yas)) : null;
+  const tbB = Tb.filter(x => x.kim === 1).length, tbA = Tb.length - tbB, oT = sOrt(Tb, "m1"), oH = sOrt(H, "m1");
+  const etki = `<section class="kart gs-k"><div class="gs-bas"><h3>Tebeşir'in etkisi</h3></div>
+    <div class="gs-minis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+      <div><div class="soluk">Cevaplanan soru</div><b style="font-size:20px">${sayi(cev.length)}</b><div class="soluk">Tebeşir ${sayi(Tb.length)} (${yuzde(Tb.length, cev.length)}) · banka ${sayi(tbB)}, yapay zekâ ${sayi(tbA)}</div></div>
+      <div data-ipucu="Soru düştükten cevap gidene kadar"><div class="soluk">Tebeşir'in cevapları</div><b style="font-size:20px">${sDk(oT?.o)}</b><div class="soluk">öğretmenler ${sDk(oH?.o)}</div></div>
+      <div data-ipucu="Tebeşir hariç: yalnız öğretmenlerin cevapladığı sorular. Tebeşir olmasaydı onun aldığı sorular da öğretmenleri bekleyecekti; gerçek etki bu farktan büyük olabilir."><div class="soluk">Ortalama bekleme</div><b style="font-size:20px">${sDk(sOrt(T, "m1")?.o)}</b><div class="soluk">Tebeşir olmadan ${sDk(oH?.o)}</div></div>
+      ${son === bugun ? `<div data-ipucu="Şu an cevap bekleyen ya da çözümde olan sorular (dün ve bugün düşenler)"><div class="soluk">Şu an bekleyen</div><b style="font-size:20px">${sayi(bek.length)}</b><div class="soluk">${bek.length ? `en eskisi ${sDk(enEski)} · ${sayi(bek.filter(x => x.s === "C").length)} çözümde` : "kuyruk boş"}</div></div>` : ""}
+    </div></section>`;
+  const anah = { ders: x => dersGenel(x.ders), sinif: x => sSinif(x.ders), kurum: x => x.kurum }[sKir];
+  const tablo = (L, anahF, basl, sirala) => {
+    const G = {}; for (const x of L) (G[anahF(x)] ||= []).push(x);
+    const S = Object.entries(G).map(([ad, X]) => ({ ad, X })); sirala(S);
+    return `<table class="tablo sik gs-tablo"><tr><th>${basl}</th><th>Soru</th><th data-ipucu="Cevaplananların yüzde kaçını Tebeşir cevapladı">Tebeşir</th>
+      <th data-ipucu="Soru sisteme düştükten cevap gidene kadar">Düşme → cevap</th><th data-ipucu="Soru sisteme düştükten ilk çözüme alınana kadar">Düşme → alınma</th><th data-ipucu="Çözüme alındıktan cevap gidene kadar">Alınma → cevap</th>
+      <th data-ipucu="Tebeşir hariç ortalama − dahil ortalama (düşme → cevap). Yeşil: Tebeşir süreyi kısaltıyor">Etki</th></tr>
+      ${S.map(({ ad, X }) => { const Y = sDahil ? X : X.filter(x => !x.kim), c = X.filter(x => x.m1 != null), tb = c.filter(x => x.kim).length, f = fark("m1", X, X.filter(x => !x.kim));
+        return `<tr><td title="${e(ad)}">${e(ad)}</td><td>${sayi(X.length)}</td><td>${c.length ? yuzde(tb, c.length) : "—"}</td><td><b>${sDk(sOrt(Y, "m1")?.o)}</b></td><td>${sDk(sOrt(Y, "m2")?.o)}</td><td>${sDk(sOrt(Y, "m3")?.o)}</td>
+          <td>${f == null || Math.abs(f) < 0.5 ? '<span class="soluk">—</span>' : `<span class="${f > 0 ? "ok" : "gs-kirmizi"}">${f > 0 ? "−" : "+"}${sDk(Math.abs(f))}</span>`}</td></tr>`; }).join("")}</table>`;
+  };
+  const tekGun = bas === son;
+  $("#gs-govde").innerHTML = `
+    <div class="gs-arac" style="margin-bottom:10px"><span class="cipler" id="s-dahil">${[[1, "Tebeşir dahil"], [0, "Tebeşir hariç"]].map(([v, a]) => `<button class="cip ${+sDahil === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span>
+      <span class="soluk" data-ipucu="Alınma ve cevap zamanı dakikalık gözlemle bulunur: yeni sorularda ±30 sn, birkaç saat bekleyenlerde ±15 dk. Tebeşir'in kendi soruları kesin zamanla.">Canlı · ${tarih(sImza[son] || sImza[bas] || "")}</span></div>
+    <div class="gs-hero">${kart("m1", "Düşme → cevap", "Soru sisteme düştükten cevap gidene kadar geçen süre")}${kart("m2", "Düşme → çözüme alınma", "Soru sisteme düştükten biri ilk kez çözüme alana kadar")}${kart("m3", "Alınma → cevap", "Çözüme alındıktan cevap gidene kadar")}</div>
+    ${etki}
+    <section class="kart gs-k" style="margin-top:12px"><div class="gs-bas"><h3>Kırılım</h3><span class="cipler" id="s-kir">${[["ders", "Ders"], ["sinif", "Sınıf"], ["kurum", "Kurum"]].map(([v, a]) => `<button class="cip ${sKir === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
+      ${tablo(T, anah, { ders: "Ders", sinif: "Sınıf", kurum: "Kurum" }[sKir], S => S.sort((a, b) => b.X.length - a.X.length))}</section>
+    <details class="gs-analiz" id="s-zaman-d"><summary>${tekGun ? "Saat saat" : "Gün gün"}</summary><div style="padding:10px 12px">
+      ${tablo(T, tekGun ? x => x.sa.slice(0, 2) + ":00" : x => gkisa(x.g), tekGun ? "Saat" : "Gün", S => S.sort((a, b) => a.X[0].g + a.X[0].sa < b.X[0].g + b.X[0].sa ? -1 : 1))}</div></details>`;
+  $("#s-dahil").querySelectorAll(".cip").forEach(b => b.onclick = () => { sDahil = b.dataset.v === "1"; sCiz(bas, son); });
+  $("#s-kir").querySelectorAll(".cip").forEach(b => b.onclick = () => { sKir = b.dataset.v; sCiz(bas, son); });
+  gsSayacAkit(); ikon();
+}
 function gsCiz(bas, son) {
+  if (gsGorunum === "sure") return sureCiz(bas, son);
   const { Z, C } = gsV, ai = gsGorunum === "ai";
   const G = Z.gunler.filter(g => g.gun >= bas && g.gun <= son), top = k => G.reduce((a, g) => a + (g[k] || 0), 0);
   const Lr = C.filter(x => x.zaman.slice(0, 10) >= bas && x.zaman.slice(0, 10) <= son);
