@@ -411,7 +411,7 @@ async function ozet() {
   const kutu = (ik, bas, s, a, cls = "", id = "") => `<div class="kutu ${cls}" ${id ? `id="${id}"` : ""}><div class="k-bas"><i data-lucide="${ik}"></i>${bas}</div><div class="s">${s}</div><div class="e">${a}</div></div>`;
   const havuzN = say(x => x.son_karar === "HAVUZA_AKTAR");
   $("#icerik").innerHTML = baslik("Özet", "Günün durumu tek bakışta; şikayetler 20 dakikada bir kontrol edilir. Bu panelde verdiğin kararlar 30 saniyelik geri alma süresinden sonra 1-2 dakika içinde admin paneline işlenir.") + `
-    <div class="kutular">
+    <div class="kutular oz-kutular">
       ${kutu("clock", "Son kontrol", dk === null ? "—" : dk < 60 ? dk + " dk" : Math.round(dk / 60) + " sa", "son otomatik kontrolden bu yana", dk !== null && dk > 50 ? "uyari" : "", "oz-kontrol")}
       ${kutu("shield-check", "Admin paneli", oturum === "dustu" ? "Kopuk" : "Bağlı", "bağlantı durumu", oturum === "dustu" ? "hata" : "", "oz-baglanti")}
       ${kutu("inbox", "Bugün incelenen", bugun.length, "şikayet")}
@@ -421,11 +421,11 @@ async function ozet() {
       ${kutu("user", "Pasif öğretmen", pasifN.count ?? 0, "hesabı kapalı")}
       ${kutu("target", "Karar doğruluğu", dogruluk === null ? "—" : "%" + dogruluk, `${kontrolN} kontrol`, dogruluk !== null && dogruluk < 90 ? "uyari" : "", "oz-dogruluk")}
     </div>
-    ${saglikTablo(D.saglik?.v, bugun, D.maliyet?.v)}
+    <div class="oz-yan"><div class="oz-sag">${saglikTablo(D.saglik?.v, bugun, D.maliyet?.v)}</div><div class="oz-tur">
     <h2 id="oz-kontroller">Son otomatik kontroller</h2>
-    ${turlar.length ? turlar.map(t => { const ozet = `${t.soru_n + t.cevap_n} şikayet · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " karar bekliyor" : ""}`;
+    ${turlar.length ? turlar.slice(0, 8).map(t => { const ozet = `${t.soru_n + t.cevap_n} şikayet · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " karar bekliyor" : ""}`;
       return t.ozet ? `<details class="tur-satir"><summary><b>${tarih(t.zaman)}</b><span class="soluk">${ozet}</span><span class="ts-ac">Neler oldu</span><i data-lucide="chevron-down"></i></summary><pre class="ozet">${e(t.ozet)}</pre></details>`
-        : `<div class="tur-satir"><div class="tur-satir-ic" style="display:flex;gap:16px;padding:14px 16px;align-items:center"><b>${tarih(t.zaman)}</b><span class="soluk" style="font-size:12px">${ozet}</span></div></div>`; }).join("") : '<div class="bos">Henüz kontrol yapılmadı.</div>'}`;
+        : `<div class="tur-satir"><div class="tur-satir-ic" style="display:flex;gap:16px;padding:14px 16px;align-items:center"><b>${tarih(t.zaman)}</b><span class="soluk" style="font-size:12px">${ozet}</span></div></div>`; }).join("") : '<div class="bos">Henüz kontrol yapılmadı.</div>'}</div></div>`;
 }
 
 async function tumSikayetler(gun) {
