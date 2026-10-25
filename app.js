@@ -49,14 +49,7 @@ async function q(p) { const { data, error } = await p; if (error) { bildir("Hata
 const kisiLink = (seo, ad) => ad ? (seo ? `<a href="${ADMIN}/User/Detail/${e(seo)}" target="_blank" rel="noopener">${e(ad)}</a>` : `<span class="ad">${e(ad)}</span>`) : '<span class="soluk">—</span>';
 const soruLink = (qid, yazi = "Soruyu admin panelde aç") => qid ? `<a href="${ADMIN}/Question/Detail/${qid}" target="_blank" rel="noopener">${yazi}</a>` : "";
 // sayfa başı: açıklamanın ilk cümlesi görünür, kalanı "Devamı" ile açılır (tasarım tek satır istiyor, CS'nin bilgisi kaybolmasın)
-const baslik = (b, a) => {
-  const cumle = String(a).match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [""];
-  let kisa = cumle[0], i = 1;
-  while (i < cumle.length && (kisa + cumle[i]).length <= 110) kisa += cumle[i++];
-  kisa = kisa.trim(); const uzun = cumle.slice(i).join("").trim();
-  if (!String(a || "").trim()) return `<div class="ust-cubuk"><div><h2>${b}</h2></div></div>`;
-  return `<div class="ust-cubuk"><div><h2>${b}</h2><p class="aciklama">${kisa}${uzun ? ` <button class="daha-ac" onclick="const p=this.closest('div').querySelector('.aciklama-tam');p.hidden=!p.hidden;this.textContent=p.hidden?'Devamı':'Kısalt'">Devamı</button>` : ""}</p>${uzun ? `<p class="aciklama-tam" hidden>${uzun}</p>` : ""}</div></div>`;
-};
+const baslik = b => `<div class="ust-cubuk"><div><h2>${b}</h2></div></div>`;
 const ikon = () => window.lucide && lucide.createIcons();
 
 // ---------- toast + geri al ----------
@@ -300,12 +293,12 @@ function sikayetKart(s, mod) {
       <div class="sk-not" hidden><input placeholder="Yanlışsa neden? (zorunlu)"><button class="birincil kaydet">Kaydet</button></div></div>`;
   }
   const takipMi = String(s.key).startsWith("t:");
-  const tur = takipMi ? (s.kaynak === "denetim" ? "Rastgele denetim" : "Yakın takip") : cevapli ? "Cevap şikayeti" : "Soru şikayeti";
+  const tur = takipMi ? (s.kaynak === "denetim" ? "Rastgele denetim" : "Yakın takip") : cevapli ? "Cevap" : "Soru";
   const ikonlar = `${s.ogretmen_id ? `<a class="ikon-btn" href="#" title="Öğretmenin geçmişi" aria-label="Öğretmenin geçmişi" onclick="event.preventDefault();git('ogretmen','${s.ogretmen_id}')"><i data-lucide="history"></i></a>` : ""}
     ${s.question_id ? `<a class="ikon-btn" href="${ADMIN}/Question/Detail/${s.question_id}" target="_blank" rel="noopener" title="Soruyu admin panelde aç" aria-label="Soruyu aç"><i data-lucide="external-link"></i></a>` : ""}`;
   const bilgiDolu = bilgi.filter(x => x[1]);
   return `<section class="kart sk" data-key="${e(s.key)}" data-mod="${mod}" data-tur="${s.tur}">
-    <div class="sk-ust"><div class="sk-baslik"><b>${e(s.ders)}</b><span>${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`} · ${tarih(s.olusturma)}</span></div><div class="sk-durum">${durum}<div class="sk-ikonlar">${ikonlar}</div></div></div>
+    <div class="sk-bas"><b title="${e(s.ders)}">${e(s.ders)}</b><span class="sk-durum">${durum}</span><span class="sk-alt-bas">${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`} · ${tarih(s.olusturma)}</span><div class="sk-ikonlar">${ikonlar}</div></div>
     <div class="sk-govde">${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}
     <div class="sk-sag"><div class="sk-kisiler">
       ${takipMi ? "" : `<div><span>Öğrenci</span>${kisiLink(s.ogrenci_seo, s.ogrenci)}</div>`}
@@ -356,8 +349,8 @@ function saglikTablo(S, bugun, M) {
     return `<tr><td>${ad}</td><td><span class="zaman-cip ${eski ? "eski" : ""}">${dk < 60 ? dk + " dk" : dk < 1440 ? Math.round(dk / 60) + " sa" : Math.round(dk / 1440) + " gün"} önce</span></td><td>${e(f(S[k]))}</td></tr>`;
   }).join("");
   const insana = bugun.filter(x => x.durum === "bekliyor").length;
-  const mal = M ? ` Son 24 saatte ajanların API karşılığı maliyeti: $${M.son_24_saat_usd} (${M.kayit} kayıt; abonelikte ödenmez, kota ölçüsüdür).` : "";
-  return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün sana düşen: ${insana} / ${bugun.length} şikayet${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}. Bu oran zamanla düşmeli.${mal}</p>
+  const mal = M ? ` · son 24 sa API karşılığı $${M.son_24_saat_usd}` : "";
+  return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün sana düşen ${insana} / ${bugun.length}${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}${mal}</p>
     <div class="tablo-sar"><table class="tablo sik"><tr><th style="width:200px">Adım</th><th style="width:160px">Son çalışma</th><th>Son sonuç</th></tr>${satir}</table></div>`;
 }
 // ---------- bugün: günlük 10 dakikalık iş listesi ----------
@@ -454,10 +447,9 @@ async function gunluk() {
       <div class="kutu"><div class="s">${top("onay")}</div><div class="e">onaylandı</div></div>
       <div class="kutu"><div class="s">${top("ret")}</div><div class="e">reddedildi</div></div>
       <div class="kutu"><div class="s">${top("havuz")}</div><div class="e">doğru derse aktarıldı</div></div></div>
-    <div class="tablo-sar" id="gn-tablo"><table class="tablo sik"><tr><th>Gün</th><th>Gelen</th><th>Soru / cevap</th><th>Onay</th><th>Ret</th><th>Derse aktarma</th><th>Bekleyen</th><th style="width:28%"></th></tr>
+    <div class="tablo-sar" id="gn-tablo"><table class="tablo sik"><tr><th>Gün</th><th>Gelen</th><th>Soru / cevap</th><th>Onay</th><th>Ret</th><th>Derse aktarma</th><th>Bekleyen</th><th>Öğrenci haklı</th></tr>
     ${gunler.map(g => { const o = G[g], n = o.s + o.c; return `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td><b>${n}</b></td><td>${o.s} / ${o.c}</td><td>${o.onay}</td><td>${o.ret}</td><td>${o.havuz}</td><td>${o.bek || ""}</td>
-      <td><div class="cubuk" style="width:${Math.round(n / mx * 100)}%"><span style="width:${n ? Math.round((o.onay + o.havuz) / n * 100) : 0}%"></span></div></td></tr>`; }).join("")}</table></div>
-    <p class="soluk" style="margin-top:8px">Çubuğun uzunluğu günün şikayet sayısı; koyu kısmı onaylanan + derse aktarılan.</p>`;
+      <td>${o.onay + o.ret ? `%${Math.round(o.onay / (o.onay + o.ret) * 100)}` : ""}</td></tr>`; }).join("")}</table></div>`;
 }
 
 // ---------- haftalık rapor ----------
@@ -544,9 +536,8 @@ async function uyari() {
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="birincil u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button><button class="ince u-iptal">Gönderme</button><button class="metin-btn u-duzenle">Metni düzenle</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`; };
   const DUR = { gonderildi: ["Gönderildi", "ok"], gonderiliyor: ["Gönderiliyor", "uyari"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
   $("#icerik").innerHTML = baslik("Uyarılar", "Öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Her taslağın altında bildirimde geçen sorular ve cevaplar görünür. Aşağıda daha önce gönderilen bildirimlerin tamamı var. Öğretmenleri sık bildirimle yormamak için geri bildirim, format hatırlatması ve küçük hatırlatmalar Pazartesi ve Perşembe hazırlanır; bir öğretmenin biriken cevapları tek bildirimde toplanır. Son 3 günde bildirim almış öğretmene yenisi açılmaz, cevapları sonraki güne kalır. Yapay zekâ uyarısı, genel uyarı ve hesap kapatma önerisi beklemez.") + `
-    <div class="bilgi-serit"><i data-lucide="moon"></i>Gece 23:00 ile sabah 09:00 arası kimseye bildirim gönderilmez. Bu saatlerde onayladıklarınız sabah 09:00'dan sonra gider.</div>
-    <h2>Onay bekleyenler (${acik.length})</h2><p class="aciklama">Metni istersen düzelt, sonra "Onayla ve gönder" de. Onayladıktan sonra 30 saniye geri alabilirsin.</p>
-    <div id="u-acik">${acik.length ? acik.map(kart).join("") : '<div class="bos"><b>Onay bekleyen uyarı yok</b>Yeni bildirim taslakları burada onayını bekler.</div>'}</div>
+    <h2>Onay bekleyenler (${acik.length})</h2>
+    <div id="u-acik" class="kart-izgara">${acik.length ? acik.map(kart).join("") : '<div class="bos"><b>Onay bekleyen uyarı yok</b>Yeni bildirim taslakları burada onayını bekler.</div>'}</div>
     <h2>Gönderilen bildirimler</h2>
     <div class="cipler" id="u-dur"><span class="cip-bas">Durum</span>${[["", "Hepsi"], ["gonderildi", "Gönderildi"], ["iptal", "Gönderilmedi"], ["hata", "Hata"]].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? gecmis.filter(u => u.durum === v).length : gecmis.length}</small></button>`).join("")}</div>
     <div class="cipler" id="u-tur"><span class="cip-bas">Tür</span>${[["", "Hepsi"], ...Object.entries(KADEME)].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? gecmis.filter(u => u.kademe === v).length : gecmis.length}</small></button>`).join("")}</div>
@@ -781,7 +772,7 @@ async function basvuru() {
   $("#icerik").innerHTML = baslik("Solver başvuruları", "Solver olmak isteyen adaylar 6 test sorusu çözer. 6 sorunun hepsi doğru ve çözümler Solver Kılavuzu'ndaki formata uygunsa aday solver olarak onaylanır, değilse reddedilir. Kararlar otomatik verilir, adaya ayrıca bildirim gitmez. Küçük görsellere tıklayınca büyür; çiplerin üstüne gelince not görünür.") + `
     <div class="cipler" id="b-cip"><button class="cip secili" data-v="">Hepsi <small>${L.length}</small></button><button class="cip" data-v="ONAYLA">Onaylanan <small>${L.filter(b => b.karar === "ONAYLA").length}</small></button>
       ${Object.entries(seb).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<button class="cip" data-v="${e(k)}">${e(k)} <small>${v}</small></button>`).join("")}</div>
-    ${BK.length ? `<h2>Kararınızı bekleyenler (${BK.length})</h2><p class="aciklama">İlk değerlendirme bu başvurularda emin olamadı. Görsellere bakıp Onayla ya da Reddet seçin; 30 saniye geri alabilirsiniz, sonra admin paneline işlenir.</p><div id="b-bekleyen" class="b-yer">${BK.map(b => basvuruKart(b, false, !b.insan_karar)).join("")}</div><h2>Sonuçlananlar</h2>` : ""}
+    ${BK.length ? `<h2>Kararınızı bekleyenler (${BK.length})</h2><div id="b-bekleyen" class="b-yer">${BK.map(b => basvuruKart(b, false, !b.insan_karar)).join("")}</div><h2>Sonuçlananlar</h2>` : ""}
     <div class="filtre"><input id="b-ara" placeholder="İsim ya da ders"></div><div id="b-liste"></div>`;
   let fv = "";
   const ciz = () => { const a = $("#b-ara").value.toLocaleLowerCase("tr");
@@ -822,7 +813,7 @@ async function denetim() {
     <div class="kutular"><div class="kutu"><div class="s">${top}</div><div class="e">denetlenen cevap</div></div>
       <div class="kutu ${top && sor / top > .2 ? "uyari" : ""}"><div class="s">%${top ? Math.round(sor / top * 100) : 0}</div><div class="e">sorunlu oranı (${sor} cevap)</div></div>
       <div class="kutu ${L.some(x => x.sonuc === "YZ_KESIN") ? "hata" : ""}"><div class="s">${L.filter(x => x.sonuc === "YZ_KESIN").length}</div><div class="e">yapay zekâ (kesin)</div></div></div>
-    ${grupT ? `<h2>Seçim türüne göre</h2><p class="aciklama">Her gün 30 cevap tamamen rastgele seçilir (üstteki oran bunlardan), 20 cevap riskli gruplardan. Riskli gruplarda oranın yüksek çıkması beklenir.</p><div class="tablo-sar"><table class="tablo sik"><tr><th>Seçim</th><th>Denetlenen</th><th>Sorunlu</th></tr>${grupT}</table></div>` : ""}
+    ${grupT ? `<h2>Seçim türüne göre</h2><div class="tablo-sar"><table class="tablo sik"><tr><th>Seçim</th><th>Denetlenen</th><th>Sorunlu</th></tr>${grupT}</table></div>` : ""}
     <h2>Gün gün</h2><div class="tablo-sar" id="d-gun"><table class="tablo sik"><tr><th>Gün</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
     ${Object.keys(G).sort().reverse().map(g => `<tr><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td>${G[g].n}</td><td>${G[g].s}</td><td>${G[g].y}</td></tr>`).join("") || '<tr><td colspan="4" class="soluk">Henüz denetim yapılmadı. İlk denetim bugün içinde çalışacak.</td></tr>'}</table></div>
     <h2>Sorunlu çıkan öğretmenler</h2><div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Denetlenen</th><th>Sorunlu</th><th>Yapay zekâ</th></tr>
@@ -855,7 +846,7 @@ async function eksi() {
   $("#icerik").innerHTML = baslik("Eksi puanlı solverlar", "Puanı eksideki solver çözdüğü sorudan ücret alamaz. Son 3 günde cevap veren solverların puanı okunur: puanı 10'un altında olanlar saatte bir, 10–50 arası günde bir, üstü haftada bir. Puanı 20'nin altında olup cevap vermeyenler de gece bir kez yeniden okunur. \"Son 7 günde puan neden değişti\" sütunu puan değişimini doğru cevap, onaylı şikayet ve diğer (soruyu bırakma, süre aşımı gibi görünmeyen cezalar) olarak ayırır. Puanı artıdan eksiye düşen solvera otomatik kısa bir bildirim gider. Özellikle yeni solverlar ilk günlerde kolay eksiye düşer; listede uzun süre kalan olursa Ulaş'a haber ver.") + `
     <div class="bilgi-serit"><i data-lucide="clock"></i>Son okuma: ${son ? tarih(son) : "—"} · ${L.length} aktif solver</div>
     <h2>Şu an eksi puanda (${ek.length})</h2><div class="tablo-sar" id="e-eksi"><table class="tablo sik">${bas}${ek.map(satir).join("") || '<tr><td colspan="7" class="soluk">Eksi puanlı solver yok.</td></tr>'}</table></div>
-    <h2>Risk grubu: puanı 0–19 arası (${risk.length})</h2><p class="aciklama">Bir onaylanan şikayet (−3 puan) ya da bir cezayla eksiye düşebilirler.</p>
+    <h2>Risk grubu: puanı 0–19 arası (${risk.length})</h2>
     <div class="tablo-sar"><table class="tablo sik">${bas}${risk.map(satir).join("")}</table></div>`;
 }
 
@@ -880,7 +871,7 @@ async function odeme() {
   $("#icerik").innerHTML = baslik("Uzaklaştırılanların ödemeleri", "Hesabı uzaklaştırılan solverın kalan bakiyesi, sakıncalı cevapların kazancı düşüldükten sonra ay sonu ödemesiyle gönderilir. Ödeme bilgisini destek hattı toplar ve buraya işler. Ödemeyi yaptıktan sonra \"Ödendi olarak işaretle\"ye bas; yanlışlıkla bastıysan \"Geri al\" ile düzeltebilirsin.") + `
     <div class="bilgi-serit"><i data-lucide="wallet"></i>Ödemeye hazır ${hazir.length} kişi · toplam ${tl(toplam)}${bekleyen.length - hazir.length ? ` · ${bekleyen.length - hazir.length} kişinin kesintisi hesaplanmadı` : ""}</div>
     <h2>Ödenecekler (${bekleyen.length})</h2>${tablo(bekleyen, "Ödenecek kayıt yok.")}
-    <h2>Ödeme bilgisi bekleniyor (${bilgi.length})</h2><p class="aciklama">Destek hattı bu kişilerden ad soyad, IBAN, TC kimlik numarası ve il/ilçe bilgisini istedi; henüz göndermediler.</p>${tablo(bilgi, "Bekleyen yok.")}
+    <h2>Ödeme bilgisi bekleniyor (${bilgi.length})</h2>${tablo(bilgi, "Bekleyen yok.")}
     <h2>Ödenenler (${biten.length})</h2>${tablo(biten, "Henüz ödenmiş kayıt yok.")}`;
   $("#icerik").querySelectorAll(".od-kopya").forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.metin); toast("Kopyalandı"); } catch { bildir("Kopyalanamadı; elle seç."); } });
   $("#icerik").querySelectorAll(".od-odendi").forEach(b => b.onclick = async () => {
@@ -920,7 +911,7 @@ async function kesinti() {
   $("#icerik").innerHTML = baslik("Kapatılmış hesap kesintileri", "Hesabı kapatılan ve bakiyesi duran öğretmenlerin son para çekme talebinden sonraki cevapları incelenir. Hazır metin ya da yapay zekâ çıktısı olan cevapların ücreti bakiyeden kesilir; öğretmenin kendi yazdığı çözüm kesilmez. Yalnız sistemin otomatik değerlendirdiği cevaplar kesilebilir; öğrencinin kendisinin değerlendirdiği cevaplar kesilmez. Sen onaylayınca kesinti bakiyeden düşülür ve kalan tutar ödenecekler listesine eklenir.") + `
     <h2>Onay bekleyenler (${D("hazir").length})</h2>${D("hazir").map(kart).join("") || '<div class="bos">Onay bekleyen kesinti yok.</div>'}
     ${D("onaylandi").length ? `<h2>Onaylandı, işleniyor (${D("onaylandi").length})</h2>${D("onaylandi").map(kart).join("")}` : ""}
-    ${D("sorun").length ? `<h2>Sorun çıkanlar (${D("sorun").length})</h2><p class="aciklama">Bu kayıtlarda kesinti uygulanamadı; nedeni kartta yazıyor.</p>${D("sorun").map(kart).join("")}` : ""}
+    ${D("sorun").length ? `<h2>Sorun çıkanlar (${D("sorun").length})</h2>${D("sorun").map(kart).join("")}` : ""}
     ${D("inceleniyor").length ? `<h2>İnceleniyor (${D("inceleniyor").length})</h2>${sade(D("inceleniyor"), "")}` : ""}
     <h2>Tamamlananlar (${D("uygulandi").length})</h2>${D("uygulandi").map(kart).join("") || '<div class="bos">Henüz tamamlanan kesinti yok.</div>'}
     ${diger.length ? `<details><summary>İşlem gerekmeyenler (${diger.length})</summary>${sade(diger, "")}</details>` : ""}`;
