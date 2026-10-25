@@ -305,14 +305,13 @@ function sikayetKart(s, mod) {
     ${s.question_id ? `<a class="ikon-btn" href="${ADMIN}/Question/Detail/${s.question_id}" target="_blank" rel="noopener" title="Soruyu admin panelde aç" aria-label="Soruyu aç"><i data-lucide="external-link"></i></a>` : ""}`;
   const bilgiDolu = bilgi.filter(x => x[1]);
   return `<section class="kart sk" data-key="${e(s.key)}" data-mod="${mod}" data-tur="${s.tur}">
-    <div class="sk-ust"><div class="sk-baslik"><b>${e(s.ders)}</b><span>${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`}</span></div><span class="sk-tarih">${tarih(s.olusturma)}</span></div>
-    <div class="sk-durum">${durum}<div class="sk-ikonlar">${ikonlar}</div></div>
-    ${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}
-    <div class="sk-kisiler">
+    <div class="sk-ust"><div class="sk-baslik"><b>${e(s.ders)}</b><span>${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`} · ${tarih(s.olusturma)}</span></div><div class="sk-durum">${durum}<div class="sk-ikonlar">${ikonlar}</div></div></div>
+    <div class="sk-govde">${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}
+    <div class="sk-sag"><div class="sk-kisiler">
       ${takipMi ? "" : `<div><span>Öğrenci</span>${kisiLink(s.ogrenci_seo, s.ogrenci)}</div>`}
       <div><span>${cevapli ? "Öğretmen" : "Şikayet eden"}</span>${kisiLink(s.ogretmen_seo, s.ogretmen)}</div></div>
     ${bilgiDolu.length ? `<dl class="sk-bilgi">${bilgiDolu.map(([a, b]) => `<div><dt>${a}</dt><dd class="klamp">${e(b)}</dd></div>`).join("")}</dl>` : ""}
-    ${karar}
+    ${karar}</div></div>
     ${alt ? `<div class="sk-alt">${alt}</div>` : ""}</section>`;
 }
 function kartlariBagla(kok, yenile) {
