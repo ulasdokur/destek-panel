@@ -1116,32 +1116,32 @@ function gsCiz(bas, son) {
     <div class="gs-bar">${parca}</div><div class="gs-hb-alt">${sag}</div></div>`;
   const k1 = `<section class="gs-h gs-h1">
     <div class="gs-h-bas">${ai ? "Yapay zekâ cevapları" : "Banka cevapları"}</div>
-    <button class="gs-h-buyuk" data-f="hepsi" data-ipucu="Tıkla: gönderilen bütün cevaplar, soru ve cevap görselleriyle."><span data-sayac="gonderildi">${sayi(B.length)}</span><small>cevap gönderildi</small></button>
+    <button class="gs-h-buyuk" data-f="hepsi" data-ipucu="Tıkla, hepsini gör"><span data-sayac="gonderildi">${sayi(B.length)}</span><small>cevap gönderildi</small></button>
     <div class="gs-h-alt">${ai ? `<button class="gs-mcip" data-f="atla">${sayi(gB.atla || 0)} atlandı</button><button class="gs-mcip ${gB.hata ? "hata" : ""}" data-f="hata">${sayi(gB.hata || 0)} hata</button><span class="soluk">bugün</span>`
       : `${sayi(bak)} soruya bakıldı · ${sayi(B.filter(x => !x.video).length)} foto, ${sayi(B.filter(x => x.video).length)} video`}</div>
     <div class="gs-hbs">
     ${bakT ? cubuk("Baktığımız sorular", yuzde(bankaN + aiN, bakT), `<span><i class="b1"></i>banka ${sayi(bankaN)}</span><span><i class="b2"></i>yapay zekâ ${sayi(aiN)}</span><span>${sayi(bakT)} soru</span>`,
-      `<span class="b1" style="width:${yz(bankaN, bakT)}%"></span><span class="b2" style="width:${yz(aiN, bakT)}%"></span>`, "Banka göndericisinin ya da yapay zekânın baktığı soruların yüzde kaçına cevap gönderdik.") : ""}
+      `<span class="b1" style="width:${yz(bankaN, bakT)}%"></span><span class="b2" style="width:${yz(aiN, bakT)}%"></span>`, "Baktığımız soruların yüzde kaçına cevap gitti") : ""}
     ${sor ? (() => { const ogN = Math.max(0, sor - gonS), UG = (Z.ucret || {})._genel || {}, DG = UG.deg || {}, dn = (DG.yeterli || 0) + (DG.yetersiz || 0);
       const bizYet = Lr.filter(x => x.deg === "yetersiz" && Gs.some(g => g.gun === x.zaman.slice(0, 10))).length;
-      const oran = dn >= 20 ? `yeterli %${Math.round(DG.yeterli / dn * 100)} / yetersiz %${Math.round(DG.yetersiz / dn * 100)}` : ogN ? `yetersiz ~%${Math.round(Math.max(0, don - bizYet) / ogN * 100)} (havuza geri dönenlerden)` : "";
+      const oran = dn >= 20 ? `yeterli %${Math.round(DG.yeterli / dn * 100)} / yetersiz %${Math.round(DG.yetersiz / dn * 100)}` : ogN ? `yetersiz ~%${Math.round(Math.max(0, don - bizYet) / ogN * 100)}` : "";
       return cubuk("Bütün sorulan sorular", yuzde(gonS, sor), `<span><i class="b3"></i>biz ${sayi(gonS)}</span><span><i class="b4"></i>öğretmenler ${sayi(ogN)}</span><span>${sayi(sor)} soru</span>`,
       `<span class="b3" style="width:${yz(gonS, sor)}%"></span><span class="b4" style="width:${yz(ogN, sor)}%"></span>`,
-      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı ortalama " + tlStr(UG.ort) : ""}. Henüz cevaplanmamış birkaç soru da bu kısımda. Sayım admin panelindeki online ve offline listeden.`); })() : ""}
+      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
   const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz", "hsl(var(--hata))"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
   const dTop = DL.reduce((a, [k]) => a + dsay(k), 0) || 1, R = 15.915;
   let ofs = 25; const halka = DL.map(([k, , r]) => { const n = dsay(k); if (!n) return ""; const p = n / dTop * 100, h = `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${r}" stroke-width="5" stroke-dasharray="${p} ${100 - p}" stroke-dashoffset="${ofs}"/>`; ofs -= p; return h; }).join("");
   const k2 = `<section class="gs-h gs-h2">
-    <div class="gs-h-bas" data-ipucu="Oran yalnız öğrencinin kendi verdiği değerlendirmelerden: yeterli ÷ (yeterli + yetersiz). Otomatik onay ve bekleyenler orana katılmaz.">Öğrenci değerlendirmesi</div>
+    <div class="gs-h-bas" data-ipucu="Yeterli oranı = (yeterli + otomatik onay) ÷ değerlendirilen. Bekleyenler dahil değil.">Öğrenci değerlendirmesi</div>
     <div class="gs-h2-ic"><svg class="gs-halka" viewBox="0 0 42 42"><circle r="${R}" cx="21" cy="21" fill="none" stroke="hsl(var(--muted))" stroke-width="5"/>${halka}</svg>
-      <div class="gs-halka-o"><b data-sayac="yeterli-orani">${yuzde(dsay("yeterli"), ogr)}</b><small>yeterli</small></div>
+      <div class="gs-halka-o"><b data-sayac="yeterli-orani">${yuzde(dsay("yeterli") + dsay("otomatik"), ogr + dsay("otomatik"))}</b><small>yeterli</small></div>
       <div class="gs-lej">${DL.map(([k, a, r]) => `<button class="gs-lej-s ${k === "yetersiz" && dsay(k) ? "kirmizi" : ""}" data-f="${k}"><i style="background:${r}"></i><span>${a}</span><b data-sayac="d-${k}">${sayi(dsay(k))}</b></button>`).join("")}</div></div></section>`;
   // (3) tasarruf + son 14 gün
   const G14 = Z.gunler.slice(-14), tg = g => gsTasarruf(C.filter(x => x.zaman.slice(0, 10) === g.gun && (ai ? x.banka_id == -1 : x.banka_id != -1))), V14 = G14.map(tg), mx = Math.max(1, ...V14);
   const k3 = `<section class="gs-h gs-h3">
-    <div class="gs-h-bas" data-ipucu="Bu cevaplar öğretmenlere gitseydi ödenecek gerçek tutar: her cevap kendi dersinde ödenen ortalama + üstüne %20 stopaj.">Tasarruf</div>
+    <div class="gs-h-bas" data-ipucu="Öğretmene gitseydi ödenecek tutar (%20 stopaj dahil)">Tasarruf</div>
     <div class="gs-h-tl" data-sayac="tasarruf">${olcul ? tlStr(tas) : "—"}</div>
     <div class="gs-h-alt">${olcul ? `soru başı ${tlStr(tas / olcul)}` : "ölçülüyor"}</div>
     <div class="gs-spark">${V14.map((v, i) => `<span class="${G14[i].gun >= bas && G14[i].gun <= son ? "sec" : ""}" style="height:${Math.max(3, v / mx * 100)}%" data-ipucu="${gkisa(G14[i].gun)}: ${tlStr(v)}"></span>`).join("")}</div>
@@ -1191,7 +1191,7 @@ function gsKart(x) {
   const K = gsV.Z.kontrol || {}, k = K[x.soru_id], d = DEG[x.deg] || [x.deg, ""], vid = x.video ? x.cevap_foto[0] : null;
   return `<article class="gs-kart ${x.deg === "yetersiz" ? "gs-kart-k" : ""}">
     <div class="gs-kart-ust">${soruLink(x.soru_id, "Soru " + x.soru_id)}<span class="soluk">${tarih(x.zaman)}</span><span class="etiket ${d[1]}">${d[0]}</span>
-      ${x.banka_id == -1 ? '<span class="etiket">Yapay zekâ</span>' : x.benzerlik != null ? `<span class="soluk" data-ipucu="Bankadaki soruya benzerlik (1 = aynı soru)">benzerlik ${Number(x.benzerlik).toFixed(2).replace(".", ",")}</span>` : ""}</div>
+      ${x.banka_id == -1 ? '<span class="etiket">Yapay zekâ</span>' : x.benzerlik != null ? `<span class="soluk" data-ipucu="1 = bankadaki soruyla aynı">benzerlik ${Number(x.benzerlik).toFixed(2).replace(".", ",")}</span>` : ""}</div>
     <div class="soluk gs-kart-ders">${e(x.ders || "—")}${[x.unite, x.konu].filter(Boolean).length ? " · " + [x.unite, x.konu].filter(Boolean).map(e).join(" › ") : ""}${x.sik ? ` · şık <b>${e(x.sik)}</b>` : ""}</div>
     ${medya(x.soru_foto, vid ? [] : x.cevap_foto, vid, "Cevap")}
     ${x.deg_metin ? `<div class="gs-kart-not"><b>Değerlendirme:</b> ${e(x.deg_metin)}</div>` : ""}
@@ -1289,7 +1289,7 @@ function gs14Ciz(T) {
   $("#gs-14").innerHTML = `<div class="gs-bas"><h3>Son 14 gün</h3></div><p class="gs-acikla">Her çubuk bir gün, en sağdaki bugün; üstüne gelince o günün değeri çıkar. Sağdaki sayı 14 günün toplamı ya da ortalaması.</p><div class="gs-minis">
     ${kucuk("Gönderilen cevap · toplam", g => g.gonderilen || 0, top("gonderilen"), sayi)}
     ${kucuk("Eşleşme oranı · ortalama", g => oran(g.gonderilen || 0, g.bakilan), oran(top("gonderilen"), top("bakilan")), yz)}
-    ${kucuk("Yeterli oranı · ortalama", g => oran(g.yeterli || 0, (g.yeterli || 0) + (g.yetersiz || 0)), oran(top("yeterli"), top("yeterli") + top("yetersiz")), yz)}
+    ${kucuk("Yeterli oranı · ortalama", g => oran((g.yeterli || 0) + (g.otomatik || 0), (g.yeterli || 0) + (g.yetersiz || 0) + (g.otomatik || 0)), oran(top("yeterli") + top("otomatik"), top("yeterli") + top("yetersiz") + top("otomatik")), yz)}
     ${kucuk("Tasarruf · toplam", tg, G.reduce((a, g) => a + tg(g), 0), x => sayi(Math.round(x)) + " TL")}</div>`;
 }
 function gsDersCiz(L, D7) {
@@ -1300,8 +1300,8 @@ function gsDersCiz(L, D7) {
 
   const S = Object.values(R).sort((a, b) => b.gon - a.gon || (E[dersGenelK(b.ders)]?.ornek || 0) - (E[dersGenelK(a.ders)]?.ornek || 0)).slice(0, 12);
   const g = (gsV.Z.ucret || {})._genel || {};
-  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3 data-ipucu="Dersler sınıf ayrımı olmadan geneldir (ör. TYT, mezun, 8. sınıf hepsi tek &quot;Matematik&quot;). Soru başı ödeme, o dersin cevaplarında öğretmenlere gerçekten ödenen tutarların ortalaması. Tasarruf, bu ödemenin üstüne %20 stopaj eklenmiş gerçek maliyettir.">Ders bazında tasarruf</h3></div>
-    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Bu dersin cevaplarında öğretmenlere ödenen gerçek kazancın ortalaması. Stopaj hariç, öğretmenin eline geçen.">Soru başı</th><th data-ipucu="Soru başı ödeme × gönderilen × 1,20 (üstüne %20 stopaj dahil).">Tasarruf</th><th data-ipucu="Yeterli / yetersiz değerlendirme">✓ / ✗</th>${D7.length ? '<th data-ipucu="Son 7 günde bu dersten bakılan soruların yüzde kaçına cevap gönderilebildi (üçte bir örnekle).">Eşleşme 7g</th>' : ""}</tr>
+  $("#gs-ders").innerHTML = `<div class="gs-bas"><h3 data-ipucu="Sınıflar birleşik; tasarruf %20 stopaj dahil">Ders bazında tasarruf</h3></div>
+    ${S.length ? `<table class="tablo sik gs-tablo"><tr><th>Ders</th><th>Gönderilen</th><th data-ipucu="Öğretmene ödenen ortalama (stopajsız)">Soru başı</th><th data-ipucu="Soru başı × gönderilen × 1,20">Tasarruf</th><th data-ipucu="Yeterli / yetersiz">✓ / ✗</th>${D7.length ? '<th data-ipucu="Son 7 günde bakılanların yüzde kaçına cevap gitti">Eşleşme 7g</th>' : ""}</tr>
     ${S.map(x => { const sb = x.odeme_n ? x.odeme / x.odeme_n : null, ek = E[dersGenelK(x.ders)], o = ek?.ornek >= 9 ? ek.ornek_gon / ek.ornek : null, zayif = o != null && o < .05;
       return `<tr class="${zayif ? "gs-zayif" : ""}"><td title="${e(x.ders)}">${e(x.ders)}</td><td>${x.gon}</td>
         <td ${sb == null ? "" : `title="${x.odeme_n} cevabın ortalaması"`}>${sb == null ? '<span class="soluk">ölçülüyor</span>' : tlStr(sb)}</td>
@@ -1337,7 +1337,7 @@ function gsYorumlarCiz(Y) {
       ${x ? gsIplik(x, ek) : gsIplik({ yorumlar: yedek }, ek)}</div>`; };
   const U = (Y.uygunsuz || []).filter(u => (Date.now() - new Date(u.t)) < 7 * 864e5);
   const uyg = U.length ? `<div class="gs-uyg"><b>Uygunsuz yorum · ${U.length}</b> <span class="soluk">Yanıt yazılmadı. Öğrencinin kurumuna bildirilmeli.</span>${U.slice(-5).reverse().map(u => `<div><a href="#" class="gs-soru-ac" data-q="${u.soru}">Soru ${u.soru}</a> · ${tarih(u.t)} — “${e(u.metin)}”</div>`).join("")}</div>` : "";
-  yer.innerHTML = uyg + `<div class="gs-bas"><h3 data-ipucu="Öğrenci yorumları ve yazdığımız yanıtlar, konuşma olarak. Bekleyenler dakikada bir gider.">Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen · bugün ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
+  yer.innerHTML = uyg + `<div class="gs-bas"><h3 data-ipucu="Bekleyenler dakikada bir gider">Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen · bugün ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
     <div class="gs-ys-liste">${L.length ? L.slice(0, 40).map(sat).join("") : `<p class="soluk">${bek ? "Bekleyen yanıt yok." : "Henüz gönderilen yanıt yok."}</p>`}</div>`;
   yer.querySelectorAll(".cip").forEach(b => b.onclick = () => { gsYorSek = b.dataset.v; gsYorumlarCiz(Y); });
 }
