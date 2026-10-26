@@ -807,3 +807,5 @@ body.gs-kilit{overflow:hidden}
 @media (max-width:600px){.gs-huni-s{grid-template-columns:110px minmax(0,1fr) 40px 34px}.gs-huni-dus{padding-left:0}}
 
 .gs-huni-ayr{border-top:1px dashed hsl(var(--border));margin:6px 0 2px}
+.gs-huni-cub{display:flex;gap:2px}.gs-huni-cub .b0{background:hsl(var(--soluk)/.35)}.gs-huni-cub .b2c{background:hsl(var(--primary)/.45);border-radius:0 4px 4px 0}.gs-huni-cub .b1:not(:last-child){border-radius:0}
+.gs-huni-lej{display:flex;gap:14px}.gs-huni-lej i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}.gs-huni-lej i.b1{background:hsl(var(--primary))}.gs-huni-lej i.b2c{background:hsl(var(--primary)/.45)}
