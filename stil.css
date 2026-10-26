@@ -505,7 +505,6 @@ dialog.metin-dlg p{white-space:pre-line;font-size:14px;margin:10px 0 0}
 .gs-cip.hata{border-color:hsl(var(--destructive)/.5);background:hsl(var(--destructive)/.08);color:hsl(var(--destructive))}.gs-cip.hata::before{content:"";width:7px;height:7px;border-radius:50%;background:hsl(var(--destructive))}
 .gs-senk{margin-left:auto;font-size:12px}
 .gs-kutular{grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;margin-bottom:12px}.gs-kutular .kutu{padding:10px 12px}.gs-kutular .kutu .s{font-size:20px}.gs-kutular .kutu .e{font-size:12px;line-height:1.3}
-.gs-izgara{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:8px}.gs-izgara .kart{margin:0}
 .gs-k{padding:12px 14px}.gs-genis{grid-column:span 1}
 .gs-bas{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}.gs-bas h3{margin:0;font-size:14px;font-weight:600}.gs-bas .cipler{margin:0}.gs-bas .cip{height:24px;font-size:12px;padding:0 10px}
 .gs-lejant{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:hsl(var(--muted-foreground));margin-bottom:6px;align-items:center}.gs-lejant span{display:inline-flex;align-items:center;gap:5px}
@@ -536,7 +535,6 @@ dialog.metin-dlg p{white-space:pre-line;font-size:14px;margin:10px 0 0}
 .gs-kutu-sira .kutu{box-shadow:none;background:hsl(var(--muted)/.55);border:0;padding:8px 10px}.gs-kutu-sira .kutu .s{font-size:20px}.gs-kutu-sira .kutu .e{font-size:12px;line-height:1.3}.gs-kutu-sira .kutu .e span{font-size:11px}
 .gs-kutu-sira .kutu.ok .s{color:hsl(var(--basari))}.gs-kutu-sira .kutu.hata{background:hsl(var(--destructive)/.08)}
 .gs-acikla{font-size:12.5px;color:hsl(var(--muted-foreground));margin:-2px 0 10px}
-.gs-izgara{margin-bottom:12px}.gs-izgara.gs-alt{grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:start}
 .gs-bas h3{font-size:15px}
 .gs-tablo td:first-child{white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .gs-eks-esik{color:hsl(var(--destructive));font-weight:600}
@@ -799,11 +797,6 @@ body.gs-kilit{overflow:hidden}
 .s-hc{white-space:nowrap}.s-hc .soluk{font-size:11px}
 .gs-kap{margin-top:-4px}
 /* 26 Eki: kaçış hunisi, eşiğe yakın kaçanlar */
-.gs-saat-k{margin-bottom:12px}.gs-saat-svg{width:100%;height:auto;display:block}
-.gs-izg{stroke:hsl(var(--border));stroke-width:1}.gs-eks{font-size:11px;fill:hsl(var(--soluk))}
-.gs-cizgi{fill:none;stroke:hsl(var(--primary));stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.gs-cizgi.gri{stroke:hsl(var(--soluk)/.6);stroke-dasharray:4 3}
-.gs-nk{fill:hsl(var(--primary));stroke:hsl(var(--card));stroke-width:2}.gs-nk.gri{fill:hsl(var(--soluk)/.6)}
-.gs-r-gri{background:hsl(var(--soluk)/.6)!important}
 .gs-ikili-k{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
 @media (max-width:900px){.gs-ikili-k{grid-template-columns:minmax(0,1fr)}}
 .gs-huni-s{display:grid;grid-template-columns:170px minmax(0,1fr) 52px 40px;align-items:center;gap:10px;font-size:13px;padding:4px 0}
