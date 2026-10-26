@@ -316,22 +316,100 @@ function kartlariBagla(kok, yenile) {
     const k = kart.querySelector(".kaydet");
     k.onclick = async () => {
       if (!secim) return bildir("Önce bir seçim yap.");
-      const not = kart.querySelector(".aksiyon input").value.trim(), tip = kart.dataset.mod === "kontrol" ? "kontrol" : "bekleyen", key = kart.dataset.key, kucuk = kart.querySelector(".kucuk-not")?.value.trim() || null;
-      if (tip === "kontrol" && secim === "YANLIS" && not.length < 3) return bildir("Yanlış dediysen kısaca nedenini yaz.");
-      k.disabled = true;
-      const { error } = await sb.rpc("d_karar_ver", { p_key: key, p_tip: tip, p_secim: secim, p_not: not, p_kucuk: secim === "REDDET" ? kucuk : null });
-      k.disabled = false;
-      if (error) return bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : error.message === "isleniyor" ? "Bu kayda verilen karar şu an admin paneline işleniyor, değiştirilemez." : "Kaydedilemedi: " + error.message);
-      kart.classList.add("gidiyor"); setTimeout(() => { kart.remove(); bosKontrol(kok); }, 250); rozetler();
-      toast(tip === "kontrol" ? "Kontrol kaydedildi" : "Karar kaydedildi", tip === "kontrol" ? "Teşekkürler." : "30 saniye içinde geri alabilirsin, sonra 1-2 dakika içinde admin paneline işlenir.", async () => {
-        const r = await sb.rpc("d_karar_geri_al", { p_key: key, p_tip: tip });
-        if (r.error) return bildir("Geri alınamadı: süre doldu ya da karar işlenmeye başladı.");
-        bildir("Geri alındı."); rozetler(); sekme === s0 && yenile && yenile();
-      });
+      const not = kart.querySelector(".aksiyon input").value.trim(), tip = kart.dataset.mod === "kontrol" ? "kontrol" : "bekleyen", kucuk = kart.querySelector(".kucuk-not")?.value.trim() || null;
+      k.disabled = true; const ok = await kararKaydet(kart.dataset.key, tip, secim, not, kucuk, s0, yenile); k.disabled = false;
+      if (ok) { kart.classList.add("gidiyor"); setTimeout(() => { kart.remove(); bosKontrol(kok); }, 250); }
     };
   });
 }
+async function kararKaydet(key, tip, secim, not, kucuk, s0, yenile) {
+  if (tip === "kontrol" && secim === "YANLIS" && not.length < 3) { bildir("Yanlış dediysen kısaca nedenini yaz."); return false; }
+  const { error } = await sb.rpc("d_karar_ver", { p_key: key, p_tip: tip, p_secim: secim, p_not: not, p_kucuk: secim === "REDDET" ? kucuk : null });
+  if (error) { bildir(error.message === "zaten_islendi" ? "Bu kayıt zaten işlenmiş." : error.message === "isleniyor" ? "Bu kayda verilen karar şu an admin paneline işleniyor, değiştirilemez." : "Kaydedilemedi: " + error.message); return false; }
+  rozetler();
+  toast(tip === "kontrol" ? "Kontrol kaydedildi" : "Karar kaydedildi", tip === "kontrol" ? "Teşekkürler." : "30 saniye içinde geri alabilirsin, sonra 1-2 dakika içinde admin paneline işlenir.", async () => {
+    const r = await sb.rpc("d_karar_geri_al", { p_key: key, p_tip: tip });
+    if (r.error) return bildir("Geri alınamadı: süre doldu ya da karar işlenmeye başladı.");
+    bildir("Geri alındı."); rozetler(); sekme === s0 && yenile && yenile();
+  });
+  return true;
+}
 function bosKontrol(kok) { if (!kok.querySelector("section.sk[data-mod]") && kok.querySelector(".bos-yer")) kok.querySelector(".bos-yer").innerHTML = '<div class="bos">Hepsi bitti.</div>'; }
+
+// ---------- kaydırma destesi: sağa = öğrenci haklı / karar doğru · sola = öğretmen haklı / karar yanlış · yukarı = derse aktar ----------
+const skGorunum = () => { try { return localStorage.getItem("skGorunum") || "deste"; } catch { return "deste"; } };
+function skListe(kok, L, mod, yenile, bosYazi) {
+  const g = skGorunum();
+  kok.innerHTML = `<div class="cipler gorunum-sec"><button class="cip ${g === "deste" ? "secili" : ""}" data-g="deste"><i data-lucide="layers"></i>Kaydır</button><button class="cip ${g === "izgara" ? "secili" : ""}" data-g="izgara"><i data-lucide="layout-grid"></i>Izgara</button></div><div class="sk-yer"></div>`;
+  kok.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { try { localStorage.setItem("skGorunum", b.dataset.g); } catch {} skListe(kok, L, mod, yenile, bosYazi); });
+  const yer = kok.querySelector(".sk-yer");
+  if (!L.length) yer.innerHTML = `<div class="bos">${bosYazi}</div>`;
+  else if (g === "izgara") { yer.className = "sk-yer bos-yer sk-izgara"; yer.innerHTML = L.map(s => sikayetKart(s, mod)).join(""); kartlariBagla(yer, yenile); }
+  else deste(yer, L, mod, yenile);
+  ikon();
+}
+function deste(yer, L, mod, yenile) {
+  const s0 = sekme, kontrolMu = mod === "kontrol";
+  const sec = kontrolMu ? { sag: "DOGRU", sol: "YANLIS" } : { sag: "ONAYLA", sol: "REDDET", ust: "HAVUZA_AKTAR" };
+  const havuz = s => !kontrolMu && s.tur !== "c" && s.hedef_lecture_id;
+  const ad = (s, y) => kontrolMu ? (y === "sag" ? "Karar doğru" : "Karar yanlış") : y === "ust" ? "Derse aktar" : kararAdi(s.tur, sec[y]).split(" · ")[1].replace(/^./, c => c.toLocaleUpperCase("tr"));
+  let i = 0, mesgul = false, bekleyenYon = null;
+  yer.innerHTML = `<div class="deste-sahne"><div class="deste"></div>
+    <input class="deste-not" placeholder="${kontrolMu ? "Yanlışsa neden? (sola kaydırmadan önce yaz)" : "Not (isteğe bağlı)"}">
+    <div class="deste-dugmeler"><button class="dd sol" data-y="sol" title="Sola kaydır (←)"><i data-lucide="x"></i><span></span></button>
+      <button class="dd ust" data-y="ust" title="Yukarı kaydır (↑)"><i data-lucide="arrow-up-right"></i><span>Derse aktar</span></button>
+      <button class="dd sag" data-y="sag" title="Sağa kaydır (→)"><i data-lucide="check"></i><span></span></button></div>
+    <div class="deste-sayac"></div></div>`;
+  const sahne = yer.querySelector(".deste-sahne"), d = sahne.querySelector(".deste"), notK = sahne.querySelector(".deste-not");
+  const ciz = () => {
+    if (i >= L.length) { sahne.innerHTML = '<div class="bos">Hepsi bitti.</div>'; return; }
+    const s = L[i];
+    d.innerHTML = L.slice(i, i + 3).map((x, j) => sikayetKart(x, "deste").replace('class="kart sk"', `class="kart sk deste-kart" style="--j:${j}"`)).join("");
+    const ust = d.firstElementChild;
+    ust.insertAdjacentHTML("beforeend", `<div class="damga sag">${ad(s, "sag")}</div><div class="damga sol">${ad(s, "sol")}</div>${havuz(s) ? `<div class="damga ust">Derse aktar</div>` : ""}`);
+    sahne.querySelector(".dd.sol span").textContent = ad(s, "sol"); sahne.querySelector(".dd.sag span").textContent = ad(s, "sag");
+    const du = sahne.querySelector(".dd.ust"); du.hidden = !havuz(s); if (havuz(s)) du.querySelector("span").textContent = "Derse aktar → " + (s.hedef_ders || "");
+    sahne.querySelector(".deste-sayac").textContent = `${i + 1} / ${L.length}`;
+    bagla(ust, s); ikon();
+  };
+  const damga = (k, dx, dy) => { const o = { sag: Math.max(0, dx) / 110, sol: Math.max(0, -dx) / 110, ust: Math.abs(dy) > Math.abs(dx) ? Math.max(0, -dy) / 110 : 0 };
+    k.querySelectorAll(".damga").forEach(m => m.style.opacity = Math.min(1, o[m.classList[1]])); };
+  const geri = k => { k.style.transition = ""; k.style.transform = ""; damga(k, 0, 0); };
+  async function karar(y) {
+    if (mesgul || i >= L.length) return; const s = L[i], k = d.firstElementChild;
+    if (y === "ust" && !havuz(s)) return geri(k);
+    const not = notK.value.trim();
+    if (kontrolMu && y === "sol" && not.length < 3) { geri(k); bekleyenYon = "sol"; notK.classList.add("zorunlu"); notK.focus(); return bildir("Yanlış dediysen kısaca nedenini yaz, sonra Enter."); }
+    mesgul = true; bekleyenYon = null; notK.classList.remove("zorunlu");
+    k.style.transition = "transform .28s cubic-bezier(.4,0,.2,1),opacity .28s"; damga(k, y === "sag" ? 200 : y === "sol" ? -200 : 0, y === "ust" ? -200 : 0);
+    k.style.transform = y === "ust" ? "translateY(-120%)" : `translateX(${y === "sag" ? 130 : -130}%) rotate(${y === "sag" ? 14 : -14}deg)`; k.style.opacity = "0";
+    const [ok] = await Promise.all([kararKaydet(s.key, kontrolMu ? "kontrol" : "bekleyen", sec[y], not, null, s0, yenile), new Promise(r => setTimeout(r, 280))]);
+    mesgul = false;
+    if (!ok) { k.style.opacity = ""; return geri(k); }
+    i++; notK.value = ""; ciz();
+  }
+  function bagla(k, s) {
+    let x0 = 0, y0 = 0, dx = 0, dy = 0, basili = false, hareket = false;
+    k.addEventListener("pointerdown", ev => { if (ev.button || ev.target.closest("a,button,input,video")) return; basili = true; hareket = false; x0 = ev.clientX; y0 = ev.clientY; dx = dy = 0; });
+    k.addEventListener("pointermove", ev => {
+      if (!basili) return; dx = ev.clientX - x0; dy = ev.clientY - y0;
+      if (!hareket && Math.hypot(dx, dy) > 8) { hareket = true; k.setPointerCapture(ev.pointerId); k.style.transition = "none"; k.classList.add("suruk"); }
+      if (hareket) { k.style.transform = `translate(${dx}px,${havuz(s) ? Math.min(dy, 40) : dy * .25}px) rotate(${dx / 22}deg)`; damga(k, dx, havuz(s) ? dy : 0); }
+    });
+    const birak = () => { if (!basili) return; basili = false; k.classList.remove("suruk"); if (!hareket) return;
+      if (dx > 110) karar("sag"); else if (dx < -110) karar("sol"); else if (havuz(s) && dy < -110 && Math.abs(dy) > Math.abs(dx)) karar("ust"); else geri(k); };
+    k.addEventListener("pointerup", birak); k.addEventListener("pointercancel", () => { basili = false; k.classList.remove("suruk"); geri(k); });
+    k.addEventListener("click", ev => { if (hareket) { ev.stopPropagation(); ev.preventDefault(); hareket = false; } }, true);
+  }
+  sahne.querySelectorAll(".dd").forEach(b => b.onclick = () => karar(b.dataset.y));
+  notK.addEventListener("keydown", ev => { if (ev.key === "Enter" && bekleyenYon) karar(bekleyenYon); });
+  sahne._karar = karar;
+  ciz();
+}
+document.addEventListener("keydown", ev => {
+  const sahne = document.querySelector(".deste-sahne"); if (!sahne?._karar || !$("#buyut").hidden || ev.target.matches("input,textarea,select") || ev.metaKey || ev.ctrlKey) return;
+  const y = { ArrowRight: "sag", ArrowLeft: "sol", ArrowUp: "ust" }[ev.key]; if (y) { ev.preventDefault(); sahne._karar(y); }
+});
 
 // ---------- özet ----------
 function saglikTablo(S, bugun, M) {
@@ -494,8 +572,8 @@ async function bekleyen() {
     ${sirada ? `<div class="bilgi-serit"><i data-lucide="clock"></i>${sirada} kararın admin paneline işlenmeyi bekliyor.</div>
       <div class="tablo-sar"><table class="tablo sik"><tr><th>Şikayet</th><th>Verilen karar</th><th>Kim</th><th>Durum</th></tr>${L.filter(s => !acik.includes(s)).map(s => { const k = s.d_karar.filter(x => x.tip === "bekleyen").pop();
         return `<tr><td>${e(s.ogretmen || "")} <span class="soluk">${e(s.ders || "")}</span></td><td>${kararAdi(s.tur, k.secim)}</td><td class="soluk">${e(k.kim)}</td><td>${k.uygulama_notu ? `<span class="etiket hata">${e(k.uygulama_notu)}</span>` : '<span class="soluk">sırada</span>'}</td></tr>`; }).join("")}</table></div>` : ""}
-    <div class="bos-yer sk-izgara">${acik.length ? acik.map(s => sikayetKart(s, "bekleyen")).join("") : '<div class="bos">Bekleyen kayıt yok.</div>'}</div>`;
-  kartlariBagla($("#icerik"), bekleyen);
+    <div id="sk-liste"></div>`;
+  skListe($("#sk-liste"), acik, "bekleyen", bekleyen, "Bekleyen kayıt yok.");
 }
 
 // ---------- haftalık kontrol ----------
@@ -505,9 +583,9 @@ async function kontrol() {
   const acik = L.filter(s => !s.d_karar.some(k => k.tip === "kontrol")), bacik = B.filter(b => !b.kontrol_secim);
   $("#icerik").innerHTML = baslik("Haftalık kontrol", "Otomatik kararların doğru olup olmadığını ölçmek için her hafta rastgele birkaç karar seçilir. Her birine bak: karar doğruysa \"Karar doğru\", yanlışsa \"Karar yanlış\" seç ve nedenini yaz. Yazdığın neden kurallara eklenir ve sonraki kararlarda dikkate alınır. Yanlış bir kararı admin panelinde ayrıca elle düzeltmen gerekir.") + `
     <div class="bilgi-serit"><i data-lucide="list-checks"></i>Şikayetler: ${L.length - acik.length}/${L.length} · Solver başvuruları: ${B.length - bacik.length}/${B.length} tamamlandı.</div>
-    <h2>Şikayet kararları</h2><div class="bos-yer sk-izgara">${acik.length ? acik.map(s => sikayetKart(s, "kontrol")).join("") : '<div class="bos">Bu haftanın şikayet kontrolleri bitti.</div>'}</div>
+    <h2>Şikayet kararları</h2><div id="sk-liste"></div>
     <h2>Solver başvuru kararları</h2><div class="bos-yer b-yer b-izgara">${bacik.length ? bacik.map(b => basvuruKart(b, true)).join("") : '<div class="bos">Bu haftanın başvuru kontrolleri bitti.</div>'}</div>`;
-  kartlariBagla($("#icerik"), kontrol); basvuruBagla(kontrol);
+  skListe($("#sk-liste"), acik, "kontrol", kontrol, "Bu haftanın şikayet kontrolleri bitti."); basvuruBagla(kontrol);
 }
 
 // ---------- uyarılar ----------
