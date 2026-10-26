@@ -1374,7 +1374,9 @@ function gsCiz(bas, son) {
     <div class="gs-spark">${V14.map((v, i) => `<span class="${G14[i].gun >= bas && G14[i].gun <= son ? "sec" : ""}" style="height:${Math.max(3, v / mx * 100)}%" data-ipucu="${gkisa(G14[i].gun)}: ${tlStr(v)}"></span>`).join("")}</div>
     <div class="gs-spark-alt"><span>${gkisa(G14[0].gun)}</span><span>son 14 gün · ${tlStr(V14.reduce((a, b) => a + b, 0))}</span></div></section>`;
   const hero = `<div class="gs-hero">${k1}${k2}${k3}</div>`;
-  $("#gs-govde").innerHTML = `${hero}
+  // 26 Eki: saat saat kapsama + kaçış hunisi + eşiğe yakın kaçanlar
+  const ek = `<section class="kart gs-k gs-saat-k" id="gs-saat"></section>${ai ? "" : '<div class="gs-ikili-k"><section class="kart gs-k" id="gs-huni"></section><section class="kart gs-k" id="gs-yakin"></section></div>'}`;
+  $("#gs-govde").innerHTML = `${hero}${ek}
     <div class="gs-yan">
       <div class="gs-sol"><section class="kart gs-k" id="gs-ders"></section><section class="kart gs-k" id="gs-yorumlar"></section></div>
       <section class="kart gs-k gs-liste-k"><div class="gs-bas"><h3>Gönderilen cevaplar <span class="soluk" id="gs-liste-n"></span></h3><button class="ince kucuk" id="gs-filtre-sifir" hidden>Filtreyi temizle</button></div><div id="gs-liste"></div></section>
@@ -1382,6 +1384,8 @@ function gsCiz(bas, son) {
     ${ai || tum ? `<details class="gs-analiz" id="gs-atla-d"><summary>${tum ? "Yapay zekâ bugün neden atladı?" : "Bugün neden atladı?"} <span class="soluk">${sayi(gB.atla || 0)} soru</span></summary><div class="gs-atla" id="gs-atla"></div></details>` : ""}${ai ? "" : `<details class="gs-analiz" id="gs-analiz-d"><summary>Analiz ve grafikler</summary>
         <div class="gs-izgara"><section class="kart gs-k" id="gs-sebep"></section><section class="kart gs-k" id="gs-benz"></section><section class="kart gs-k" id="gs-14"></section><section class="kart gs-k" id="gs-yorum"></section></div></details>`}`;
   gsB = B;
+  gsSaatCiz(bas, son, gsGorunum);
+  if (!ai) { gsHuniCiz(G, aiN); gsYakinCiz(G); }
   gsDersCiz(B, ai ? [] : Z.ders_7 || []);
   gsListe(B);
   gsYorumlarCiz(Z.yorum || {});
@@ -1396,6 +1400,60 @@ function gsCiz(bas, son) {
   gsSayacAkit();
 }
 let gsB = [];
+const gsAd = k => GS_ADI[k] || (k.startsWith("ogrenci_notu") ? "Öğrencinin özel notu var → yapay zekâya" : k.startsWith("hazirlik_hatasi") ? "Cevap hazırlanırken hata" : k.startsWith("banka_ai_celiski") ? "Banka ile yapay zekâ çelişti" : k);
+const gsPc = v => v == null ? "—" : "%" + (v * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 });
+// 26 Eki: kaçış hunisi — sorulan → göndericinin gördüğü → bankada benzeri olan → banka cevabı gönderilen; her basamakta kaybın sebebi
+function gsHuniCiz(G, aiN) {
+  const D = G.filter(g => g.huni && g.sorulan), el = $("#gs-huni"); if (!el) return;
+  if (!D.length) { el.innerHTML = '<div class="gs-bas"><h3>Sorular nereye gitti?</h3></div><p class="soluk">Bu aralık için huni verisi yok (26 Eki\'den önce ölçülmüyordu).</p>'; return; }
+  const top = k => D.reduce((a, g) => a + (g.huni[k] || 0), 0), sor = D.reduce((a, g) => a + g.sorulan, 0), gor = Math.min(top("gor"), sor), yok = top("yok"), gon = top("gon"), K = {};
+  D.forEach(g => Object.entries(g.huni.kayip || {}).forEach(([k, n]) => { const a = gsAd(k); K[a] = (K[a] || 0) + n; }));
+  const kayip = Object.entries(K).sort((a, b) => b[1] - a[1]), esl = gor - yok;
+  const sat = (ad, v, renk, dus, dusAd) => `<div class="gs-huni-s"><span class="gs-huni-ad">${ad}</span><span class="gs-huni-cub"><span class="${renk}" style="width:${sor ? Math.max(1, v / sor * 100) : 0}%"></span></span><b>${sayi(v)}</b><span class="soluk gs-huni-y">${yuzde(v, sor)}</span></div>
+    ${dus ? `<div class="gs-huni-dus" ${dusAd ? `data-ipucu="${e(dusAd)}"` : ""}>▼ ${sayi(dus)} ${dusAd && dusAd.length < 60 ? e(dusAd) : ""}</div>` : ""}`;
+  el.innerHTML = `<div class="gs-bas"><h3>Sorular nereye gitti?</h3></div><p class="gs-acikla">Bütün sorulan sorulardan banka cevabına kadar her basamakta kaç soru kaybettik, neden?</p>
+    ${sat("Bütün sorulan sorular", sor, "b4", sor - gor, "gönderici görmeden başkası aldı ya da gönderici kapalıydı")}
+    ${sat("Göndericinin gördüğü", gor, "b2", yok, "bankada benzeri yok ya da benzerlik eşiğin altında")}
+    ${sat("Bankada benzeri bulunan", esl, "b2", esl - gon, "")}
+    ${kayip.length ? `<div class="gs-huni-kay">${kayip.slice(0, 5).map(([a, n]) => `<span>${e(a)} <b>${sayi(n)}</b></span>`).join("")}</div>` : ""}
+    ${sat("Banka cevabı gönderilen", gon, "b1", 0)}
+    ${aiN ? `<p class="soluk gs-dip">Yapay zekâ ayrıca ${sayi(aiN)} soruya cevap verdi; çoğu bankada olmayan ya da öğrencinin not yazdığı sorular.</p>` : ""}`;
+}
+// 26 Eki: benzerliği eşiğin hemen altında kalıp atlanan sorular; eşiği düşürseydik kaç soru daha giderdi (cevabın doğruluğu ayrıca kontrol edilmeli)
+function gsYakinCiz(G) {
+  const el = $("#gs-yakin"); if (!el) return;
+  const es = Number(gsV.Z.saglik?.esik) || 0.8, Y = {}; G.forEach(g => Object.entries(g.yakin || {}).forEach(([k, n]) => { Y[k] = (Y[k] || 0) + n; }));
+  const adim = []; for (let t = Math.round((es - 0.02) * 100); t >= 70; t -= 2) adim.push(t / 100);
+  const ek = t => Object.entries(Y).reduce((a, [k, n]) => a + (Number(k) >= t ? n : 0), 0), mx = Math.max(1, ek(0.70));
+  el.innerHTML = `<div class="gs-bas"><h3>Eşiğe yakın kaçanlar</h3></div><p class="gs-acikla">Benzerliği 0,70 ile eşik (${es.toFixed(2).replace(".", ",")}) arasında kalıp atlanan sorular. Eşiği düşürseydik bankadan kaç cevap daha giderdi?</p>
+    ${G.some(g => g.yakin) ? adim.map(t => { const n = ek(t); return `<div class="gs-sat gs-sat-2" data-ipucu="Eşik ${String(t).replace(".", ",")} olsaydı ${sayi(n)} soru daha eşleşirdi"><span class="gs-et">eşik ${t.toFixed(2).replace(".", ",")}</span><span class="gs-cub"><span class="foto" style="width:${n / mx * 100}%"></span></span><b>+${sayi(n)}</b></div>`; }).join("")
+      + '<p class="soluk gs-dip">Dikkat: eşiğin altındaki eşleşmelerde bankadaki cevap yanlış soruya ait olabilir. Eşiği düşürmeden önce örnekleri kontrol etmek gerekir.</p>' : '<p class="soluk">Bu aralık için veri yok.</p>'}`;
+}
+// 26 Eki: saat saat kapsama (gönderilen ÷ sorulan), seçili aralık ile bir önceki eş aralık; az sorulu saatler (<5) boş
+function gsSaatCiz(bas, son, mod) {
+  const el = $("#gs-saat"); if (!el) return;
+  const { Z } = gsV, n = Math.round((new Date(son + "T12:00") - new Date(bas + "T12:00")) / 864e5) + 1, bg = gunStr(new Date()), simS = new Date().getHours();
+  const seri = (b, s_) => { const S = Array(24).fill(0), C = Array(24).fill(0); let tam = true;
+    for (let g = b; g <= s_; g = gunEkle(g, 1)) { const r = Z.gunler.find(x => x.gun === g); if (!r || !r.sorulan_10dk || !r.saat_b) { tam = false; continue; }
+      for (let h = 0; h < 24; h++) { S[h] += r.sorulan_10dk.slice(h * 6, h * 6 + 6).reduce((a, x) => a + x, 0); C[h] += (mod !== "ai" ? r.saat_b[h] : 0) + (mod !== "banka" ? r.saat_a[h] : 0); } }
+    return { S, C, tam }; };
+  const A = seri(bas, son), P = seri(gunEkle(bas, -n), gunEkle(son, -n)), sonH = son === bg ? simS - 1 : 23;   // içinde bulunulan saat yarım, çizilmez
+  const k = (X, h) => X.S[h] >= 10 ? Math.min(1, X.C[h] / X.S[h]) : null;   // gece biriken sorular sabah cevaplanınca %100'ü aşabiliyor
+  const VA = A.S.map((_, h) => h <= sonH ? k(A, h) : null), VP = P.tam ? P.S.map((_, h) => k(P, h)) : [];
+  const et = n === 1 ? (son === bg ? "dün" : gkisa(gunEkle(bas, -1))) : `önceki ${n} gün`, at = n === 1 ? (son === bg ? "bugün" : gkisa(bas)) : "seçili aralık";
+  const bas_ = `<div class="gs-bas"><h3>Saat saat kapsama</h3><span class="gs-lejant"><span><i class="gs-r foto"></i>${at}</span>${VP.length ? `<span><i class="gs-r gs-r-gri"></i>${et}</span>` : ""}</span></div>`;
+  if (!A.tam && !VA.some(v => v != null)) { el.innerHTML = bas_ + '<p class="soluk">Bu aralık için saatlik veri yok (26 Eki\'den önce ölçülmüyordu).</p>'; return; }
+  const W = 720, H = 190, L = 36, R = 8, T = 10, B = 22, mx = Math.max(0.1, ...VA.filter(v => v != null), ...VP.filter(v => v != null)), ust = Math.ceil(mx * 10) / 10;
+  const x = h => L + (h + 0.5) * (W - L - R) / 24, y = v => T + (1 - v / ust) * (H - T - B);
+  const yol = V => { let d = "", ac = false; V.forEach((v, h) => { if (v == null) { ac = false; return; } d += `${ac ? "L" : "M"}${x(h).toFixed(1)},${y(v).toFixed(1)}`; ac = true; }); return d; };
+  const nok = (V, sinif) => V.map((v, h) => v == null ? "" : `<circle class="${sinif}" cx="${x(h).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3"/>`).join("");
+  const izg = [0, ust / 2, ust].map(v => `<line class="gs-izg" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="gs-eks" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">%${Math.round(v * 100)}</text>`).join("");
+  const eks = [0, 3, 6, 9, 12, 15, 18, 21].map(h => `<text class="gs-eks" x="${x(h)}" y="${H - 6}" text-anchor="middle">${String(h).padStart(2, "0")}</text>`).join("");
+  const vur = A.S.map((_, h) => `<rect x="${x(h) - (W - L - R) / 48}" y="${T}" width="${(W - L - R) / 24}" height="${H - T - B}" fill="transparent" data-ipucu="${String(h).padStart(2, "0")}:00 · ${at} ${gsPc(VA[h])} (${sayi(A.C[h])}/${sayi(A.S[h])} soru)${VP.length ? ` · ${et} ${gsPc(VP[h])} (${sayi(P.C[h])}/${sayi(P.S[h])})` : ""}"/>`).join("");
+  el.innerHTML = bas_ + `<p class="gs-acikla">Her saatte sorulan soruların yüzde kaçına ${mod === "banka" ? "banka" : mod === "ai" ? "yapay zekâ" : "Tebeşir"} cevap verdi. 10'dan az sorulu saatler ve içinde bulunduğumuz saat boş; gece biriken sorular sabah cevaplandığında oran %100'de kesilir.</p>
+    <svg class="gs-saat-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Saat saat kapsama">${izg}${eks}
+      ${VP.length ? `<path class="gs-cizgi gri" d="${yol(VP)}"/>${nok(VP, "gs-nk gri")}` : ""}<path class="gs-cizgi" d="${yol(VA)}"/>${nok(VA, "gs-nk")}${vur}</svg>`;
+}
 // 26 Eki: "Bütün sorulan sorular" da bir önceki aralıkla kıyaslanır; bugün için dünün aynı saatine kadar (panel_senk sorulan_10dk = 144 dilim, son dilim orantılı)
 function gsSorOnceki(bas, son) {
   const { Z } = gsV, bg = gunStr(new Date()), n = Math.round((new Date(son + "T12:00") - new Date(bas + "T12:00")) / 864e5) + 1, pb = gunEkle(bas, -n), ps = gunEkle(son, -n);

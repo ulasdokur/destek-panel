@@ -798,3 +798,18 @@ body.gs-kilit{overflow:hidden}
 .s-ikili{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}.s-ort{display:flex;align-items:baseline;gap:6px;padding-bottom:6px}.s-ort span{font-size:22px;font-weight:600;color:hsl(var(--metin-2))}.s-ort small{font-size:13px;color:hsl(var(--soluk))}
 .s-hc{white-space:nowrap}.s-hc .soluk{font-size:11px}
 .gs-kap{margin-top:-4px}
+/* 26 Eki: saat saat kapsama, kaçış hunisi, eşiğe yakın kaçanlar */
+.gs-saat-k{margin-bottom:12px}.gs-saat-svg{width:100%;height:auto;display:block}
+.gs-izg{stroke:hsl(var(--border));stroke-width:1}.gs-eks{font-size:11px;fill:hsl(var(--soluk))}
+.gs-cizgi{fill:none;stroke:hsl(var(--primary));stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.gs-cizgi.gri{stroke:hsl(var(--soluk)/.6);stroke-dasharray:4 3}
+.gs-nk{fill:hsl(var(--primary));stroke:hsl(var(--card));stroke-width:2}.gs-nk.gri{fill:hsl(var(--soluk)/.6)}
+.gs-r-gri{background:hsl(var(--soluk)/.6)!important}
+.gs-ikili-k{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
+@media (max-width:900px){.gs-ikili-k{grid-template-columns:minmax(0,1fr)}}
+.gs-huni-s{display:grid;grid-template-columns:170px minmax(0,1fr) 52px 40px;align-items:center;gap:10px;font-size:13px;padding:4px 0}
+.gs-huni-cub{height:14px;background:hsl(var(--muted));border-radius:4px;overflow:hidden}.gs-huni-cub span{display:block;height:100%;border-radius:0 4px 4px 0}
+.gs-huni-cub .b1{background:hsl(var(--primary))}.gs-huni-cub .b2{background:hsl(var(--primary)/.45)}.gs-huni-cub .b4{background:hsl(45 93% 52%)}
+.gs-huni-s b{text-align:right}.gs-huni-y{text-align:right;font-size:12px}
+.gs-huni-dus{font-size:12px;color:hsl(var(--hata));padding:0 0 2px 180px}
+.gs-huni-kay{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:hsl(var(--soluk));padding:0 0 4px 180px}.gs-huni-kay b{color:hsl(var(--metin))}
+@media (max-width:600px){.gs-huni-s{grid-template-columns:110px minmax(0,1fr) 44px 36px}.gs-huni-dus,.gs-huni-kay{padding-left:0}}
