@@ -1346,7 +1346,7 @@ function gsCiz(bas, son) {
       const oran = dn >= 20 ? `yeterli %${Math.round(DG.yeterli / dn * 100)} / yetersiz %${Math.round(DG.yetersiz / dn * 100)}` : ogN ? `yetersiz ~%${Math.round(Math.max(0, don - bizYet) / ogN * 100)}` : "";
       return cubuk("Bütün sorulan sorular", yuzde(gonS, sor), `<span><i class="b3"></i>biz ${sayi(gonS)}</span><span><i class="b4"></i>öğretmenler ${sayi(ogN)}</span><span>${sayi(sor)} soru</span>`,
       `<span class="b3" style="width:${yz(gonS, sor)}%"></span><span class="b4" style="width:${yz(ogN, sor)}%"></span>`,
-      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`); })() : ""}
+      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`) + gsSorDun(bas, son, sor); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
   const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz", "hsl(var(--hata))"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
@@ -1388,6 +1388,20 @@ function gsCiz(bas, son) {
   gsSayacAkit();
 }
 let gsB = [];
+// 26 Eki: "Bütün sorulan sorular" da bir önceki aralıkla kıyaslanır; bugün için dünün aynı saatine kadar (panel_senk sorulan_10dk = 144 dilim, son dilim orantılı)
+function gsSorDun(bas, son, sor) {
+  const { Z } = gsV, bg = gunStr(new Date()), n = Math.round((new Date(son + "T12:00") - new Date(bas + "T12:00")) / 864e5) + 1, pb = gunEkle(bas, -n), ps = gunEkle(son, -n);
+  if (gsAr.tur === "hepsi") return "";
+  const sim = new Date(), dk = son === bg ? sim.getHours() * 60 + sim.getMinutes() : 1440;
+  let d = 0;
+  for (let g = pb; g <= ps; g = gunEkle(g, 1)) {
+    const D = (Z.gunler.find(x => x.gun === g) || {}).sorulan_10dk; if (!D) return "";
+    d += g < ps ? D.reduce((a, b) => a + b, 0) : D.slice(0, Math.floor(dk / 10)).reduce((a, b) => a + b, 0) + (dk < 1440 ? (D[Math.floor(dk / 10)] || 0) * (dk % 10) / 10 : 0);
+  }
+  d = Math.round(d); const f = sor - d;
+  const et = n === 1 ? (son === bg ? "dün bu saatte" : `önceki gün (${gkisa(pb)})`) : son === bg ? `önceki ${n} gün, aynı saate kadar` : `önceki ${n} gün`;
+  return `<div class="gs-dun">${et} <b>${sayi(d)}</b> soru${f ? ` <span class="${f > 0 ? "ok" : "hata"}">${f > 0 ? "▲" : "▼"} ${sayi(Math.abs(f))}${d >= 10 ? ` (%${Math.round(Math.abs(f) / d * 100)})` : ""}</span>` : ""}</div>`;
+}
 function gsAtlaCiz(g) {
   const S = Object.entries(g.sebep || {}).sort((a, b) => b[1] - a[1]), mx = Math.max(1, ...S.map(x => x[1]));
   $("#gs-atla").innerHTML = S.length ? S.map(([k, n]) => `<div class="gs-sat gs-sat-2"><span class="gs-et" title="${e(k)}">${e(k)}</span><span class="gs-cub"><span class="foto" style="width:${n / mx * 100}%"></span></span><b>${n}</b></div>`).join("") : '<p class="soluk">Bugün atlanan soru yok.</p>';
