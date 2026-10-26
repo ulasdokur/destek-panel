@@ -752,3 +752,4 @@ body.gs-kilit{overflow:hidden}
 .deste-sayac{text-align:center;font-size:12px;color:hsl(var(--metin-2))}
 @media (max-width:767px){.deste-kart .sk-govde{grid-template-columns:1fr}.dd{height:46px;padding:0 16px;font-size:13px}.damga{font-size:16px}}
 @media (prefers-reduced-motion:reduce){.deste-kart{transition:none}}
+.sk-bilgi dd.vurgu{font-weight:600}.sk-bilgi dd.soluk{color:hsl(var(--metin-2))}

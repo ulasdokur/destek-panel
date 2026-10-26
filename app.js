@@ -270,10 +270,11 @@ function medya(soruL, cevapL, video, cevapEtiket, tekli) {
 // ---------- şikayet kartı (Figma web paneli "Soru Çözümleri" kartı gibi dikey; ızgarada yan yana) ----------
 function sikayetKart(s, mod) {
   const cevapli = s.tur === "c";
+  // boş alan da yazılır ("yazmamış"): öğrenci not bıraktı mı, öğretmen açıklama yazdı mı bir bakışta görünsün
   const bilgi = cevapli
-    ? [["Öğrencinin seçimi", [s.sebep, (s.alt_sebep || []).join(", ")].filter(Boolean).join(" · ")], ["Öğrencinin notu", s.ogrenci_notu],
-       ["Yorumlar", (s.yorumlar || []).join(" / ")], ["Sorudaki açıklama", s.soru_aciklamasi], ["Öğretmenin açıklaması", s.cevap_aciklamasi], ["Videodaki konuşma", s.ses_dokumu && s.ses_dokumu.slice(0, 400)]]
-    : [["Şikayet sebebi", s.sebep], ["Öğrencinin açıklaması", s.ogrenci_notu]];
+    ? [["Öğrencinin seçimi", [s.sebep, (s.alt_sebep || []).join(", ")].filter(Boolean).join(" · "), "—"], ["Öğrencinin notu", s.ogrenci_notu, "Yazmamış"],
+       ["Yorumlar", (s.yorumlar || []).join(" / "), "Yok"], ["Öğretmenin açıklaması", s.cevap_aciklamasi, "Yazmamış"], ["Soruyu sorarken yazdığı", s.soru_aciklamasi], ["Videodaki konuşma", s.ses_dokumu && s.ses_dokumu.slice(0, 400)]]
+    : [["Şikayet sebebi", s.sebep, "—"], ["Açıklaması", s.ogrenci_notu, "Yazmamış"]];
   const durum = s.durum === "hata" ? '<span class="etiket hata" data-ipucu="Admin paneline yazılırken yanıt alınamadı ve kayıt artık bekleyenlerde değil. Admin panelde bu şikayetin sonucuna bakın.">Admin\'de kontrol et</span>' : s.durum === "islendi" ? `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>` : '<span class="etiket uyari">Karar bekliyor</span>';
   const hedef = s.hedef_ders ? ` → ${e(s.hedef_ders)}` : "";
   const karar = `<div class="sk-karar"><div class="sk-karar-satir"><span class="kl">İlk inceleme: <b>${kararAdi(s.tur, s.ajan_karar).split(" · ")[0]}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}</b></span>
@@ -296,14 +297,14 @@ function sikayetKart(s, mod) {
   const tur = takipMi ? (s.kaynak === "denetim" ? "Rastgele denetim" : "Yakın takip") : cevapli ? "Cevap" : "Soru";
   const ikonlar = `${s.ogretmen_id ? `<a class="ikon-btn" href="#" title="Öğretmenin geçmişi" aria-label="Öğretmenin geçmişi" onclick="event.preventDefault();git('ogretmen','${s.ogretmen_id}')"><i data-lucide="history"></i></a>` : ""}
     ${s.question_id ? `<a class="ikon-btn" href="${ADMIN}/Question/Detail/${s.question_id}" target="_blank" rel="noopener" title="Soruyu admin panelde aç" aria-label="Soruyu aç"><i data-lucide="external-link"></i></a>` : ""}`;
-  const bilgiDolu = bilgi.filter(x => x[1]);
+  const bilgiDolu = bilgi.filter(x => x[1] || x[2]);
   return `<section class="kart sk" data-key="${e(s.key)}" data-mod="${mod}" data-tur="${s.tur}">
     <div class="sk-bas"><b title="${e(s.ders)}">${e(s.ders)}</b><span class="sk-durum">${durum}</span><span class="sk-alt-bas">${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`} · ${tarih(s.olusturma)}</span><div class="sk-ikonlar">${ikonlar}</div></div>
     <div class="sk-govde">${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}
     <div class="sk-sag"><div class="sk-kisiler">
       ${takipMi ? "" : `<div><span>Öğrenci</span>${kisiLink(s.ogrenci_seo, s.ogrenci)}</div>`}
       <div><span>${cevapli ? "Öğretmen" : "Şikayet eden"}</span>${kisiLink(s.ogretmen_seo, s.ogretmen)}</div></div>
-    ${bilgiDolu.length ? `<dl class="sk-bilgi">${bilgiDolu.map(([a, b]) => `<div><dt>${a}</dt><dd class="klamp">${e(b)}</dd></div>`).join("")}</dl>` : ""}
+    ${bilgiDolu.length ? `<dl class="sk-bilgi">${bilgiDolu.map(([a, b, bos], i) => `<div><dt>${a}</dt>${b ? `<dd class="klamp${i ? "" : " vurgu"}">${e(b)}</dd>` : `<dd class="soluk">${bos}</dd>`}</div>`).join("")}</dl>` : ""}
     ${karar}</div></div>
     ${alt ? `<div class="sk-alt">${alt}</div>` : ""}</section>`;
 }
