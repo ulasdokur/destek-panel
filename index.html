@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="stil.css?v=10261136">
+<link rel="stylesheet" href="stil.css?v=10261156">
 </head>
 <body>
 <div id="giris" hidden>
@@ -31,7 +31,6 @@
     </div>
     <nav id="sekmeler">
       <button data-s="bugun" title="Bugün"><i data-lucide="list-checks"></i><span>Bugün</span></button>
-      <button data-s="ozet" title="Özet"><i data-lucide="layout-grid"></i><span>Özet</span></button>
       <button data-s="rapor" title="Rapor"><i data-lucide="chart-column"></i><span>Rapor</span></button>
       <div class="grup" data-grup="sikayet">
         <button class="grup-bas" title="Şikayetler" data-ilk="bekleyen"><i data-lucide="inbox"></i><span>Şikayetler</span><b class="rozet grup-rozet" id="r-sikayet-grup"></b><i data-lucide="chevron-down" class="ok"></i></button>
@@ -49,8 +48,8 @@
           <button data-s="takip"><span>Yakın Takip</span></button>
           <button data-s="denetim"><span>Rastgele Denetim</span></button>
           <button data-s="eksi"><span>Eksi Puanlılar</span></button>
-          <button data-s="kesinti"><span>Hesap Kesintileri</span><b class="rozet" id="r-kesinti"></b></button>
-          <button data-s="odeme"><span>Ödemeler</span><b class="rozet" id="r-odeme"></b></button>
+          <button data-s="kesinti" class="sadece-yonetici" hidden><span>Hesap Kesintileri</span><b class="rozet" id="r-kesinti"></b></button>
+          <button data-s="odeme" class="sadece-yonetici" hidden><span>Ödemeler</span><b class="rozet" id="r-odeme"></b></button>
         </div>
       </div>
       <button data-s="basvuru" title="Solver Başvuruları"><i data-lucide="award"></i><span>Solver Başvuruları</span><b class="rozet" id="r-basvuru"></b></button>
@@ -112,6 +111,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js" integrity="sha384-ieG+IKD0d/ZPXyCBTMVAbqsQdns8QGJR/e26WMw7M4fkaI/rHcS/YIoi+ah9WGge" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js" integrity="sha384-GFr3yTh5lJznCbZfpTtXnwboFsxqtTQoeTZCRHhE0579KrRmlCzen5AA8ohaB5ug" crossorigin="anonymous"></script>
-<script src="app.js?v=10261136"></script>
+<script src="app.js?v=10261156"></script>
 </body>
 </html>

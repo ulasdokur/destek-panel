@@ -771,3 +771,26 @@ body.gs-kilit{overflow:hidden}
 .kutu .e .metin-hata,.kutu .e .metin-ok{font-weight:600}
 @media (max-width:1180px){.r-izgara{grid-template-columns:1fr}}
 .r-gunluk td:first-child{white-space:nowrap}.r-gunluk td,.r-gunluk th{padding-left:8px;padding-right:8px}
+
+/* bugün: sistem şeridi, ince boş durum */
+.bos-ince{display:flex;align-items:center;gap:8px;padding:12px 14px;border:1px dashed hsl(var(--kenar-guclu));border-radius:14px;font-size:13px;color:hsl(var(--metin-2));margin:0 0 16px}
+.bos-ince svg.lucide{width:18px;height:18px;color:hsl(var(--basari))}
+.sistem-serit{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+.s-cip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;background:hsl(var(--yuzey));border:1px solid hsl(var(--kenar));font-size:11.5px;color:hsl(var(--metin-2))}
+.s-cip>i{width:7px;height:7px;border-radius:50%;background:hsl(var(--basari))}
+.s-cip.eski{color:hsl(var(--uyari));border-color:hsl(var(--uyari)/.4)}.s-cip.eski>i{background:hsl(var(--uyari))}
+.s-cip.bilgi>i{display:none}
+/* rapor başlık bağlantıları */
+.k-link{color:inherit;text-decoration:none}.k-link:hover{color:hsl(var(--marka-metin))}
+.k-ok{width:14px!important;height:14px!important;padding:0!important;background:none!important;margin-left:auto;opacity:.5}
+.r-panel h3 a{display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none;width:100%}.r-panel h3 a:hover{color:hsl(var(--marka-metin))}
+/* şikayet kartı: öğrenci rozeti */
+.sk-ogr{display:flex;align-items:center;gap:6px;min-width:0}.sk-ogr a,.sk-ogr .ad{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sk-rozet{font-size:10.5px;padding:0 7px;line-height:1.7;flex:none}
+/* uyarılar neden, ödemeler */
+.u-neden{font-size:11.5px;color:hsl(var(--metin-2));max-width:240px;margin-top:3px;line-height:1.35}
+.od-tablo td{vertical-align:top}.od-tablo .od-islem{white-space:nowrap}
+.od-tablo .od-odendi{display:inline-flex;align-items:center;gap:4px}.od-tablo .od-odendi svg{width:14px;height:14px}
+.od-tablo .klamp{-webkit-line-clamp:3;cursor:pointer}
+#u-tablo td:first-child{white-space:nowrap}
+.ust-cubuk h2 .ikon-btn{display:inline-flex;vertical-align:middle;margin-left:4px}

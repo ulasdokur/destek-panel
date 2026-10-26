@@ -195,10 +195,11 @@ document.addEventListener("keydown", ev => { if ((ev.metaKey || ev.ctrlKey) && e
 
 // ---------- sayfa durumları ----------
 const iskelet = (n = 9) => `<div class="iskelet">${Array.from({ length: n }, () => "<div><span></span><span></span><span></span><span></span><span></span></div>").join("")}</div>`;
-const ADLAR = { bugun: "Bugün", ozet: "Özet", rapor: "Rapor", bekleyen: "Kararını bekleyenler", kontrol: "Haftalık kontrol", uyari: "Uyarılar", ogretmen: "Öğretmenler", sikayet: "Tüm şikayetler",
+const ADLAR = { bugun: "Bugün", rapor: "Rapor", bekleyen: "Kararını bekleyenler", kontrol: "Haftalık kontrol", uyari: "Uyarılar", ogretmen: "Öğretmenler", sikayet: "Tüm şikayetler",
   basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", daha: "Daha fazla" };
 function git(s, alt) {
   if (s === "gunluk" || s === "haftalik") s = "rapor";
+  if (s === "ozet") s = "bugun";
   sekme = s; location.hash = alt ? `${s}/${alt}` : s;
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   let grup = "";
@@ -207,7 +208,7 @@ function git(s, alt) {
   altlar.forEach(b => b.classList.remove("secili"));
   (altlar.find(b => b.dataset.s === s) || altlar.find(b => grup && b.dataset.grup === grup) || altlar.find(b => b.dataset.s === "daha")).classList.add("secili");
   $("#ust-arac").classList.remove("acik"); araKapat(); window.scrollTo(0, 0);
-  const f = { bugun, ozet, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, daha }[s] || bugun;
+  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, daha }[s] || bugun;
   $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + iskelet();
   Promise.resolve().then(() => f(alt)).then(() => { ikon(); klampBagla(); }).catch(err => {
     if (sekme !== s) return;
@@ -223,9 +224,9 @@ function daha() {
   const sat = (s, ik, ad, roz = "") => `<button data-s="${s}"><i data-lucide="${ik}"></i><span>${ad}</span>${roz}<i data-lucide="chevron-right" class="ok-sag"></i></button>`;
   const yon = ben?.rol === "yonetici";
   $("#icerik").innerHTML = baslik("Daha fazla", "Tüm sayfalar.") + `
-    <div class="daha-grup"><h4>Raporlar</h4>${sat("ozet", "layout-grid", "Özet")}${sat("rapor", "chart-column", "Rapor")}</div>
+    <div class="daha-grup"><h4>Raporlar</h4>${sat("rapor", "chart-column", "Rapor")}</div>
     <div class="daha-grup"><h4>Şikayetler</h4>${sat("bekleyen", "inbox", "Kararını bekleyenler", r("r-bekleyen"))}${sat("kontrol", "check", "Haftalık kontrol", r("r-kontrol"))}${sat("sikayet", "list-checks", "Tüm şikayetler")}</div>
-    <div class="daha-grup"><h4>Öğretmenler</h4>${sat("ogretmen", "graduation-cap", "Öğretmen listesi")}${sat("uyari", "bell", "Uyarılar", r("r-uyari"))}${sat("takip", "eye", "Yakın takip")}${sat("denetim", "target", "Rastgele denetim")}${sat("eksi", "triangle-alert", "Eksi puanlılar")}${sat("kesinti", "shield-check", "Hesap kesintileri", r("r-kesinti"))}${sat("odeme", "wallet", "Ödemeler", r("r-odeme"))}</div>
+    <div class="daha-grup"><h4>Öğretmenler</h4>${sat("ogretmen", "graduation-cap", "Öğretmen listesi")}${sat("uyari", "bell", "Uyarılar", r("r-uyari"))}${sat("takip", "eye", "Yakın takip")}${sat("denetim", "target", "Rastgele denetim")}${sat("eksi", "triangle-alert", "Eksi puanlılar")}${yon ? sat("kesinti", "shield-check", "Hesap kesintileri", r("r-kesinti")) + sat("odeme", "wallet", "Ödemeler", r("r-odeme")) : ""}</div>
     <div class="daha-grup"><h4>Diğer</h4>${sat("basvuru", "award", "Solver başvuruları", r("r-basvuru"))}${sat("ogrenci", "users", "Öğrenciler")}${yon ? sat("gonderici", "send", "Tebeşir") : ""}</div>
     <div class="daha-grup"><h4>Hesap · ${e(ben?.ad || "")}</h4>
       <div style="padding:6px 12px 10px"><div class="tema"><button data-tema="sistem" title="Cihaza göre"><i data-lucide="clock"></i></button><button data-tema="acik" title="Açık"><i data-lucide="sun"></i></button><button data-tema="koyu" title="Koyu"><i data-lucide="moon"></i></button></div></div>
@@ -276,7 +277,7 @@ function sikayetKart(s, mod) {
     ? [["Öğrencinin seçimi", [s.sebep, (s.alt_sebep || []).join(", ")].filter(Boolean).join(" · "), "—"], ["Öğrencinin notu", s.ogrenci_notu, "Yazmamış"],
        ["Yorumlar", (s.yorumlar || []).join(" / "), "Yok"], ["Öğretmenin açıklaması", s.cevap_aciklamasi, "Yazmamış"], ["Soruyu sorarken yazdığı", s.soru_aciklamasi], ["Videodaki konuşma", s.ses_dokumu && s.ses_dokumu.slice(0, 400)]]
     : [["Şikayet sebebi", s.sebep, "—"], ["Açıklaması", s.ogrenci_notu, "Yazmamış"]];
-  const durum = s.durum === "hata" ? '<span class="etiket hata" data-ipucu="Admin paneline yazılırken yanıt alınamadı ve kayıt artık bekleyenlerde değil. Admin panelde bu şikayetin sonucuna bakın.">Admin\'de kontrol et</span>' : s.durum === "islendi" ? `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>` : '<span class="etiket uyari">Karar bekliyor</span>';
+  const durum = s.durum === "hata" ? '<span class="etiket hata" data-ipucu="Admin paneline yazılırken yanıt alınamadı ve kayıt artık bekleyenlerde değil. Admin panelde bu şikayetin sonucuna bakın.">Admin\'de kontrol et</span>' : s.durum === "islendi" ? `<span class="etiket ${sonucRenk(s.son_karar)}">${sonucAdi(s.tur, s.son_karar)}</span>` : (() => { const g = Math.floor((Date.now() - new Date(s.olusturma)) / 864e5); return g >= 1 ? `<span class="etiket hata">${g} gündür bekliyor</span>` : '<span class="etiket uyari">Karar bekliyor</span>'; })();
   const hedef = s.hedef_ders ? ` → ${e(s.hedef_ders)}` : "";
   const karar = `<div class="sk-karar"><div class="sk-karar-satir"><span class="kl">İlk inceleme: <b>${kararAdi(s.tur, s.ajan_karar).split(" · ")[0]}${s.ajan_karar === "HAVUZA_AKTAR" ? hedef : ""}</b></span>
     ${s.emin_degil ? '<span class="etiket uyari" data-ipucu="İlk inceleme bu kayıtta emin olamadı, bu yüzden karar sana bırakıldı.">emin değil</span>' : ""}</div>
@@ -303,7 +304,7 @@ function sikayetKart(s, mod) {
     <div class="sk-bas"><b title="${e(s.ders)}">${e(s.ders)}</b><span class="sk-durum">${durum}</span><span class="sk-alt-bas">${tur}${takipMi ? "" : ` · no ${s.sikayet_id}`} · ${tarih(s.olusturma)}</span><div class="sk-ikonlar">${ikonlar}</div></div>
     <div class="sk-govde">${medya(s.soru_url, s.cevap_url, s.video_url, cevapli ? (s.ogretmen || "Cevap") : "", !cevapli)}
     <div class="sk-sag"><div class="sk-kisiler">
-      ${takipMi ? "" : `<div><span>Öğrenci</span>${kisiLink(s.ogrenci_seo, s.ogrenci)}</div>`}
+      ${takipMi ? "" : `<div><span>Öğrenci</span><span class="sk-ogr">${kisiLink(s.ogrenci_seo, s.ogrenci)}${s._ogr && s._ogr.k >= 5 && s._ogr.h / s._ogr.k > .4 ? `<span class="etiket hata sk-rozet" data-ipucu="Son 30 günde ${s._ogr.k} cevap şikayeti sonuçlandı, ${s._ogr.h} tanesinde öğretmen haklı çıktı">%${Math.round(s._ogr.h / s._ogr.k * 100)} haksız</span>` : ""}</span></div>`}
       <div><span>${cevapli ? "Öğretmen" : "Şikayet eden"}</span>${kisiLink(s.ogretmen_seo, s.ogretmen)}</div></div>
     ${bilgiDolu.length ? `<dl class="sk-bilgi">${bilgiDolu.map(([a, b, bos], i) => `<div><dt>${a}</dt>${b ? `<dd class="klamp${i ? "" : " vurgu"}">${e(b)}</dd>` : `<dd class="soluk">${bos}</dd>`}</div>`).join("")}</dl>` : ""}
     ${karar}</div></div>
@@ -413,97 +414,45 @@ document.addEventListener("keydown", ev => {
   const y = { ArrowRight: "sag", ArrowLeft: "sol", ArrowUp: "ust" }[ev.key]; if (y) { ev.preventDefault(); sahne._karar(y); }
 });
 
-// ---------- özet ----------
-function saglikTablo(S, bugun, M) {
-  // Mac'teki her adımın son çalışması (saglik.json → d_durum 'saglik'); eskiyse turuncu
-  if (!S) return "";
-  const ne = { cek: ["Şikayet çekme", 60, x => `${x.yeni ?? 0} yeni${x.bekleyen ? `, ${x.bekleyen} birikmesi bekleniyor` : ""}${x.medya_hatasi ? `, ${x.medya_hatasi} medya indirilemedi` : ""}${x.talimat ? `, ${x.talimat} talimat benzeri metin` : ""}`],
-    ajan_sikayet: ["Şikayet ajanları", 24 * 60, x => `${x.paket} paket${x.bos ? `, ${x.bos} boş döndü` : ""}${x.atilan ? `, ${x.atilan} pakette geçersiz karar atıldı` : ""}`],
-    isle: ["Admin'e yazma", 24 * 60, x => `${x.basarili} işlendi${x.hata ? `, ${x.hata} yazılamadı` : ""}${x.insana ? `, ${x.insana} size düştü` : ""}`],
-    ajan_basvuru: ["Başvuru ajanları", 7 * 24 * 60, x => `${x.paket} başvuru${x.bos ? `, ${x.bos} boş döndü` : ""}`],
-    takip: ["Yakın takip", 6 * 60, x => `${x.cevap} cevap kontrol edildi`],
-    denetim: ["Rastgele denetim", 30 * 60, x => `${x.cevap} cevap kontrol edildi`],
-    solver_puan: ["Eksi puan takibi", 3 * 60, x => `${x.okunan}/${x.aktif} solver okundu, ${x.eksi} eksi puanlı`] };
-  const satir = Object.entries(ne).filter(([k]) => S[k]).map(([k, [ad, sinir, f]]) => {
-    const dk = Math.round((Date.now() / 1000 - S[k].zaman) / 60), eski = dk > sinir;
-    return `<tr><td>${ad}</td><td><span class="zaman-cip ${eski ? "eski" : ""}">${dk < 60 ? dk + " dk" : dk < 1440 ? Math.round(dk / 60) + " sa" : Math.round(dk / 1440) + " gün"} önce</span></td><td>${e(f(S[k]))}</td></tr>`;
-  }).join("");
-  const insana = bugun.filter(x => x.durum === "bekliyor").length;
-  const mal = M ? ` · son 24 sa API karşılığı $${M.son_24_saat_usd}` : "";
-  return `<h2 id="oz-saglik">Sistem sağlığı</h2><p class="aciklama">Bugün sana düşen ${insana} / ${bugun.length}${bugun.length ? ` (%${Math.round(insana / bugun.length * 100)})` : ""}${mal}</p>
-    <div class="tablo-sar"><table class="tablo sik"><tr><th style="width:200px">Adım</th><th style="width:160px">Son çalışma</th><th>Son sonuç</th></tr>${satir}</table></div>`;
-}
-// ---------- bugün: günlük 10 dakikalık iş listesi ----------
+// ---------- bugün: yalnız bekleyen işler + sistem durumu ----------
 async function bugun() {
-  const h = haftaNo();
-  const [bek, kon, konB, tas, bas, hata, dur] = await Promise.all([
-    q(sb.from("d_sikayet").select("key,d_karar(tip)").eq("durum", "bekliyor")),
+  const h = haftaNo(), yon = ben?.rol === "yonetici";
+  const [bek, kon, konB, tas, bas, hata, dur, uh, ks] = await Promise.all([
+    q(sb.from("d_sikayet").select("key,olusturma,d_karar(tip)").eq("durum", "bekliyor")),
     q(sb.from("d_sikayet").select("key,d_karar(tip)").eq("kontrol_hafta", h)),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", h).is("kontrol_secim", null),
     q(sb.from("d_uyari").select("kademe").eq("durum", "taslak")),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("durum", "bekliyor").is("insan_karar", null),
     sb.from("d_sikayet").select("key", { count: "exact", head: true }).eq("durum", "hata"),
-    q(sb.from("d_durum").select("*").eq("k", "saglik")),
+    q(sb.from("d_durum").select("*")),
+    sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "hata").gte("olusturma", new Date(Date.now() - 7 * 864e5).toISOString()),
+    yon ? sb.from("d_kesinti").select("ogretmen_id", { count: "exact", head: true }).in("durum", ["hazir", "sorun"]) : { count: 0 },
   ]);
-  const nBek = bek.filter(x => !x.d_karar.some(k => k.tip === "bekleyen")).length;
+  const acikB = bek.filter(x => !x.d_karar.some(k => k.tip === "bekleyen")), eskiB = acikB.filter(x => Date.now() - new Date(x.olusturma) > 864e5).length;
   const nKon = kon.filter(x => !x.d_karar.some(k => k.tip === "kontrol")).length + (konB.count || 0);
   const nPas = tas.filter(t => t.kademe === "PASIF").length, nTas = tas.length - nPas;
-  const S = dur[0]?.v || {}, sinir = { cek: 60, isle: 1440, ajan_sikayet: 1440 };
-  const eski = Object.entries(sinir).filter(([k, m]) => S[k] && (Date.now() / 1000 - S[k].zaman) / 60 > m).map(([k]) => ({ cek: "şikayet çekme", isle: "admin'e yazma", ajan_sikayet: "şikayet ajanları" })[k]);
-  // [sayfa, başlık, sayı, dakika/iş, açıklama, önem: uyari | hata | bilgi]
+  const D = Object.fromEntries(dur.map(x => [x.k, x])), S = D.saglik?.v || {};
   const is = [
-    ["bekleyen", "Kararını bekleyen şikayetler", nBek, 0.5, "Ajanın emin olamadığı şikayetler. Görsellere bakıp karar verin; notunuz kurallara eklenir.", "uyari"],
-    ["uyari", "Hesap kapatma önerileri", nPas, 1, "Yapay zekâ kanıtını dikkatle inceleyin; onay hesabı kapatır.", "hata"],
-    ["uyari", "Onay bekleyen bildirim taslakları", nTas, 0.2, "Geri bildirim, küçük hatırlatma ve uyarılar. Okuyup onaylayın ya da \"gönderme\" deyin.", "uyari"],
-    ["basvuru", "Kararınızı bekleyen solver başvuruları", bas.count || 0, 1, "Ajanın emin olamadığı başvurular.", "uyari"],
-    ["kontrol", "Bugünün kontrolü", nKon, 0.3, "Otomatik kararlardan rastgele seçilenler: doğru mu, yanlış mı?", "mor"],
-    ["sikayet", "Admin'de kontrol edilecek", hata.count || 0, 1, "Admin'e yazılırken yanıt alınamayan şikayetler. Admin'de sonucuna bakın.", "hata"],
-  ];
-  const kalan = is.filter(x => x[2] > 0), dk = Math.max(1, Math.round(kalan.reduce((a, x) => a + x[2] * x[3], 0)));
-  const IK = { uyari: "circle-alert", hata: "triangle-alert", mor: "info" };
-  $("#icerik").innerHTML = baslik("Bugün", `Günlük kontrolünüz için tek liste. Her satır ilgili sayfayı açar. ${kalan.length ? `Şu an ${kalan.length} iş bekliyor, tahmini ${dk} dakika.` : "Bugün için yapılacak iş kalmadı."} Hepsi tamamlanınca sistem kendi başına çalışır.`) + `
-    ${eski.length ? `<div class="bilgi-serit"><i data-lucide="clock"></i>Uzun süredir çalışmayan adım: ${e(eski.join(", "))}. Ulaş'a haber ver.</div>` : ""}
-    <div class="is-liste">${is.map(([s, ad, n, , acik, onem]) => `<button class="is-satir ${n ? onem : "mor"}" onclick="git('${s}')">
-      <span class="is-ikon"><i data-lucide="${n ? IK[onem] : "info"}"></i></span><span class="is-metin"><b>${ad}</b><span>${acik.replace(/^([^.]+[.])\s*(.+)$/, (m, a, b) => `${a}<span class="m-gizle"> ${b}</span>`)}</span></span>
-      <span class="is-sayi">${n || "Tamam"}</span><i data-lucide="chevron-right" class="ok-sag"></i></button>`).join("")}</div>`;
-}
-
-async function ozet() {
-  const gun = new Date(); gun.setHours(0, 0, 0, 0);
-  const [dur, turlar, bugun, bek, taslak, pasifN, kk, bk] = await Promise.all([
-    q(sb.from("d_durum").select("*")),
-    q(sb.from("d_tur").select("*").order("zaman", { ascending: false }).limit(15)),
-    q(sb.from("d_sikayet").select("tur,son_karar,durum").gte("olusturma", gun.toISOString())),
-    sb.from("d_sikayet").select("key", { count: "exact", head: true }).eq("durum", "bekliyor"),
-    sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "taslak"),
-    sb.from("d_ogretmen").select("id", { count: "exact", head: true }).eq("durum", "pasif"),
-    q(sb.from("d_karar").select("secim").eq("tip", "kontrol")),
-    q(sb.from("d_basvuru").select("kontrol_secim").not("kontrol_secim", "is", null)),
-  ]);
-  const D = Object.fromEntries(dur.map(x => [x.k, x]));
-  const kontrolN = kk.length + bk.length, dogruN = kk.filter(x => x.secim === "DOGRU").length + bk.filter(x => x.kontrol_secim === "DOGRU").length;
-  const dogruluk = kontrolN ? Math.round(dogruN / kontrolN * 100) : null;
-  const son = D.son_gonderim ? new Date(D.son_gonderim.zaman) : null;
-  const dk = son ? Math.round((Date.now() - son) / 60000) : null;
-  const oturum = D.oturum?.v?.durum, say = f => bugun.filter(f).length;
-  const kutu = (ik, bas, s, a, cls = "", id = "") => `<div class="kutu ${cls}" ${id ? `id="${id}"` : ""}><div class="k-bas"><i data-lucide="${ik}"></i>${bas}</div><div class="s">${s}</div><div class="e">${a}</div></div>`;
-  const havuzN = say(x => x.son_karar === "HAVUZA_AKTAR");
-  $("#icerik").innerHTML = baslik("Özet", "Günün durumu tek bakışta; şikayetler 20 dakikada bir kontrol edilir. Bu panelde verdiğin kararlar 30 saniyelik geri alma süresinden sonra 1-2 dakika içinde admin paneline işlenir.") + `
-    <div class="kutular oz-kutular">
-      ${kutu("clock", "Son kontrol", dk === null ? "—" : dk < 60 ? dk + " dk" : Math.round(dk / 60) + " sa", "son otomatik kontrolden bu yana", dk !== null && dk > 50 ? "uyari" : "", "oz-kontrol")}
-      ${kutu("shield-check", "Admin paneli", oturum === "dustu" ? "Kopuk" : "Bağlı", "bağlantı durumu", oturum === "dustu" ? "hata" : "", "oz-baglanti")}
-      ${kutu("inbox", "Bugün incelenen", bugun.length, "şikayet")}
-      ${kutu("check", "Bugün onay / ret", say(x => x.son_karar === "ONAYLA" || x.son_karar === "HAVUZA_AKTAR") + " / " + say(x => x.son_karar === "REDDET"), havuzN ? `${havuzN} derse aktarma` : "onaylanan / reddedilen")}
-      ${kutu("flag", "Kararını bekleyen", bek.count ?? 0, "senin kararın", bek.count ? "uyari" : "", "oz-bekleyen")}
-      ${kutu("bell", "Onay bekleyen uyarı", taslak.count ?? 0, "bildirim taslağı", taslak.count ? "uyari" : "")}
-      ${kutu("user", "Pasif öğretmen", pasifN.count ?? 0, "hesabı kapalı")}
-      ${kutu("target", "Karar doğruluğu", dogruluk === null ? "—" : "%" + dogruluk, `${kontrolN} kontrol`, dogruluk !== null && dogruluk < 90 ? "uyari" : "", "oz-dogruluk")}
-    </div>
-    <div class="oz-yan"><div class="oz-sag">${saglikTablo(D.saglik?.v, bugun, D.maliyet?.v)}</div><div class="oz-tur">
-    <h2 id="oz-kontroller">Son otomatik kontroller</h2>
-    ${turlar.length ? turlar.slice(0, 8).map(t => { const ozet = `${t.soru_n + t.cevap_n} şikayet · ${t.onay} onay · ${t.ret} ret${t.havuz ? " · " + t.havuz + " derse aktarma" : ""}${t.bekleyen ? " · " + t.bekleyen + " karar bekliyor" : ""}`;
-      return t.ozet ? `<details class="tur-satir"><summary><b>${tarih(t.zaman)}</b><span class="soluk">${ozet}</span><span class="ts-ac">Neler oldu</span><i data-lucide="chevron-down"></i></summary><pre class="ozet">${e(t.ozet)}</pre></details>`
-        : `<div class="tur-satir"><div class="tur-satir-ic" style="display:flex;gap:16px;padding:14px 16px;align-items:center"><b>${tarih(t.zaman)}</b><span class="soluk" style="font-size:12px">${ozet}</span></div></div>`; }).join("") : '<div class="bos">Henüz kontrol yapılmadı.</div>'}</div></div>`;
+    ["bekleyen", "Kararını bekleyen şikayetler", acikB.length, "uyari", eskiB ? `${eskiB} tanesi 1 günden eski` : ""],
+    ["uyari", "Hesap kapatma önerileri", nPas, "hata"],
+    ["uyari", "Onay bekleyen bildirimler", nTas, "uyari"],
+    ["uyari", "Gönderilemeyen bildirimler (7 gün)", uh.count || 0, "hata"],
+    ["basvuru", "Kararını bekleyen solver başvuruları", bas.count || 0, "uyari"],
+    ["kontrol", "Haftalık kontrol", nKon, "mor"],
+    ["sikayet", "Admin'de kontrol edilecek şikayetler", hata.count || 0, "hata"],
+    ["kesinti", "Onay ya da kontrol bekleyen kesintiler", ks.count || 0, "uyari"],
+  ].filter(x => x[2] > 0);
+  const IK = { uyari: "circle-alert", hata: "triangle-alert", mor: "list-checks" };
+  // sistem: her adımın son çalışması; sınırı aşan turuncu
+  const ADIM = { cek: ["Şikayet çekme", 60], ajan_sikayet: ["Şikayet inceleme", 1440], isle: ["Admin'e yazma", 1440], ajan_basvuru: ["Başvuru inceleme", 7 * 1440], takip: ["Yakın takip", 360], solver_puan: ["Eksi puan takibi", 180] };
+  const once = dk => dk < 60 ? dk + " dk" : dk < 1440 ? Math.round(dk / 60) + " sa" : Math.round(dk / 1440) + " gün";
+  const cipler = Object.entries(ADIM).filter(([k]) => S[k]).map(([k, [ad, sinir]]) => { const dk = Math.round((Date.now() / 1000 - S[k].zaman) / 60); return `<span class="s-cip ${dk > sinir ? "eski" : ""}"><i></i>${ad} · ${once(dk)}</span>`; });
+  const oturum = D.oturum?.v?.durum === "dustu";
+  $("#icerik").innerHTML = baslik("Bugün") + `
+    <div class="is-liste">${is.length ? is.map(([s_, ad, n, onem, alt]) => `<button class="is-satir ${onem}" onclick="git('${s_}')">
+      <span class="is-ikon"><i data-lucide="${IK[onem]}"></i></span><span class="is-metin"><b>${ad}</b>${alt ? `<span>${alt}</span>` : ""}</span>
+      <span class="is-sayi">${n}</span><i data-lucide="chevron-right" class="ok-sag"></i></button>`).join("") : '<div class="bos-ince"><i data-lucide="circle-check"></i>Bekleyen iş yok.</div>'}</div>
+    <div class="sistem-serit"><span class="s-cip ${oturum ? "eski" : ""}"><i></i>Admin paneli ${oturum ? "bağlantısı koptu" : "bağlı"}</span>${cipler.join("")}${yon && D.maliyet?.v ? `<span class="s-cip bilgi">Son 24 sa API $${D.maliyet.v.son_24_saat_usd}</span>` : ""}</div>`;
 }
 
 async function tumSikayetler(gun) {
@@ -533,7 +482,7 @@ async function rapor() {
   const fark = (a, b, ters) => { if (b == null || a == null || a === b) return '<span class="soluk">önceki hafta ' + (b ?? "—") + "</span>"; const yuk = a > b;
     return `<span class="${yuk === !!ters ? "metin-hata" : "metin-ok"}">${yuk ? "▲" : "▼"} ${Math.abs(a - b)}</span> <span class="soluk">önceki hafta ${b}</span>`; };
   const kN = K.length + KB.length, kD = say(K, x => x.secim === "DOGRU") + say(KB, x => x.kontrol_secim === "DOGRU");
-  const kutu = (ik, b_, s_, a_) => `<div class="kutu"><div class="k-bas"><i data-lucide="${ik}"></i>${b_}</div><div class="s">${s_}</div><div class="e">${a_}</div></div>`;
+  const kutu = (ik, b_, s_, a_, git_) => `<div class="kutu"><a class="k-bas k-link" href="#${git_}" onclick="event.preventDefault();git('${git_}')"><i data-lucide="${ik}"></i>${b_}<i data-lucide="chevron-right" class="k-ok"></i></a><div class="s">${s_}</div><div class="e">${a_}</div></div>`;
   const ob = oran(bu), og = oran(ge);
   // günlük döküm
   const G = {};
@@ -546,36 +495,54 @@ async function rapor() {
   const O = {}; bu.filter(s => s.tur === "c" && s.son_karar === "ONAYLA" && s.ogretmen_id).forEach(s => { const o = O[s.ogretmen_id] ||= { ad: s.ogretmen, n: 0, k: {} }; o.n++; kategori(s).forEach(c => o.k[c] = (o.k[c] || 0) + 1); });
   const den = T.filter(x => x.kaynak === "denetim"), tak = T.filter(x => x.kaynak === "takip");
   const sat = (a, b_, tik) => `<div class="r-sat${tik ? " tik" : ""}" ${tik ? `onclick="${tik}"` : ""}><span>${a}</span><b>${b_}</b></div>`;
-  const panel = (ik, b_, ic) => `<section class="kart r-panel"><h3><i data-lucide="${ik}"></i>${b_}</h3>${ic}</section>`;
+  const panel = (ik, b_, ic, git_) => `<section class="kart r-panel"><h3>${git_ ? `<a href="#${git_}" onclick="event.preventDefault();git('${git_}')"><i data-lucide="${ik}"></i>${b_}<i data-lucide="chevron-right" class="k-ok"></i></a>` : `<i data-lucide="${ik}"></i>${b_}`}</h3>${ic}</section>`;
   const bild = Object.entries(U.filter(u => u.durum === "gonderildi" || u.kademe === "AKTIF").reduce((a, u) => (a[KADEME[u.kademe] || u.kademe] = (a[KADEME[u.kademe] || u.kademe] || 0) + 1, a), {})).sort((a, b) => b[1] - a[1]);
   const ret = Object.entries(B.filter(b => b.karar !== "ONAYLA").reduce((a, b) => (a[b.sebep] = (a[b.sebep] || 0) + 1, a), {})).sort((a, b) => b[1] - a[1]);
+  const OB = (await q(sb.from("d_durum").select("v").eq("k", "ogrenci_bildirim")))[0]?.v;
+  let obIc = "";
+  if (OB) { const ids = new Set(OB.ids), t0 = new Date(OB.zaman), gun_ = Math.min(14, Math.max(0, Math.floor((Date.now() - t0) / 864e5)));
+    const C = L.filter(s => s.tur === "c" && ids.has(s.ogrenci_id)), dk = (X, a, b_) => X.filter(s => new Date(s.olusturma) >= a && new Date(s.olusturma) < b_);
+    const haksiz = X => { const k = say(X, s => s.son_karar); return k ? ` · %${Math.round(say(X, s => s.son_karar === "REDDET") / k * 100)} haksız` : ""; };
+    const g = Math.max(gun_, 1), once_ = dk(C, new Date(t0 - g * 864e5), t0), sonra = dk(C, t0, new Date(+t0 + g * 864e5));
+    obIc = Date.now() < t0 ? sat(`${OB.ids.length} öğrenci`, t0.toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + "'da gidecek")
+      : sat(`Önceki ${g} gün`, `${once_.length}${haksiz(once_)}`) + sat(`Sonraki ${g} gün`, `${sonra.length}${haksiz(sonra)}`); }
   const aralik = `${bas.toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })} – ${new Date(gun - 864e5).toLocaleDateString("tr-TR", { day: "2-digit", month: "short" })}`;
   $("#icerik").innerHTML = baslik("Rapor") + `
     <div class="r-bas"><h2>Son 7 gün</h2><span class="soluk">${aralik}</span></div>
     <div class="kutular">
-      ${kutu("inbox", "Gelen şikayet", bu.length, `${say(bu, s => s.tur === "s")} soru · ${say(bu, s => s.tur === "c")} cevap · ${fark(bu.length, ge.length, true)}`)}
-      ${kutu("user-check", "Öğrenci haklı", ob == null ? "—" : "%" + ob, `${haklı(bu)} şikayet · ${fark(ob, og, true)}`)}
-      ${kutu("clock", "Kararını bekleyen", say(bu, s => s.durum === "bekliyor"), "senin kararını bekliyor")}
-      ${kutu("badge-check", "Otomatik karar doğruluğu", kN ? `%${Math.round(kD / kN * 100)}` : "—", kN ? `${kN} kontrolden ${kD} doğru` : "bu hafta kontrol yok")}
+      ${kutu("inbox", "Gelen şikayet", bu.length, `${say(bu, s => s.tur === "s")} soru · ${say(bu, s => s.tur === "c")} cevap · ${fark(bu.length, ge.length, true)}`, "sikayet")}
+      ${kutu("user-check", "Öğrenci haklı", ob == null ? "—" : "%" + ob, `${haklı(bu)} şikayet · ${fark(ob, og, true)}`, "sikayet")}
+      ${kutu("clock", "Kararını bekleyen", say(bu, s => s.durum === "bekliyor"), "senin kararını bekliyor", "bekleyen")}
+      ${kutu("badge-check", "Otomatik karar doğruluğu", kN ? `%${Math.round(kD / kN * 100)}` : "—", kN ? `${kN} kontrolden ${kD} doğru` : "bu hafta kontrol yok", "kontrol")}
     </div>
     <div class="r-izgara">
       <section class="kart r-gunluk"><h3><i data-lucide="chart-column"></i>Son 30 gün, gün gün</h3>
         <div class="tablo-sar"><table class="tablo sik"><tr><th>Gün</th><th>Gelen</th><th>Öğrenci haklı</th><th>Öğretmen haklı</th><th>Aktarma</th><th>Bekleyen</th><th style="width:38%">Sonuç</th></tr>
         ${gunler.map(g => { const o = G[g], n = o.s + o.c; return `<tr${g >= gunu(iso(bas)) ? ' class="r-bu"' : ""}><td>${new Date(g + "T12:00").toLocaleDateString("tr-TR", { day: "2-digit", month: "short", weekday: "short" })}</td><td data-ipucu="${o.s} soru · ${o.c} cevap"><b>${n}</b></td><td>${o.onay}</td><td>${o.ret}</td><td>${o.havuz || ""}</td><td>${o.bek || ""}</td><td>${cubuk(o, n)}</td></tr>`; }).join("")}</table></div></section>
       <div class="r-yan">
-        ${panel("graduation-cap", "En çok şikayeti haklı çıkan öğretmenler", Object.entries(O).sort((a, b) => b[1].n - a[1].n).slice(0, 5).map(([id, o]) => sat(`${e(o.ad)}<small>${Object.entries(o.k).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${KAT[k] || k} ${v}`).join(" · ")}</small>`, o.n, `git('ogretmen','${id}')`)).join("") || '<div class="soluk">Yok.</div>')}
-        ${panel("bell", "Öğretmenlere giden bildirimler", bild.map(([k, v]) => sat(e(k), v)).join("") || '<div class="soluk">Bildirim yok.</div>')}
-        ${panel("eye", "Denetim ve yakın takip", sat("Rastgele denetim", `${den.length} · ${say(den, x => x.sonuc !== "TEMIZ")} sorunlu`) + sat("Yakın takip", `${tak.length} · ${say(tak, x => x.sonuc !== "TEMIZ")} sorunlu`) + (say(tak, x => x.sonuc === "YZ_KESIN") ? sat("Yapay zekâ (kesin)", say(tak, x => x.sonuc === "YZ_KESIN")) : ""))}
-        ${panel("award", "Solver başvuruları", sat("Değerlendirilen", B.length) + sat("Onaylanan", say(B, b => b.karar === "ONAYLA")) + ret.map(([k, v]) => sat("Ret · " + e(k), v)).join(""))}
-        ${panel("triangle-alert", "Eksi puanlı solver", sat("Şu an", E.length, "git('eksi')"))}
+        ${panel("graduation-cap", "En çok şikayeti haklı çıkan öğretmenler", Object.entries(O).sort((a, b) => b[1].n - a[1].n).slice(0, 5).map(([id, o]) => sat(`${e(o.ad)}<small>${Object.entries(o.k).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${KAT[k] || k} ${v}`).join(" · ")}</small>`, o.n, `git('ogretmen','${id}')`)).join("") || '<div class="soluk">Yok.</div>', "ogretmen")}
+        ${panel("bell", "Öğretmenlere giden bildirimler", bild.map(([k, v]) => sat(e(k), v)).join("") || '<div class="soluk">Bildirim yok.</div>', "uyari")}
+        ${panel("eye", "Denetim ve yakın takip", sat("Rastgele denetim", `${den.length} · ${say(den, x => x.sonuc !== "TEMIZ")} sorunlu`) + sat("Yakın takip", `${tak.length} · ${say(tak, x => x.sonuc !== "TEMIZ")} sorunlu`) + (say(tak, x => x.sonuc === "YZ_KESIN") ? sat("Yapay zekâ (kesin)", say(tak, x => x.sonuc === "YZ_KESIN")) : ""), "takip")}
+        ${panel("award", "Solver başvuruları", sat("Değerlendirilen", B.length) + sat("Onaylanan", say(B, b => b.karar === "ONAYLA")) + ret.map(([k, v]) => sat("Ret · " + e(k), v)).join(""), "basvuru")}
+        ${panel("triangle-alert", "Eksi puanlı solver", sat("Şu an", E.length), "eksi")}
+        ${OB ? panel("megaphone", "Öğrenci bildirimi etkisi", obIc, "ogrenci") : ""}
       </div>
     </div>`;
+}
+
+// kartlardaki öğrencinin son 30 gündeki cevap şikayetleri: kaçı sonuçlandı (k), kaçında öğretmen haklı çıktı (h)
+async function ogrIstat(L) {
+  const ids = [...new Set(L.filter(s => s.tur === "c" && s.ogrenci_id).map(s => s.ogrenci_id))]; if (!ids.length) return;
+  const R = await q(sb.from("d_sikayet").select("ogrenci_id,son_karar").eq("tur", "c").eq("durum", "islendi").in("ogrenci_id", ids).gte("olusturma", new Date(Date.now() - 30 * 864e5).toISOString()).limit(5000));
+  const O = {}; R.forEach(r => { const o = O[r.ogrenci_id] ||= { k: 0, h: 0 }; o.k++; if (r.son_karar === "REDDET") o.h++; });
+  L.forEach(s => s._ogr = O[s.ogrenci_id]);
 }
 
 // ---------- kararını bekleyenler ----------
 async function bekleyen() {
   const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("durum", "bekliyor").order("olusturma"));
   const acik = L.filter(s => !s.d_karar.some(k => k.tip === "bekleyen")), sirada = L.length - acik.length;
+  await ogrIstat(acik);
   $("#icerik").innerHTML = baslik("Kararını bekleyenler", "Otomatik incelemenin emin olamadığı şikayetler burada senin kararını bekler. Soru ve cevap görsellerine bak, bir karar seç, istersen not yaz ve Kaydet'e bas. Kayıt ekrandan kalkar, 30 saniye içinde geri alabilirsin; sonra 1-2 dakika içinde admin paneline işlenir.") + `
     ${sirada ? `<div class="bilgi-serit"><i data-lucide="clock"></i>${sirada} kararın admin paneline işlenmeyi bekliyor.</div>
       <div class="tablo-sar"><table class="tablo sik"><tr><th>Şikayet</th><th>Verilen karar</th><th>Kim</th><th>Durum</th></tr>${L.filter(s => !acik.includes(s)).map(s => { const k = s.d_karar.filter(x => x.tip === "bekleyen").pop();
@@ -589,6 +556,7 @@ async function kontrol() {
   const h = haftaNo();
   const [L, B] = await Promise.all([q(sb.from("d_sikayet").select("*,d_karar(*)").eq("kontrol_hafta", h).order("olusturma")), q(sb.from("d_basvuru").select("*").eq("kontrol_hafta", h).order("id"))]);
   const acik = L.filter(s => !s.d_karar.some(k => k.tip === "kontrol")), bacik = B.filter(b => !b.kontrol_secim);
+  await ogrIstat(acik);
   $("#icerik").innerHTML = baslik("Haftalık kontrol", "Otomatik kararların doğru olup olmadığını ölçmek için her hafta rastgele birkaç karar seçilir. Her birine bak: karar doğruysa \"Karar doğru\", yanlışsa \"Karar yanlış\" seç ve nedenini yaz. Yazdığın neden kurallara eklenir ve sonraki kararlarda dikkate alınır. Yanlış bir kararı admin panelinde ayrıca elle düzeltmen gerekir.") + `
     <h2>Şikayet kararları</h2><div id="sk-liste"></div>
     <h2>Solver başvuru kararları</h2><div class="bos-yer b-yer b-izgara">${bacik.length ? bacik.map(b => basvuruKart(b, true)).join("") : '<div class="bos">Bu haftanın başvuru kontrolleri bitti.</div>'}</div>`;
@@ -622,8 +590,8 @@ async function uyari() {
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="birincil u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button><button class="ince u-iptal">Gönderme</button><button class="metin-btn u-duzenle">Metni düzenle</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`; };
   const DUR = { gonderildi: ["Gönderildi", "ok"], gonderiliyor: ["Gönderiliyor", "uyari"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
   $("#icerik").innerHTML = baslik("Uyarılar", "Öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Her taslağın altında bildirimde geçen sorular ve cevaplar görünür. Aşağıda daha önce gönderilen bildirimlerin tamamı var. Öğretmenleri sık bildirimle yormamak için geri bildirim, format hatırlatması ve küçük hatırlatmalar Pazartesi ve Perşembe hazırlanır; bir öğretmenin biriken cevapları tek bildirimde toplanır. Son 3 günde bildirim almış öğretmene yenisi açılmaz, cevapları sonraki güne kalır. Yapay zekâ uyarısı, genel uyarı ve hesap kapatma önerisi beklemez.") + `
-    <h2>Onay bekleyenler (${acik.length})</h2>
-    <div id="u-acik" class="kart-izgara">${acik.length ? acik.map(kart).join("") : '<div class="bos"><b>Onay bekleyen uyarı yok</b>Yeni bildirim taslakları burada onayını bekler.</div>'}</div>
+    ${acik.length ? `<h2>Onay bekleyenler (${acik.length})</h2>` : ""}
+    ${acik.length ? `<div id="u-acik" class="kart-izgara">${acik.map(kart).join("")}</div>` : '<div class="bos-ince"><i data-lucide="circle-check"></i>Onay bekleyen bildirim yok.</div>'}
     <h2>Gönderilen bildirimler</h2>
     <div class="cipler" id="u-dur"><span class="cip-bas">Durum</span>${[["", "Hepsi"], ["gonderildi", "Gönderildi"], ["iptal", "Gönderilmedi"], ["hata", "Hata"]].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? gecmis.filter(u => u.durum === v).length : gecmis.length}</small></button>`).join("")}</div>
     <div class="cipler" id="u-tur"><span class="cip-bas">Tür</span>${[["", "Hepsi"], ...Object.entries(KADEME)].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? gecmis.filter(u => u.kademe === v).length : gecmis.length}</small></button>`).join("")}</div>
@@ -635,7 +603,7 @@ async function uyari() {
     const S = gecmis.filter(u => (!fd || u.durum === fd) && (!ft || u.kademe === ft) && (!a || u.ad.toLocaleLowerCase("tr").includes(a)));
     $("#u-tablo").innerHTML = `<tr><th>Tarih</th><th>Öğretmen</th><th>Tür</th><th>Durum</th><th>Metin</th></tr>` + (S.map(u => `<tr><td>${tarih(u.gonderim || u.karar_zamani || u.olusturma)}</td>
       <td><a href="#" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">${e(u.ad)}</a></td><td>${KADEME[u.kademe] || e(u.kademe)}</td>
-      <td>${u.kademe === "AKTIF" ? `<span class="etiket" data-ipucu="${e(u.sonuc || "Hesap yeniden açıldı, bildirim gönderilmedi.")}">Bildirim yok</span>` : `<span class="etiket ${DUR[u.durum][1]}" ${u.sonuc ? `data-ipucu="${e(u.sonuc)}"` : ""}>${DUR[u.durum][0]}</span>`}</td>
+      <td>${u.kademe === "AKTIF" ? `<span class="etiket" data-ipucu="${e(u.sonuc || "Hesap yeniden açıldı, bildirim gönderilmedi.")}">Bildirim yok</span>` : `<span class="etiket ${DUR[u.durum][1]}">${DUR[u.durum][0]}</span>${u.durum === "gonderildi" ? "" : `<div class="u-neden">${e(uyariNeden(u))}</div>`}`}</td>
       <td>${u.kademe === "AKTIF" ? '<span class="soluk">Hesap yeniden açıldı</span>' : `<div class="tek-satir" data-uid="${u.id}" title="Tam metni görmek için tıkla"><b>${e(u.title)}</b> · ${e(u.description)}</div>`}</td></tr>`).join("") || '<tr><td colspan="5" class="soluk">Kayıt yok.</td></tr>');
     $("#u-tablo").querySelectorAll(".tek-satir").forEach(d => d.onclick = () => { const u = gecmis.find(x => x.id === +d.dataset.uid); metinGoster(u.title, u.description); });
   };
@@ -678,6 +646,21 @@ async function uyari() {
       if (error) return bildir("Geri alınamadı (gönderim başlamış olabilir)."); bildir("Onay geri alındı, yeniden onay bekliyor."); rozetler(); uyari();
     });
   });
+}
+// gönderilmeyen / hata veren bildirimin nedeni, sade dille
+function uyariNeden(u) {
+  const t = u.sonuc || "";
+  if (u.kademe === "AKTIF") return "Hesap açıldı, bildirim gerekmedi";
+  if (/sessiz saat/.test(t)) return "Hesap kapatıldı; gece olduğu için bildirim gitmedi";
+  if (/sabah/.test(t)) return t.replace(/^pasife alındı,?\s*/i, "Hesap kapatıldı, ");
+  if (/kesin okunamadı/.test(t)) return "Hesabın durumu okunamadı, kapatılmadı";
+  if (/yeniden açıldı/.test(t)) return "Hesap yeniden açıldığı için gönderilmedi";
+  if (/zaten pasif/.test(t)) return "Hesap zaten kapalıydı";
+  if (/2 saatten fazla/.test(t)) return "Onay geç kaldı, uygulanmadı";
+  if (/temizlendi|gerekli değil/.test(t)) return "Gereksiz bulundu";
+  if (/kanıt/.test(t)) return "Aynı soru başka bildirimde kullanılmıştı";
+  if (!t && u.durum === "iptal") return u.karar_veren === "otomatik" ? "Sistem göndermedi" : `"Gönderme" denildi${u.karar_veren ? " · " + (u.karar_veren.split("@")[0]) : ""}`;
+  return t.replace(/^bildirim gitmedi:\s*/, "");
 }
 function metinGoster(b, m) {
   let d = $("#metin-dlg"); if (!d) { d = document.createElement("dialog"); d.id = "metin-dlg"; d.className = "metin-dlg"; document.body.appendChild(d); d.onclick = ev => { if (ev.target === d) d.close(); }; }
@@ -769,12 +752,14 @@ async function ogretmen(id) {
   ciz();
 }
 async function ogretmenDetay(id) {
-  const [o, S, U, T, P] = await Promise.all([
+  const [o, S, U, T, P, KS, OD] = await Promise.all([
     q(sb.from("d_ogretmen").select("*").eq("id", id).maybeSingle()),
     q(sb.from("d_sikayet").select("*").eq("ogretmen_id", id).eq("tur", "c").order("olusturma", { ascending: false }).limit(200)),
     q(sb.from("d_uyari").select("*").eq("ogretmen_id", id).order("id", { ascending: false })),
     q(sb.from("d_takip").select("*").eq("ogretmen_id", id).order("cevap_tarihi", { ascending: false })),
     q(sb.from("d_solver_puan").select("*").eq("id", id).maybeSingle()),
+    ben?.rol === "yonetici" ? q(sb.from("d_kesinti").select("*").eq("ogretmen_id", id)) : [],
+    ben?.rol === "yonetici" ? q(sb.from("d_odeme").select("*").eq("ogretmen_id", id)) : [],
   ]);
   const seo = S.find(s => s.ogretmen_seo)?.ogretmen_seo || P?.seo;
   // tek akış: şikayet, bildirim, pasif/aktif, yakın takip, eksi puan
@@ -783,13 +768,21 @@ async function ogretmenDetay(id) {
   U.filter(u => u.durum !== "taslak").forEach(u => A.push({ z: u.gonderim || u.karar_zamani || u.olusturma, tur: "uyari", renk: u.kademe === "PASIF" ? "hata" : u.kademe === "AKTIF" ? "ok" : "uyari",
     b: (KADEME[u.kademe] || u.kademe) + (u.durum === "gonderildi" ? " · bildirim gitti" : u.durum === "gonderiliyor" ? " · gönderiliyor" : u.kademe === "AKTIF" ? "" : " · gönderilmedi"), m: u.kademe === "AKTIF" ? (u.description || "") : u.description }));
   T.forEach(x => A.push({ z: x.cevap_tarihi, tur: "takip", renk: sonucRenk(x.sonuc), b: (x.kaynak === "denetim" ? "Rastgele denetim · " : "Yakın takip · ") + sonucAdi("c", x.sonuc), m: `${x.ders || ""} — ${x.gerekce || ""}` }));
+  KS.filter(k => k.uygulama_zamani || k.durum === "hazir").forEach(k => A.push({ z: k.uygulama_zamani || k.guncelleme, tur: "para", renk: k.durum === "uygulandi" ? "hata" : "uyari", b: k.durum === "uygulandi" ? `Bakiyeden kesinti · ${String(tl(k.kesinti)).replace(/<[^>]+>/g, "")}` : "Kesinti onay bekliyor", m: `${k.incelenen ?? 0} cevap incelendi` }));
+  OD.filter(x => x.odeme_zamani).forEach(x => A.push({ z: x.odeme_zamani, tur: "para", renk: "ok", b: `Kalan bakiye ödendi · ${String(tl(x.odenecek)).replace(/<[^>]+>/g, "")}`, m: x.sebep || "" }));
   if (P?.eksiye_dustu) A.push({ z: P.eksiye_dustu, tur: "eksi", renk: "hata", b: "Puan eksiye düştü", m: `Puan ${P.puan}` });
   A.sort((a, b) => (b.z || "").localeCompare(a.z || ""));
-  const IK = { sikayet: "message-square-warning", uyari: "bell", takip: "eye", eksi: "trending-down" };
+  const IK = { sikayet: "message-square-warning", uyari: "bell", takip: "eye", eksi: "trending-down", para: "wallet" };
+  const S30 = S.filter(s => Date.now() - new Date(s.olusturma) < 30 * 864e5), son30 = S30.filter(s => s.son_karar), hk = son30.filter(s => s.son_karar === "ONAYLA").length;
+  const kutu = (b_, v, a_, c = "") => `<div class="kutu ${c}"><div class="k-bas">${b_}</div><div class="s">${v}</div><div class="e">${a_}</div></div>`;
   $("#icerik").innerHTML = `<button class="geri" onclick="git('ogretmen')">← Öğretmenler</button>
-    <div class="ust-cubuk"><div><h2>${e(o?.ad || P?.ad || "Öğretmen " + id)} ${o ? `<span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span>` : ""}</h2>
-    <p class="aciklama">${o ? `${o.onay} şikayette öğrenci, ${o.ret} şikayette öğretmen haklı bulundu.` : ""}${P ? ` Güncel puan: <b>${P.puan}</b>.` : ""} ${seo ? `<a href="${ADMIN}/User/Detail/${e(seo)}" target="_blank" rel="noopener">Admin panelde profili aç</a>` : ""}</p></div></div>
-    <div class="cipler" id="z-cip">${[["", "Hepsi"], ["sikayet", "Şikayetler"], ["uyari", "Bildirimler"], ["takip", "Yakın takip"], ["eksi", "Puan"]].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? A.filter(x => x.tur === v).length : A.length}</small></button>`).join("")}</div>
+    <div class="ust-cubuk"><div><h2>${e(o?.ad || P?.ad || "Öğretmen " + id)} ${o ? `<span class="etiket ${o.durum === "pasif" ? "hata" : "ok"}">${o.durum === "pasif" ? "Pasif" : "Aktif"}</span>` : ""}${seo ? ` <a class="ikon-btn" href="${ADMIN}/User/Detail/${e(seo)}" target="_blank" rel="noopener" title="Admin panelde profili aç"><i data-lucide="external-link"></i></a>` : ""}</h2>
+</div></div>
+    <div class="kutular">${kutu("Son 30 gün şikayet", S30.length, son30.length ? `%${Math.round(hk / son30.length * 100)}'inde öğrenci haklı` : "sonuçlanan yok", hk >= 3 ? "uyari" : "")}
+      ${kutu("Tüm zamanlar", o ? o.onay + o.ret : S.length, o ? `${o.onay} öğrenci · ${o.ret} öğretmen haklı` : "")}
+      ${kutu("Bildirim", U.filter(u => u.durum === "gonderildi" && u.kademe !== "AKTIF").length, "öğretmene giden")}
+      ${kutu("Puan", P ? P.puan : "—", P?.eksiye_dustu ? "eksiye düştü " + tarih(P.eksiye_dustu) : "güncel", P && P.puan < 0 ? "hata" : "")}</div>
+    <div class="cipler" id="z-cip">${[["", "Hepsi"], ["sikayet", "Şikayetler"], ["uyari", "Bildirimler"], ["takip", "Yakın takip"], ["eksi", "Puan"], ...(A.some(x => x.tur === "para") ? [["para", "Kesinti / ödeme"]] : [])].map(([v, a]) => `<button class="cip ${v ? "" : "secili"}" data-v="${v}">${a} <small>${v ? A.filter(x => x.tur === v).length : A.length}</small></button>`).join("")}</div>
     <div class="kart zaman" id="z-akis"></div>`;
   const ciz = v => {
     $("#z-akis").innerHTML = A.filter(x => !v || x.tur === v).map((x, i) => `<div class="z-satir" ${x.key ? `data-key="${e(x.key)}"` : ""}>
@@ -986,6 +979,8 @@ async function eksi() {
 
 // ---------- uzaklaştırılanların ödemeleri ----------
 const tl = n => n == null ? '<span class="soluk">—</span>' : Number(n).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+// kesinti notundaki dosya yolu, e-posta ve iç kısaltmalar çalışana gösterilmez
+const sadeNot = t => String(t).replace(/\s*\((?:döküm|dökümü)[^)]*\)/gi, "").replace(/\s*döküm[: ]+\S+\.json/gi, "").replace(/\S+\/\S+\.json/g, "").replace(/\s*Onaylayan:\s*\S+@\S+/gi, "").replace(/\s*·\s*$/, "").replace(/\s{2,}/g, " ").trim();
 async function odeme() {
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Uzaklaştırılanların ödemeleri", "Bu sayfada kimlik ve hesap bilgileri bulunduğu için yalnız yöneticiler görebilir."); return; }
   const L = await q(sb.from("d_odeme").select("*").order("olusturma", { ascending: false }).limit(500));
@@ -994,14 +989,14 @@ async function odeme() {
   const hesap = x => x.iban ? `<div class="od-hesap"><b>${e(x.hesap_sahibi || x.ad)}</b><span>${e(x.iban)}</span><span>TC ${e(x.tc || "—")} · ${e(x.il || "—")}</span>
       <button class="ince kucuk od-kopya" data-metin="${e([x.hesap_sahibi || x.ad, x.iban, x.tc, x.il].filter(Boolean).join("\n"))}">Kopyala</button></div>` : '<span class="soluk">Henüz göndermedi</span>';
   const kesinti = x => x.kesinti == null ? '<span class="etiket uyari" data-ipucu="Sakıncalı cevapların kazancı henüz hesaplanmadı. Hesaplanmadan ödeme yapılmaz.">Hesaplanmadı</span>'
-    : `${tl(x.kesinti)}${x.kesinti_notu ? `<div class="soluk kucuk-yazi">${e(x.kesinti_notu)}</div>` : ""}`;
+    : `${tl(x.kesinti)}${x.kesinti_notu ? `<div class="soluk kucuk-yazi klamp">${e(sadeNot(x.kesinti_notu))}</div>` : ""}`;
   const islem = x => x.durum === "odendi" ? `<span class="etiket ok">Ödendi · ${tarih(x.odeme_zamani)}</span><button class="ince kucuk od-geri" data-id="${x.id}">Geri al</button>`
-    : (x.durum === "odenecek" && x.odenecek != null ? `<button class="birincil kucuk od-odendi" data-id="${x.id}" data-ad="${e(x.ad)}" data-tutar="${tl(x.odenecek)}">Ödendi olarak işaretle</button>`
+    : (x.durum === "odenecek" && x.odenecek != null ? `<button class="birincil kucuk od-odendi" data-id="${x.id}" data-ad="${e(x.ad)}" data-tutar="${tl(x.odenecek)}" title="Ödendi olarak işaretle"><i data-lucide="check"></i>Ödendi</button>`
       : `<span class="soluk">${x.durum === "odenecek" ? "Kesinti hesaplanınca ödenebilir" : "Ödeme bilgisi bekleniyor"}</span>`);
   const satir = x => `<tr><td><b>${e(x.ad)}</b><div class="soluk kucuk-yazi">${e(x.telefon || "")}</div></td><td>${e(x.sebep || "—")}${x.pasif_tarihi ? `<div class="soluk kucuk-yazi">${new Date(x.pasif_tarihi).toLocaleDateString("tr-TR")}</div>` : ""}</td>
     <td>${tl(x.bakiye)}</td><td>${kesinti(x)}</td><td><b>${tl(x.odenecek)}</b></td><td>${hesap(x)}</td><td class="od-islem">${islem(x)}</td></tr>`;
-  const bas = `<tr><th>Solver</th><th>Uzaklaştırma nedeni</th><th>Bakiye</th><th>Kesinti</th><th>Ödenecek</th><th>Hesap bilgisi</th><th></th></tr>`;
-  const tablo = (R, bos) => `<div class="tablo-sar"><table class="tablo sik">${bas}${R.map(satir).join("") || `<tr><td colspan="7" class="soluk">${bos}</td></tr>`}</table></div>`;
+  const bas = `<tr><th>Solver</th><th>Neden</th><th>Bakiye</th><th style="width:28%">Kesinti</th><th>Ödenecek</th><th>Hesap bilgisi</th><th></th></tr>`;
+  const tablo = (R, bos) => `<div class="tablo-sar od-tablo"><table class="tablo sik">${bas}${R.map(satir).join("") || `<tr><td colspan="7" class="soluk">${bos}</td></tr>`}</table></div>`;
   $("#icerik").innerHTML = baslik("Uzaklaştırılanların ödemeleri", "Hesabı uzaklaştırılan solverın kalan bakiyesi, sakıncalı cevapların kazancı düşüldükten sonra ay sonu ödemesiyle gönderilir. Ödeme bilgisini destek hattı toplar ve buraya işler. Ödemeyi yaptıktan sonra \"Ödendi olarak işaretle\"ye bas; yanlışlıkla bastıysan \"Geri al\" ile düzeltebilirsin.") + `
     <div class="bilgi-serit"><i data-lucide="wallet"></i>Ödemeye hazır ${hazir.length} kişi · toplam ${tl(toplam)}${bekleyen.length - hazir.length ? ` · ${bekleyen.length - hazir.length} kişinin kesintisi hesaplanmadı` : ""}</div>
     <h2>Ödenecekler (${bekleyen.length})</h2>${tablo(bekleyen, "Ödenecek kayıt yok.")}
@@ -1043,11 +1038,11 @@ async function kesinti() {
   const sade = (R, bos) => `<div class="tablo-sar"><table class="tablo sik"><tr><th>Öğretmen</th><th>Bakiye</th><th>Durum</th></tr>${R.map(x => `<tr><td><b>${e(x.ad)}</b></td><td>${tl(x.bakiye)}</td><td>${e(x.durum_notu || "")}</td></tr>`).join("") || `<tr><td colspan="3" class="soluk">${bos}</td></tr>`}</table></div>`;
   const diger = [...D("acik_hesap"), ...D("bakiye_yok")];
   $("#icerik").innerHTML = baslik("Kapatılmış hesap kesintileri", "Hesabı kapatılan ve bakiyesi duran öğretmenlerin son para çekme talebinden sonraki cevapları incelenir. Hazır metin ya da yapay zekâ çıktısı olan cevapların ücreti bakiyeden kesilir; öğretmenin kendi yazdığı çözüm kesilmez. Yalnız sistemin otomatik değerlendirdiği cevaplar kesilebilir; öğrencinin kendisinin değerlendirdiği cevaplar kesilmez. Sen onaylayınca kesinti bakiyeden düşülür ve kalan tutar ödenecekler listesine eklenir.") + `
-    <h2>Onay bekleyenler (${D("hazir").length})</h2>${D("hazir").map(kart).join("") || '<div class="bos">Onay bekleyen kesinti yok.</div>'}
+    ${D("hazir").length ? `<h2>Onay bekleyenler (${D("hazir").length})</h2>${D("hazir").map(kart).join("")}` : '<div class="bos-ince"><i data-lucide="circle-check"></i>Onay bekleyen kesinti yok.</div>'}
     ${D("onaylandi").length ? `<h2>Onaylandı, işleniyor (${D("onaylandi").length})</h2>${D("onaylandi").map(kart).join("")}` : ""}
     ${D("sorun").length ? `<h2>Sorun çıkanlar (${D("sorun").length})</h2>${D("sorun").map(kart).join("")}` : ""}
     ${D("inceleniyor").length ? `<h2>İnceleniyor (${D("inceleniyor").length})</h2>${sade(D("inceleniyor"), "")}` : ""}
-    <h2>Tamamlananlar (${D("uygulandi").length})</h2>${D("uygulandi").map(kart).join("") || '<div class="bos">Henüz tamamlanan kesinti yok.</div>'}
+    ${D("uygulandi").length ? `<h2>Tamamlananlar (${D("uygulandi").length})</h2>${D("uygulandi").map(kart).join("")}` : ""}
     ${diger.length ? `<details><summary>İşlem gerekmeyenler (${diger.length})</summary>${sade(diger, "")}</details>` : ""}`;
   const yenile = () => { rozetler(); kesinti().then(() => ikon()); };
   const hata = m => bildir({ degistirilemez: "Bu kayıt artık değiştirilemiyor; sayfayı yenile.", kesilemez: "Bu cevap kesintiye eklenemez: yalnız sistemin otomatik değerlendirdiği, kazanç getirmiş cevaplar kesilebilir.", sadece_yonetici: "Bu işlemi yalnız yöneticiler yapabilir." }[m] || "Hata: " + m);
