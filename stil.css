@@ -799,10 +799,11 @@ body.gs-kilit{overflow:hidden}
 /* 26 Eki: kaçış hunisi, eşiğe yakın kaçanlar */
 .gs-ikili-k{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;margin-bottom:12px}
 @media (max-width:900px){.gs-ikili-k{grid-template-columns:minmax(0,1fr)}}
-.gs-huni-s{display:grid;grid-template-columns:170px minmax(0,1fr) 52px 40px;align-items:center;gap:10px;font-size:13px;padding:4px 0}
-.gs-huni-cub{height:14px;background:hsl(var(--muted));border-radius:4px;overflow:hidden}.gs-huni-cub span{display:block;height:100%;border-radius:0 4px 4px 0}
+.gs-huni-s{display:grid;grid-template-columns:150px minmax(0,1fr) 44px 38px;align-items:center;gap:10px;font-size:13px;padding:5px 0 2px}
+.gs-huni-cub{height:12px;background:hsl(var(--muted));border-radius:4px;overflow:hidden}.gs-huni-cub span{display:block;height:100%;border-radius:0 4px 4px 0}
 .gs-huni-cub .b1{background:hsl(var(--primary))}.gs-huni-cub .b2{background:hsl(var(--primary)/.45)}.gs-huni-cub .b4{background:hsl(45 93% 52%)}
-.gs-huni-s b{text-align:right}.gs-huni-y{text-align:right;font-size:12px}
-.gs-huni-dus{font-size:12px;color:hsl(var(--hata));padding:0 0 2px 180px}
-.gs-huni-kay{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:hsl(var(--soluk));padding:0 0 4px 180px}.gs-huni-kay b{color:hsl(var(--metin))}
-@media (max-width:600px){.gs-huni-s{grid-template-columns:110px minmax(0,1fr) 44px 36px}.gs-huni-dus,.gs-huni-kay{padding-left:0}}
+.gs-huni-s b{text-align:right}.gs-huni-y{text-align:right;font-size:12px;color:hsl(var(--soluk))}
+.gs-huni-dus{font-size:12px;color:hsl(var(--soluk));padding:0 0 4px 160px}.gs-huni-dus b{color:hsl(var(--hata));font-weight:600}
+@media (max-width:600px){.gs-huni-s{grid-template-columns:110px minmax(0,1fr) 40px 34px}.gs-huni-dus{padding-left:0}}
+
+.gs-huni-ayr{border-top:1px dashed hsl(var(--border));margin:6px 0 2px}

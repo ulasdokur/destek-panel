@@ -1401,22 +1401,22 @@ function gsCiz(bas, son) {
 let gsB = [];
 const gsAd = k => GS_ADI[k] || (k.startsWith("ogrenci_notu") ? "Öğrencinin özel notu var → yapay zekâya" : k.startsWith("hazirlik_hatasi") ? "Cevap hazırlanırken hata" : k.startsWith("banka_ai_celiski") ? "Banka ile yapay zekâ çelişti" : k);
 const gsPc = v => v == null ? "—" : "%" + (v * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 });
-// 26 Eki: kaçış hunisi — sorulan → göndericinin gördüğü → bankada benzeri olan → banka cevabı gönderilen; her basamakta kaybın sebebi
+// 26 Eki: kaçış hunisi — sorulan → göndericinin gördüğü → bankada eşleşen → banka cevabı; her basamağın altında kaybı ve kısa sebebi
+const GS_HUNI_AD = { alinamadi: "başka öğretmen aldı", banka_gorsel_yok: "cevap görseli yok", yeniden_ai: "tekrar soruldu → YZ", gonderim_hatasi: "gönderim hatası" };
 function gsHuniCiz(G, aiN) {
   const D = G.filter(g => g.huni && g.sorulan), el = $("#gs-huni"); if (!el) return;
-  if (!D.length) { el.innerHTML = '<div class="gs-bas"><h3>Sorular nereye gitti?</h3></div><p class="soluk">Bu aralık için huni verisi yok (26 Eki\'den önce ölçülmüyordu).</p>'; return; }
-  const top = k => D.reduce((a, g) => a + (g.huni[k] || 0), 0), sor = D.reduce((a, g) => a + g.sorulan, 0), gor = Math.min(top("gor"), sor), yok = top("yok"), gon = top("gon"), K = {};
-  D.forEach(g => Object.entries(g.huni.kayip || {}).forEach(([k, n]) => { const a = gsAd(k); K[a] = (K[a] || 0) + n; }));
-  const kayip = Object.entries(K).sort((a, b) => b[1] - a[1]), esl = gor - yok;
-  const sat = (ad, v, renk, dus, dusAd) => `<div class="gs-huni-s"><span class="gs-huni-ad">${ad}</span><span class="gs-huni-cub"><span class="${renk}" style="width:${sor ? Math.max(1, v / sor * 100) : 0}%"></span></span><b>${sayi(v)}</b><span class="soluk gs-huni-y">${yuzde(v, sor)}</span></div>
-    ${dus ? `<div class="gs-huni-dus" ${dusAd ? `data-ipucu="${e(dusAd)}"` : ""}>▼ ${sayi(dus)} ${dusAd && dusAd.length < 60 ? e(dusAd) : ""}</div>` : ""}`;
-  el.innerHTML = `<div class="gs-bas"><h3>Sorular nereye gitti?</h3></div><p class="gs-acikla">Bütün sorulan sorulardan banka cevabına kadar her basamakta kaç soru kaybettik, neden?</p>
-    ${sat("Bütün sorulan sorular", sor, "b4", sor - gor, "gönderici görmeden başkası aldı ya da gönderici kapalıydı")}
-    ${sat("Göndericinin gördüğü", gor, "b2", yok, "bankada benzeri yok ya da benzerlik eşiğin altında")}
-    ${sat("Bankada benzeri bulunan", esl, "b2", esl - gon, "")}
-    ${kayip.length ? `<div class="gs-huni-kay">${kayip.slice(0, 5).map(([a, n]) => `<span>${e(a)} <b>${sayi(n)}</b></span>`).join("")}</div>` : ""}
-    ${sat("Banka cevabı gönderilen", gon, "b1", 0)}
-    ${aiN ? `<p class="soluk gs-dip">Yapay zekâ ayrıca ${sayi(aiN)} soruya cevap verdi; çoğu bankada olmayan ya da öğrencinin not yazdığı sorular.</p>` : ""}`;
+  const bas_ = '<div class="gs-bas"><h3>Sorular nereye gitti?</h3></div>';
+  if (!D.length) { el.innerHTML = bas_ + '<p class="soluk">Bu aralık için veri yok.</p>'; return; }
+  const top = k => D.reduce((a, g) => a + (g.huni[k] || 0), 0), sor = D.reduce((a, g) => a + g.sorulan, 0), gor = Math.min(top("gor"), sor), yok = top("yok"), gon = top("gon"), esl = gor - yok, K = {};
+  D.forEach(g => Object.entries(g.huni.kayip || {}).forEach(([k, n]) => { const a = k.startsWith("ogrenci_notu") ? "öğrenci notu → YZ" : GS_HUNI_AD[k] || "diğer"; K[a] = (K[a] || 0) + n; }));
+  const neden = Object.entries(K).sort((a, b) => (a[0] === "diğer") - (b[0] === "diğer") || b[1] - a[1]).map(([a, n]) => `${a} ${sayi(n)}`).join(" · ");
+  const sat = (ad, v, renk, kayip, ne) => `<div class="gs-huni-s"><span class="gs-huni-ad">${ad}</span><span class="gs-huni-cub"><span class="${renk}" style="width:${Math.max(1, v / sor * 100)}%"></span></span><b>${sayi(v)}</b><span class="gs-huni-y">${yuzde(v, sor)}</span></div>
+    ${kayip ? `<div class="gs-huni-dus"><b>−${sayi(kayip)}</b> ${ne}</div>` : ""}`;
+  el.innerHTML = bas_ + sat("Sorulan", sor, "b4", sor - gor, "gönderici görmeden alındı")
+    + sat("Göndericinin gördüğü", gor, "b2", yok, "bankada yok")
+    + sat("Bankada eşleşen", esl, "b2", esl - gon, neden)
+    + sat("Banka cevabı gitti", gon, "b1", 0)
+    + (aiN ? '<div class="gs-huni-ayr"></div>' + sat("Yapay zekâ cevabı gitti", aiN, "b1", 0) : "");
 }
 // 26 Eki: benzerliği eşiğin hemen altında kalıp atlanan sorular; eşiği düşürseydik kaç soru daha giderdi (cevabın doğruluğu ayrıca kontrol edilmeli)
 function gsYakinCiz(G) {
