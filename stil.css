@@ -798,7 +798,7 @@ body.gs-kilit{overflow:hidden}
 .s-ikili{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}.s-ort{display:flex;align-items:baseline;gap:6px;padding-bottom:6px}.s-ort span{font-size:22px;font-weight:600;color:hsl(var(--metin-2))}.s-ort small{font-size:13px;color:hsl(var(--soluk))}
 .s-hc{white-space:nowrap}.s-hc .soluk{font-size:11px}
 .gs-kap{margin-top:-4px}
-/* 26 Eki: saat saat kapsama, kaçış hunisi, eşiğe yakın kaçanlar */
+/* 26 Eki: kaçış hunisi, eşiğe yakın kaçanlar */
 .gs-saat-k{margin-bottom:12px}.gs-saat-svg{width:100%;height:auto;display:block}
 .gs-izg{stroke:hsl(var(--border));stroke-width:1}.gs-eks{font-size:11px;fill:hsl(var(--soluk))}
 .gs-cizgi{fill:none;stroke:hsl(var(--primary));stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.gs-cizgi.gri{stroke:hsl(var(--soluk)/.6);stroke-dasharray:4 3}
