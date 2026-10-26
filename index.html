@@ -54,7 +54,13 @@
       </div>
       <button data-s="basvuru" title="Solver Başvuruları"><i data-lucide="award"></i><span>Solver Başvuruları</span><b class="rozet" id="r-basvuru"></b></button>
       <button data-s="ogrenci" title="Öğrenciler"><i data-lucide="users"></i><span>Öğrenciler</span></button>
-      <button data-s="gonderici" title="Tebeşir" class="sadece-yonetici" hidden><i data-lucide="send"></i><span>Tebeşir</span></button>
+      <div class="grup sadece-yonetici" data-grup="tebesir" hidden>
+        <button class="grup-bas" title="Tebeşir" data-ilk="gonderici"><i data-lucide="send"></i><span>Tebeşir</span><i data-lucide="chevron-down" class="ok"></i></button>
+        <div class="grup-ic">
+          <button data-s="gonderici"><span>Genel Bakış</span></button>
+          <button data-s="sure"><span>Süreler</span></button>
+        </div>
+      </div>
     </nav>
     <div class="yan-alt">
       <div class="tema" role="radiogroup" aria-label="Görünüm">

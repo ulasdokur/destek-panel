@@ -794,3 +794,7 @@ body.gs-kilit{overflow:hidden}
 .od-tablo .klamp{-webkit-line-clamp:3;cursor:pointer}
 #u-tablo td:first-child{white-space:nowrap}
 .ust-cubuk h2 .ikon-btn{display:inline-flex;vertical-align:middle;margin-left:4px}
+/* 26 Eki: Süreler — medyan büyük, ortalama yanında; kapsama satırı */
+.s-ikili{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}.s-ort{display:flex;align-items:baseline;gap:6px;padding-bottom:6px}.s-ort span{font-size:22px;font-weight:600;color:hsl(var(--metin-2))}.s-ort small{font-size:13px;color:hsl(var(--soluk))}
+.s-hc{white-space:nowrap}.s-hc .soluk{font-size:11px}
+.gs-kap{margin-top:-4px}
