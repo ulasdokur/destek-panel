@@ -1222,22 +1222,25 @@ function gsSeritCiz() {
     <span class="soluk gs-senk"><i class="gs-nokta"></i>Canlı · ${tarih(senk)}</span></div>`;
   yer.querySelectorAll("[data-hesap]").forEach(b => b.onclick = () => gsHesapAc(b.dataset.hesap));
 }
-// 27 Eki (Ulaş): hesap çipine tıklayınca o yapay zekâ hesabının cevapları satır satır; satıra tıklayınca soru + cevap görseli + yorumlar
-function gsHesapAc(h, n = 100) {
-  const L = gsV.C.filter(x => x.hesap === h).sort((a, b) => a.zaman < b.zaman ? 1 : -1), G = L.slice(0, n);
-  gsPencere(`${e(h)} <span class="soluk">· ${sayi(L.length)} cevap</span>`, L.length ? `<div class="gs-tsar"><table class="tablo sik gs-liste-t"><thead><tr><th>Saat</th><th>Soru</th><th>Ders</th><th>Şık</th><th>Değerlendirme</th><th>Yorum</th></tr></thead><tbody>
-    ${G.map(x => { const d = DEG[x.deg] || [x.deg, ""], y = (x.yorumlar || []).length;
+// 27 Eki (Ulaş): soru listeleri kart ızgarası yerine satır satır; satıra tıklayınca soru + cevap görseli + yorumlar, "←" ile listeye dönülür
+function gsHesapAc(h) { gsSatirlar(h, gsV.C.filter(x => x.hesap === h)); }
+function gsSatirlar(baslik, L0, n = 100) {
+  const L = [...L0].sort((a, b) => a.zaman < b.zaman ? 1 : -1), G = L.slice(0, n), K = gsV.Z.kontrol || {};
+  const KN = { banka_yanlis: ["cevap yanlış", "hata"], cevap_dogru: ["cevap doğru", "ok"], belirsiz: ["belirsiz", ""] };
+  gsPencere(`${e(baslik)} <span class="soluk">· ${sayi(L.length)} soru</span>`, L.length ? `<div class="gs-tsar"><table class="tablo sik gs-liste-t"><thead><tr><th>Saat</th><th>Soru</th><th>Ders</th><th>Tür</th><th>Şık</th><th>Değerlendirme</th><th>Kontrol</th><th>Yorum</th></tr></thead><tbody>
+    ${G.map(x => { const d = DEG[x.deg] || [x.deg, ""], y = (x.yorumlar || []).filter(z => z.kaynak !== "degerlendirme").length, k = K[x.soru_id], kn = k && (KN[k.karar] || [k.karar, ""]);
       return `<tr class="tik ${x.deg === "yetersiz" ? "gs-yetersiz" : ""}" data-id="${x.soru_id}"><td class="nw">${tarih(x.zaman)}</td><td>${soruLink(x.soru_id, x.soru_id)}</td><td class="gs-ders-h" title="${e(x.ders || "")}">${e(dersGenel(x.ders))}</td>
-        <td>${e(x.sik || "—")}</td><td><span class="etiket ${d[1]}">${d[0]}</span></td><td>${y ? `💬 ${y}` : ""}</td></tr>`; }).join("")}
-    </tbody></table></div>${L.length > n ? `<button class="gs-daha">Daha fazla (${sayi(L.length - n)})</button>` : ""}` : '<div class="bos">Bu hesabın gönderdiği cevap yok.</div>');
+        <td class="nw">${x.banka_id == -1 ? `Yapay zekâ${x.hesap ? " · " + e(x.hesap) : ""}` : `Banka${x.benzerlik != null ? " · " + Number(x.benzerlik).toFixed(2).replace(".", ",") : ""}`}${x.video ? " · video" : ""}</td>
+        <td>${e(x.sik || "—")}</td><td><span class="etiket ${d[1]}">${d[0]}</span></td><td>${kn ? `<span class="etiket ${kn[1]}" data-ipucu="${e(k.aciklama || "")}">${e(kn[0])}</span>` : ""}</td><td>${y ? `💬 ${y}` : ""}</td></tr>`; }).join("")}
+    </tbody></table></div>${L.length > n ? `<button class="gs-daha">Daha fazla (${sayi(L.length - n)})</button>` : ""}` : '<div class="bos">Burada soru yok.</div>');
   const w = $("#gs-pencere .gs-p-govde");
-  w.querySelector(".gs-daha")?.addEventListener("click", () => gsHesapAc(h, n + 200));
+  w.querySelector(".gs-daha")?.addEventListener("click", () => { const y_ = w.scrollTop; gsSatirlar(baslik, L0, n + 200); $("#gs-pencere .gs-p-govde").scrollTop = y_; });
   const tb = w.querySelector("tbody"); if (!tb) return;
   tb.onclick = ev => {
     if (ev.target.closest("a")) return;
     const tr = ev.target.closest("tr.tik"), x = tr && L.find(c => c.soru_id == tr.dataset.id); if (!x) return;
-    gsPencere(`<button class="ince kucuk gs-geri">← ${e(h)}</button> Soru ${x.soru_id}`, `<div class="gs-kartlar tek">${gsKart(x)}</div>`);
-    $("#gs-pencere .gs-geri").onclick = () => gsHesapAc(h, n);
+    gsPencere(`<button class="ince kucuk gs-geri">← ${e(baslik)}</button> Soru ${x.soru_id}`, `<div class="gs-kartlar tek">${gsKart(x)}</div>`);
+    $("#gs-pencere .gs-geri").onclick = () => gsSatirlar(baslik, L0, n);
   };
 }
 function gsAralikCiz() {
@@ -1510,11 +1513,7 @@ function gsKart(x) {
     ${(x.yorumlar || []).some(y => y.kaynak !== "degerlendirme") || ((gsV.Z.yorum || {}).gonderilen || []).some(g => g.soru == x.soru_id) ? gsIplik({ ...x, yorumlar: (x.yorumlar || []).filter(y => y.kaynak !== "degerlendirme") }, [], false) : ""}
   </article>`;
 }
-function gsKartlar(baslikM, L, n = 24) {
-  const T = [...L].sort((a, b) => a.zaman < b.zaman ? 1 : -1);
-  gsPencere(`${e(baslikM)} <span class="soluk">${sayi(T.length)}</span>`, T.length ? `<div class="gs-kartlar">${T.slice(0, n).map(gsKart).join("")}</div>${T.length > n ? `<button class="gs-daha" id="gs-p-daha">${sayi(T.length - n)} tane daha göster</button>` : ""}` : '<div class="bos">Bu kutuda soru yok.</div>');
-  const d = $("#gs-p-daha"); if (d) d.onclick = () => { const g = $("#gs-pencere .gs-p-govde"), y = g.scrollTop; gsKartlar(baslikM, L, n + 24); $("#gs-pencere .gs-p-govde").scrollTop = y; };
-}
+function gsKartlar(baslikM, L) { gsSatirlar(baslikM, L); }   // 27 Eki: kart ızgarası yerine satırlar
 // ---------- gönderilen cevaplar: Excel gibi süz + sırala ----------
 let gsTF = { sira: null, f: {} };
 function gsListe(C, n = 60) {
