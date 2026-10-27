@@ -1208,18 +1208,37 @@ function gsSeritCiz() {
   const yer = $("#gs-serit-yer"); if (!yer || !gsV) return;
   const H = gsV.Z.saglik, ai = gsV.Z.ai || {}, senk = gsSenk;
   const dk = H.son_olay ? Math.round((Date.now() - new Date(H.son_olay)) / 6e4) : null, canli = dk != null && dk <= 15 && H.surec >= 2;
-  const cip = (ok, metin, ipucu) => `<span class="gs-cip ${ok === true ? "ok" : ok === false ? "hata" : ""}" ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}>${metin}</span>`;
+  const cip = (ok, metin, ipucu, hesap) => `<${hesap ? "button" : "span"} class="gs-cip ${hesap ? "gs-cip-tik" : ""} ${ok === true ? "ok" : ok === false ? "hata" : ""}" ${hesap ? `data-hesap="${e(hesap)}"` : ""} ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}>${metin}</${hesap ? "button" : "span"}>`;
   const bugunH = ((ai.gun || {})[gunStr(new Date())] || {}).hesap || {};
   const hesaplar = Object.entries(ai.hesap_durum || {}).map(([h, d]) => {
     const acik = (ai.hesap_canli || {})[h] !== false && d.durum != "DURDU" && ai.calisiyor, planli = !acik && d.planli;
     return cip(acik ? true : planli ? null : false, `<b>${e(h)}</b> · ${acik ? "açık" : planli ? "planlı durdu" : "kapalı"}${bugunH[h] ? ` · bugün ${sayi(bugunH[h])}` : ""}`,
-      acik ? `Yapay zekâ hesabı çalışıyor. Bugün ${sayi(bugunH[h] || 0)} cevap gönderdi.` : planli ? (d.ne || "Bilerek durduruldu, arıza değil.") : (d.ne || "Beklenmedik şekilde durdu."));
+      (acik ? `Yapay zekâ hesabı çalışıyor. Bugün ${sayi(bugunH[h] || 0)} cevap gönderdi.` : planli ? (d.ne || "Bilerek durduruldu, arıza değil.") : (d.ne || "Beklenmedik şekilde durdu.")) + " Tıkla, cevaplarını gör.", h);
   }).join("");
   yer.innerHTML = `<div class="gs-serit" id="gs-saglik">
     ${canli || !H.planli ? cip(canli, `<b>Banka ${canli ? "çalışıyor" : "durmuş olabilir"}</b> · ${dk == null ? "—" : dk < 1 ? "az önce" : dk + " dk önce"}`, canli ? "Banka göndericisi açık ve son 15 dakikada iş yaptı." : "15 dakikadan uzun süredir hareket yok ya da program kapalı. Ulaş'a haber ver.")
       : cip(null, `<b>Banka planlı durdu</b> · ${e(H.durum_ne || "")}`, "Gönderici bilerek durduruldu, arıza değil.")}
     ${hesaplar}
     <span class="soluk gs-senk"><i class="gs-nokta"></i>Canlı · ${tarih(senk)}</span></div>`;
+  yer.querySelectorAll("[data-hesap]").forEach(b => b.onclick = () => gsHesapAc(b.dataset.hesap));
+}
+// 27 Eki (Ulaş): hesap çipine tıklayınca o yapay zekâ hesabının cevapları satır satır; satıra tıklayınca soru + cevap görseli + yorumlar
+function gsHesapAc(h, n = 100) {
+  const L = gsV.C.filter(x => x.hesap === h).sort((a, b) => a.zaman < b.zaman ? 1 : -1), G = L.slice(0, n);
+  gsPencere(`${e(h)} <span class="soluk">· ${sayi(L.length)} cevap</span>`, L.length ? `<div class="gs-tsar"><table class="tablo sik gs-liste-t"><thead><tr><th>Saat</th><th>Soru</th><th>Ders</th><th>Şık</th><th>Değerlendirme</th><th>Yorum</th></tr></thead><tbody>
+    ${G.map(x => { const d = DEG[x.deg] || [x.deg, ""], y = (x.yorumlar || []).length;
+      return `<tr class="tik ${x.deg === "yetersiz" ? "gs-yetersiz" : ""}" data-id="${x.soru_id}"><td class="nw">${tarih(x.zaman)}</td><td>${soruLink(x.soru_id, x.soru_id)}</td><td class="gs-ders-h" title="${e(x.ders || "")}">${e(dersGenel(x.ders))}</td>
+        <td>${e(x.sik || "—")}</td><td><span class="etiket ${d[1]}">${d[0]}</span></td><td>${y ? `💬 ${y}` : ""}</td></tr>`; }).join("")}
+    </tbody></table></div>${L.length > n ? `<button class="gs-daha">Daha fazla (${sayi(L.length - n)})</button>` : ""}` : '<div class="bos">Bu hesabın gönderdiği cevap yok.</div>');
+  const w = $("#gs-pencere .gs-p-govde");
+  w.querySelector(".gs-daha")?.addEventListener("click", () => gsHesapAc(h, n + 200));
+  const tb = w.querySelector("tbody"); if (!tb) return;
+  tb.onclick = ev => {
+    if (ev.target.closest("a")) return;
+    const tr = ev.target.closest("tr.tik"), x = tr && L.find(c => c.soru_id == tr.dataset.id); if (!x) return;
+    gsPencere(`<button class="ince kucuk gs-geri">← ${e(h)}</button> Soru ${x.soru_id}`, `<div class="gs-kartlar tek">${gsKart(x)}</div>`);
+    $("#gs-pencere .gs-geri").onclick = () => gsHesapAc(h, n);
+  };
 }
 function gsAralikCiz() {
   const { Z } = gsV, [bas, son] = gsAralik(), ilk = Z.gunler[0].gun, bugun = gunStr(new Date()), ai = Z.ai || {};
