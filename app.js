@@ -1148,12 +1148,21 @@ function gsAralik() {
   if (t === "ozel") return [gsAr.bas || ilk, gsAr.son || bugun];
   return { bugun: [bugun, bugun], dun: [gunEkle(bugun, -1), gunEkle(bugun, -1)], 7: [gunEkle(bugun, -6), bugun], 30: [gunEkle(bugun, -29), bugun], hepsi: [ilk, bugun] }[t];
 }
+// 28 Eki: Supabase tek istekte en çok 1000 satır döndürüyor (.limit(5000) sessizce 1000'de kesiyordu); sayfa sayfa hepsi
+async function gsCevaplar() {
+  let L = [], i = 0;
+  while (true) {
+    const d = await q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).order("soru_id").range(i, i + 999));
+    L = L.concat(d); if (d.length < 1000) break; i += 1000;
+  }
+  return L;
+}
 // 26 Eki: Süreler Tebeşir'in alt sayfası (#sure); ana sayfa Tümü / Banka cevapları / Yapay zekâ
 async function gonderici(mod) {
   gsGorunum = mod === "sure" ? "sure" : gsGorunum === "sure" ? "tum" : gsGorunum;
   const bas_ = mod === "sure" ? "Süreler" : "Tebeşir";
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik(bas_, "Bu sayfayı yalnız yöneticiler görebilir."); return; }
-  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%")), q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000))]);
+  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%")), gsCevaplar()]);
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), simdi = new Date().toISOString(), senk = O.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
@@ -1177,7 +1186,7 @@ function gsCanliKur() {
     const imza = O.data.map(x => x.k + x.zaman).sort().join("|"), simdi = new Date().toISOString();
     if (imza === gsImza) return;
     const senk = O.data.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
-    const C = await sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).limit(5000); if (C.error || !C.data) return;
+    const C = { data: await gsCevaplar().catch(() => null) }; if (!C.data) return;
     gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C: C.data }; gsUN = null;
     gsSeritCiz();
     if (document.activeElement?.closest("#gs-govde")) return;   // filtreye yazarken ekranı altından çekmeyelim; bir sonraki turda çizilir
