@@ -1332,14 +1332,19 @@ function gsCiz(bas, son) {
   const yz = (a, b) => b ? Math.min(100, a / b * 100) : 0;
   const cubuk = (baslik, oran, sag, parca, ipucu) => `<div class="gs-hb" data-ipucu="${e(ipucu)}"><div class="gs-hb-ust"><span>${baslik}</span><b data-sayac="${e(baslik)}">${oran}</b></div>
     <div class="gs-bar">${parca}</div><div class="gs-hb-alt">${sag}</div></div>`;
+  // 27 Eki: önceki dönem (bugünse dünün aynı saatine kadar) — gönderilen ve tasarruf kartları ortak kullanır
+  const OK = (() => {
+    const bg = gunStr(new Date()), n = Math.round((new Date(son + "T12:00") - new Date(bas + "T12:00")) / 864e5) + 1, pb = gunEkle(bas, -n), ps = gunEkle(son, -n);
+    if (gsAr.tur === "hepsi" || pb < (Z.gunler[0]?.gun || "")) return null;
+    const sa = son === bg ? new Date().toTimeString().slice(0, 5) : "99";
+    const L = C.filter(x => { const g = x.zaman.slice(0, 10); return g >= pb && g <= ps && (g < ps || x.zaman.slice(11, 16) <= sa) && uy(x); });
+    return { L, n, et: n === 1 ? (son === bg ? "dün bu saatte" : `önceki gün (${gkisa(pb)})`) : son === bg ? `önceki ${n} gün, aynı saate kadar` : `önceki ${n} gün` };
+  })();
   const k1 = `<section class="gs-h gs-h1">
     <div class="gs-h-bas">${tum ? "Tebeşir cevapları" : ai ? "Yapay zekâ cevapları" : "Banka cevapları"}</div>
     <button class="gs-h-buyuk" data-f="hepsi" data-ipucu="Tıkla, hepsini gör"><span data-sayac="gonderildi">${sayi(B.length)}</span><small>cevap gönderildi</small></button>${(() => { // 25 Eki: her aralık bir öncekiyle kıyaslanır; bugün için dünün aynı saatine kadar
-      const bg = gunStr(new Date()), n = Math.round((new Date(son + "T12:00") - new Date(bas + "T12:00")) / 864e5) + 1, pb = gunEkle(bas, -n), ps = gunEkle(son, -n);
-      if (gsAr.tur === "hepsi" || pb < (Z.gunler[0]?.gun || "")) return "";
-      const sa = son === bg ? new Date().toTimeString().slice(0, 5) : "99";
-      const d = C.filter(x => { const g = x.zaman.slice(0, 10); return g >= pb && g <= ps && (g < ps || x.zaman.slice(11, 16) <= sa) && uy(x); }).length, f = B.length - d;
-      const et = n === 1 ? (son === bg ? "dün bu saatte" : `önceki gün (${gkisa(pb)})`) : son === bg ? `önceki ${n} gün, aynı saate kadar` : `önceki ${n} gün`;
+      if (!OK) return "";
+      const { L: OL, et, n } = OK, bg = gunStr(new Date()), d = OL.length, f = B.length - d;
       const P = gsSorOnceki(bas, son), kB = B.filter(x => Gs.some(g => g.gun === x.zaman.slice(0, 10))).length, k1_ = sor ? kB / sor : null, k0 = P && P.d ? d / P.d : null;
       const pc = v => "%" + (v * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 }), kf = k1_ != null && k0 != null ? Math.round((k1_ - k0) * 1000) / 10 : null;
       const kap = k1_ != null && k0 != null ? `<div class="gs-dun gs-kap" data-ipucu="Kapsama = gönderilen cevap ÷ bütün sorulan sorular (aynı saate kadar). Soru sayısındaki düşüşten bağımsız olarak payımızı gösterir.">kapsama ${et} <b>${pc(k0)}</b> · ${son === bg ? (n === 1 ? "bugün" : "bu aralık") : "seçili"} <b>${pc(k1_)}</b>${kf ? ` <span class="${kf > 0 ? "ok" : "hata"}">${kf > 0 ? "▲" : "▼"} ${Math.abs(kf).toLocaleString("tr-TR")} puan</span>` : ""}</div>` : "";
@@ -1370,7 +1375,8 @@ function gsCiz(bas, son) {
   const k3 = `<section class="gs-h gs-h3">
     <div class="gs-h-bas" data-ipucu="Öğretmene gitseydi ödenecek tutar (%20 stopaj dahil)">Tasarruf</div>
     <div class="gs-h-tl" data-sayac="tasarruf">${olcul ? tlStr(tas) : "—"}</div>
-    <div class="gs-h-alt">${olcul ? `soru başı ${tlStr(tas / olcul)}` : "ölçülüyor"}</div>
+    <div class="gs-h-alt">${olcul ? `soru başı ${tlStr(tas / olcul)}` : "ölçülüyor"}</div>${OK && olcul ? (() => { const d = gsTasarruf(OK.L), fk = tas - d;
+      return `<div class="gs-dun">${OK.et} <b>${tlStr(d)}</b>${Math.round(fk) ? ` <span class="${fk > 0 ? "ok" : "hata"}">${fk > 0 ? "▲" : "▼"} ${tlStr(Math.abs(fk))}${d >= 50 ? ` (%${Math.round(Math.abs(fk) / d * 100)})` : ""}</span>` : ""}</div>`; })() : ""}
     <div class="gs-spark">${V14.map((v, i) => `<span class="${G14[i].gun >= bas && G14[i].gun <= son ? "sec" : ""}" style="height:${Math.max(3, v / mx * 100)}%" data-ipucu="${gkisa(G14[i].gun)}: ${tlStr(v)}"></span>`).join("")}</div>
     <div class="gs-spark-alt"><span>${gkisa(G14[0].gun)}</span><span>son 14 gün · ${tlStr(V14.reduce((a, b) => a + b, 0))}</span></div></section>`;
   const hero = `<div class="gs-hero">${k1}${k2}${k3}</div>`;
