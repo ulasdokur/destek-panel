@@ -1158,6 +1158,9 @@ const dersGenel = d => { const t = String(d || "Bilinmiyor").replace(/\([^)]*\)/
   return /[a-zçğıöşü]/.test(t) ? t : t.toLocaleLowerCase("tr").replace(/(^|\s)(\S)/g, (m, b, c) => b + c.toLocaleUpperCase("tr")).replace(/ Ve /g, " ve "); };   // "FEN BİLİMLERİ" = "Fen Bilimleri"
 const dersGenelK = d => dersGenel(d).toLocaleLowerCase("tr");
 let gsUN = null;
+// 28 Eki (Ulaş): reddedilen şikayet öğrenci değerlendirmesini "yeterli"ye çeviriyordu; halkada şikayetler ayrı dilim
+let gsSik = new Map();
+const gsSinif = x => { const k = gsSik.get(String(x.soru_id)); return !k ? x.deg : k.son_karar === "ONAYLA" ? "sik_onay" : k.son_karar === "REDDET" ? "sik_red" : "sik_bek"; };
 function gsUcret(ders) {
   const U = gsV.Z.ucret || {}, g = U._genel || {};
   if (!gsUN) { gsUN = {}; for (const [k, v] of Object.entries(U)) { if (k === "_genel") continue; const a = gsUN[dersAnahtar(k)] ||= { top: 0, n: 0 }; a.top += v.ort * v.n; a.n += v.n; }
@@ -1189,7 +1192,9 @@ async function gonderici(mod) {
   gsGorunum = mod === "sure" ? "sure" : gsGorunum === "sure" ? "tum" : gsGorunum;
   const bas_ = mod === "sure" ? "Süreler" : "Tebeşir";
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik(bas_, "Bu sayfayı yalnız yöneticiler görebilir."); return; }
-  const [O, C] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%")), gsCevaplar()]);
+  const [O, C, SK] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%")), gsCevaplar(),
+    sb.from("d_sikayet").select("question_id,son_karar,durum").eq("tur", "c").in("ogretmen_id", [...BIZIM_BANKA, ...BIZIM_AI]).limit(10000)]);
+  gsSik = new Map((SK.data || []).map(x => [String(x.question_id), x]));   // 28 Eki: bizim cevaplara gelen şikayetler (reddedilenler dahil)
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), simdi = new Date().toISOString(), senk = O.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
@@ -1380,7 +1385,7 @@ function gsCiz(bas, son) {
   const G = Z.gunler.filter(g => g.gun >= bas && g.gun <= son), top = k => G.reduce((a, g) => a + (g[k] || 0), 0);
   const Lr = C.filter(x => x.zaman.slice(0, 10) >= bas && x.zaman.slice(0, 10) <= son);
   const ad = bas === son ? gkisa(bas) : `${gkisa(bas)} – ${gkisa(son)}`;
-  const B = Lr.filter(uy), dsay = k => B.filter(x => x.deg === k).length, ogr = dsay("yeterli") + dsay("yetersiz");
+  const B = Lr.filter(uy), dsay = k => B.filter(x => gsSinif(x) === k).length, sikT = dsay("sik_onay") + dsay("sik_red") + dsay("sik_bek"), ogr = dsay("yeterli") + dsay("yetersiz") + sikT;
   const tas = gsTasarruf(B), olcul = B.filter(x => gsUcret(x.ders).tl != null).length;
   const gB = (ai || tum ? (Z.ai?.gun || {})[gunStr(new Date())] : null) || {};
   // 25 Eki: üst bölüm üç kart — (1) ne kadar cevap verdik, (2) öğrenci ne dedi, (3) ne kazandırdı. Tıklanan her şey o soruları açar.
@@ -1420,14 +1425,15 @@ function gsCiz(bas, son) {
       `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`) + gsSorDun(bas, son, sor); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
-  const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz", "hsl(var(--hata))"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
+  const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz (şikayetsiz)", "hsl(var(--hata) / .55)"], ["sik_onay", "Şikayet · öğrenci haklı", "hsl(var(--hata))"], ["sik_red", "Şikayet · reddedildi", "hsl(25 95% 55%)"], ["sik_bek", "Şikayet · karar bekliyor", "hsl(45 95% 55%)"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
   const dTop = DL.reduce((a, [k]) => a + dsay(k), 0) || 1, R = 15.915;
   let ofs = 25; const halka = DL.map(([k, , r]) => { const n = dsay(k); if (!n) return ""; const p = n / dTop * 100, h = `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${r}" stroke-width="5" stroke-dasharray="${p} ${100 - p}" stroke-dashoffset="${ofs}"/>`; ofs -= p; return h; }).join("");
   const k2 = `<section class="gs-h gs-h2">
-    <div class="gs-h-bas" data-ipucu="Yeterli oranı = (yeterli + otomatik onay) ÷ değerlendirilen. Bekleyenler dahil değil.">Öğrenci değerlendirmesi</div>
+    <div class="gs-h-bas" data-ipucu="Yeterli oranı = (yeterli + otomatik onay) ÷ değerlendirilen. Şikayet edilen her cevap, şikayet reddedilse de yeterli sayılmaz. Bekleyenler dahil değil.">Öğrenci değerlendirmesi</div>
     <div class="gs-h2-ic"><svg class="gs-halka" viewBox="0 0 42 42"><circle r="${R}" cx="21" cy="21" fill="none" stroke="hsl(var(--muted))" stroke-width="5"/>${halka}</svg>
       <div class="gs-halka-o"><b data-sayac="yeterli-orani">${yuzde(dsay("yeterli") + dsay("otomatik"), ogr + dsay("otomatik"))}</b><small>yeterli</small></div>
-      <div class="gs-lej">${DL.map(([k, a, r]) => `<button class="gs-lej-s ${k === "yetersiz" && dsay(k) ? "kirmizi" : ""}" data-f="${k}"><i style="background:${r}"></i><span>${a}</span><b data-sayac="d-${k}">${sayi(dsay(k))}</b></button>`).join("")}</div></div></section>`;
+      <div class="gs-lej">${DL.map(([k, a, r]) => `<button class="gs-lej-s ${(k === "yetersiz" || k === "sik_onay") && dsay(k) ? "kirmizi" : ""}" data-f="${k}"><i style="background:${r}"></i><span>${a}</span><b data-sayac="d-${k}">${sayi(dsay(k))}</b></button>`).join("")}
+        <div class="soluk" style="margin-top:4px">Toplam şikayet <b>${sayi(sikT)}</b> · onaylanan <b>${sayi(dsay("sik_onay"))}</b>${sikT ? ` (%${Math.round(dsay("sik_onay") / sikT * 100)})` : ""}</div></div></div></section>`;
   // (3) tasarruf + son 14 gün
   const G14 = Z.gunler.slice(-14), tg = g => gsTasarruf(C.filter(x => x.zaman.slice(0, 10) === g.gun && uy(x))), V14 = G14.map(tg), mx = Math.max(1, ...V14);
   const k3 = `<section class="gs-h gs-h3">
@@ -1457,8 +1463,8 @@ function gsCiz(bas, son) {
     const f = b.dataset.f;
     if (f === "atla") { const d = $("#gs-atla-d"); d.open = true; d.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
     if (f === "hata") { const hs = gB.hata_sebep || {}; return gsPencere("Bugünkü gönderim hataları", `<div class="gs-atla">${Object.keys(hs).length ? Object.entries(hs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div class="gs-sat"><span class="gs-et">${e(k)}</span><b>${n}</b></div>`).join("") : '<p class="soluk">Bugün hata yok.</p>'}</div>`); }
-    const L = f === "hepsi" ? B : B.filter(x => x.deg === f);
-    gsKartlar(`${ad} · ${{ hepsi: "gönderilen cevaplar", otomatik: "otomatik onay" }[f] || (DEG[f] || [f])[0]}`, L);
+    const L = f === "hepsi" ? B : B.filter(x => gsSinif(x) === f);
+    gsKartlar(`${ad} · ${{ hepsi: "gönderilen cevaplar", otomatik: "otomatik onay", sik_onay: "şikayet: öğrenci haklı", sik_red: "şikayet: reddedildi", sik_bek: "şikayet: karar bekliyor" }[f] || (DEG[f] || [f])[0]}`, L);
   });
   gsSayacAkit();
 }
