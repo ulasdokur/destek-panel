@@ -34,6 +34,9 @@ const GERI_AL_SN = 30;  // Mac tarafı (senk.py GERI_AL_SN) bu süre dolmadan ka
 let ben = null, sekme = "bugun";
 
 // karar adları şikayet türüne göre (CS için açık)
+// 28 Eki (Ulaş): bizim otomatik hesaplara gelen cevap şikayetleri otomatik karara bağlanmaz, Tebeşir > Şikayetler'de Ulaş karar verir
+const BIZIM_BANKA = new Set([914867, 161210]), BIZIM_AI = new Set([20, 159952, 94313, 914404]);
+const bizimMi = id => BIZIM_BANKA.has(id) || BIZIM_AI.has(id);
 const kararAdi = (tur, k) => tur === "s"
   ? ({ ONAYLA: "Onayla · soru kaldırılsın", REDDET: "Reddet · soru uygun", HAVUZA_AKTAR: "Doğru derse aktar" }[k] || e(k))
   : ({ ONAYLA: "Onayla · öğrenci haklı", REDDET: "Reddet · öğretmen haklı" }[k] || e(k));
@@ -196,7 +199,7 @@ document.addEventListener("keydown", ev => { if ((ev.metaKey || ev.ctrlKey) && e
 // ---------- sayfa durumları ----------
 const iskelet = (n = 9) => `<div class="iskelet">${Array.from({ length: n }, () => "<div><span></span><span></span><span></span><span></span><span></span></div>").join("")}</div>`;
 const ADLAR = { bugun: "Bugün", rapor: "Rapor", bekleyen: "Kararını bekleyenler", kontrol: "Haftalık kontrol", uyari: "Uyarılar", ogretmen: "Öğretmenler", sikayet: "Tüm şikayetler",
-  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
+  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", tsikayet: "Tebeşir şikayetleri", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
 function git(s, alt) {
   if (s === "gunluk" || s === "haftalik") s = "rapor";
   if (s === "ozet") s = "bugun";
@@ -208,7 +211,7 @@ function git(s, alt) {
   altlar.forEach(b => b.classList.remove("secili"));
   (altlar.find(b => b.dataset.s === s) || altlar.find(b => grup && b.dataset.grup === grup) || altlar.find(b => b.dataset.s === "daha")).classList.add("secili");
   $("#ust-arac").classList.remove("acik"); araKapat(); window.scrollTo(0, 0);
-  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), daha }[s] || bugun;
+  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), tsikayet, daha }[s] || bugun;
   $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + iskelet();
   Promise.resolve().then(() => f(alt)).then(() => { ikon(); klampBagla(); }).catch(err => {
     if (sekme !== s) return;
@@ -237,13 +240,15 @@ function daha() {
 }
 async function rozetler() {
   const [b, k, u, kb, bb] = await Promise.all([
-    sb.from("d_sikayet").select("key,d_karar(id,tip,uygulandi)").eq("durum", "bekliyor"),
+    sb.from("d_sikayet").select("key,ogretmen_id,d_karar(id,tip,uygulandi)").eq("durum", "bekliyor"),
     sb.from("d_sikayet").select("key,d_karar(id,tip)").eq("kontrol_hafta", haftaNo()),
     sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "taslak"),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", haftaNo()).is("kontrol_secim", null),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("durum", "bekliyor").is("insan_karar", null),
   ]);
-  $("#r-bekleyen").textContent = (b.data || []).filter(x => !x.d_karar.some(k => k.tip === "bekleyen")).length || "";
+  const acikB = (b.data || []).filter(x => !x.d_karar.some(k => k.tip === "bekleyen"));
+  $("#r-bekleyen").textContent = acikB.filter(x => !bizimMi(x.ogretmen_id)).length || "";
+  const rt = document.getElementById("r-tsikayet"); if (rt) rt.textContent = acikB.filter(x => bizimMi(x.ogretmen_id)).length || "";
   $("#r-kontrol").textContent = ((k.data || []).filter(x => !x.d_karar.some(k => k.tip === "kontrol")).length + (kb.count || 0)) || "";
   $("#r-uyari").textContent = u.count || "";
   const rb = document.getElementById("r-basvuru"); if (rb) rb.textContent = bb.count || "";
@@ -540,7 +545,7 @@ async function ogrIstat(L) {
 
 // ---------- kararını bekleyenler ----------
 async function bekleyen() {
-  const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("durum", "bekliyor").order("olusturma"));
+  const L = (await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("durum", "bekliyor").order("olusturma"))).filter(s => !bizimMi(s.ogretmen_id));   // bizimkiler Tebeşir > Şikayetler'de
   const acik = L.filter(s => !s.d_karar.some(k => k.tip === "bekleyen")), sirada = L.length - acik.length;
   await ogrIstat(acik);
   $("#icerik").innerHTML = baslik("Kararını bekleyenler", "Otomatik incelemenin emin olamadığı şikayetler burada senin kararını bekler. Soru ve cevap görsellerine bak, bir karar seç, istersen not yaz ve Kaydet'e bas. Kayıt ekrandan kalkar, 30 saniye içinde geri alabilirsin; sonra 1-2 dakika içinde admin paneline işlenir.") + `
@@ -549,6 +554,28 @@ async function bekleyen() {
         return `<tr><td>${e(s.ogretmen || "")} <span class="soluk">${e(s.ders || "")}</span></td><td>${kararAdi(s.tur, k.secim)}</td><td class="soluk">${e(k.kim)}</td><td>${k.uygulama_notu ? `<span class="etiket hata">${e(k.uygulama_notu)}</span>` : '<span class="soluk">sırada</span>'}</td></tr>`; }).join("")}</table></div>` : ""}
     <div id="sk-liste"></div>`;
   skListe($("#sk-liste"), acik, "bekleyen", bekleyen, "Bekleyen kayıt yok.");
+}
+
+// ---------- 28 Eki: Tebeşir şikayetleri (Ulaş: bizim cevaplara gelen şikayeti ben değerlendireceğim; banka ve yapay zekâ ayrı) ----------
+async function tsikayet(alt) {
+  const grup = alt === "banka" ? "banka" : "ai", SET = grup === "banka" ? BIZIM_BANKA : BIZIM_AI, ids = [...SET];
+  const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("tur", "c").in("ogretmen_id", ids).order("olusturma", { ascending: false }).limit(2000));
+  const bek = L.filter(s => s.durum === "bekliyor"), acik = bek.filter(s => !s.d_karar.some(k => k.tip === "bekleyen")).reverse();
+  const bugunT = new Date(); bugunT.setHours(0, 0, 0, 0); const yedi = new Date(bugunT - 6 * 864e5);
+  const say = ara => { const X = L.filter(ara), on = X.filter(s => s.son_karar === "ONAYLA").length, re = X.filter(s => s.son_karar === "REDDET").length;
+    return `<td><b>${X.length}</b></td><td>${on}</td><td>${re}</td><td>${X.length - on - re}</td>`; };
+  const tab = (g, ad) => `<button class="cip ${grup === g ? "secili" : ""}" onclick="git('tsikayet','${g}')">${ad}</button>`;
+  $("#icerik").innerHTML = baslik("Tebeşir şikayetleri", "Bizim hesaplarımızın cevaplarına gelen öğrenci şikayetleri. Otomatik karar verilmez; her birine sen karar verirsin. Reddedilen şikayetler de burada sayılır.") + `
+    <div class="cipler" style="margin-bottom:12px">${tab("ai", "Yapay zekâ")}${tab("banka", "Banka")}</div>
+    <section class="kart" style="margin-bottom:14px"><h3 style="margin:0 0 8px">${grup === "banka" ? "Banka" : "Yapay zekâ"} cevaplarına gelen şikayetler</h3>
+      <div class="tablo-sar"><table class="tablo sik"><tr><th></th><th>Şikayet</th><th data-ipucu="Şikayet kabul edildi: cevap hatalı ya da yetersiz">Öğrenci haklı</th><th data-ipucu="Şikayet reddedildi: cevap yeterli bulundu">Öğretmen haklı</th><th>Bekleyen</th></tr>
+        <tr><td>Bugün</td>${say(s => new Date(s.olusturma) >= bugunT)}</tr>
+        <tr><td>Son 7 gün</td>${say(s => new Date(s.olusturma) >= yedi)}</tr>
+        <tr><td>Tümü</td>${say(() => true)}</tr></table></div>
+      <div class="soluk" style="margin-top:6px">Hesaplar: ${grup === "banka" ? "Ahmet Y., Umut T." : "Berfin B., Serkan K., Elif Ş., Mert A."}</div></section>
+    <h3 style="margin:6px 0">Kararını bekleyenler (${acik.length})</h3><div id="ts-liste"></div>`;
+  await ogrIstat(acik);
+  skListe($("#ts-liste"), acik, "bekleyen", () => tsikayet(grup), "Bekleyen şikayet yok.");
 }
 
 // ---------- haftalık kontrol ----------
