@@ -199,7 +199,7 @@ document.addEventListener("keydown", ev => { if ((ev.metaKey || ev.ctrlKey) && e
 // ---------- sayfa durumları ----------
 const iskelet = (n = 9) => `<div class="iskelet">${Array.from({ length: n }, () => "<div><span></span><span></span><span></span><span></span><span></span></div>").join("")}</div>`;
 const ADLAR = { bugun: "Bugün", rapor: "Rapor", bekleyen: "Kararını bekleyenler", kontrol: "Haftalık kontrol", uyari: "Uyarılar", ogretmen: "Öğretmenler", sikayet: "Tüm şikayetler",
-  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", tsikayet: "Tebeşir şikayetleri", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
+  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", tsikayet: "Tebeşir şikayetleri", aiinc: "AI inceleme", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
 function git(s, alt) {
   if (s === "gunluk" || s === "haftalik") s = "rapor";
   if (s === "ozet") s = "bugun";
@@ -211,7 +211,7 @@ function git(s, alt) {
   altlar.forEach(b => b.classList.remove("secili"));
   (altlar.find(b => b.dataset.s === s) || altlar.find(b => grup && b.dataset.grup === grup) || altlar.find(b => b.dataset.s === "daha")).classList.add("secili");
   $("#ust-arac").classList.remove("acik"); araKapat(); window.scrollTo(0, 0);
-  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), tsikayet, daha }[s] || bugun;
+  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), tsikayet, aiinc, daha }[s] || bugun;
   $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + iskelet();
   Promise.resolve().then(() => f(alt)).then(() => { ikon(); klampBagla(); }).catch(err => {
     if (sekme !== s) return;
@@ -576,6 +576,47 @@ async function tsikayet(alt) {
     <h3 style="margin:6px 0">Kararını bekleyenler (${acik.length})</h3><div id="ts-liste"></div>`;
   await ogrIstat(acik);
   skListe($("#ts-liste"), acik, "bekleyen", () => tsikayet(grup), "Bekleyen şikayet yok.");
+}
+
+// ---------- 30 Eki: AI inceleme (Ulaş: bizim cevaplara gelen şikayet ekranı öğretmene bildirim ekranı gibi olmasın, öğretmen biziz;
+// amaç çözümün neresi kötüydü. Gün sonu branş ağırlıklı örneklem de burada. Notlar kalite döngüsünün aday kurallarına girer.)
+// Veri: d_ai_inceleme (kalite/ai_ornek.py yazar), karar RPC d_ai_inceleme_karar.
+const AI_KUSUR = ["Yanlış cevap", "Adım eksik", "Açıklama yetersiz", "Şekil üzerinde gösterilmemiş", "Okunaksız", "Sınıf düzeyine uymuyor", "Soruyu yanlış okumuş", "Çok uzun / dağınık"];
+async function aiinc(alt) {
+  const [tur, gunSec] = (alt || "ornek").split(":"), sik = tur === "sikayet";
+  const G = await q(sb.from("d_ai_inceleme").select("gun").eq("tur", tur).order("gun", { ascending: false }).limit(2000));
+  const gunler = [...new Set(G.map(x => x.gun))], gun = gunSec && gunler.includes(gunSec) ? gunSec : gunler[0];
+  let L = [];
+  if (sik) L = await q(sb.from("d_ai_inceleme").select("*").eq("tur", "sikayet").order("olusturma", { ascending: false }).limit(300));
+  else if (gun) L = await q(sb.from("d_ai_inceleme").select("*").eq("tur", "ornek").eq("gun", gun).order("ders"));
+  const bitti = L.filter(x => x.karar).length;
+  const tab = (t, ad) => `<button class="cip ${tur === t ? "secili" : ""}" onclick="git('aiinc','${t}')">${ad}</button>`;
+  const gunSecim = !sik && gunler.length ? `<select id="ai-gun" class="ince kucuk">${gunler.map(g => `<option ${g === gun ? "selected" : ""}>${g}</option>`).join("")}</select>` : "";
+  const dag = {}; L.forEach(x => { const b = (x.ders || "").replace(/\(.*?\)/g, "").replace(/^(TYT|AYT|YKS|LGS)\s+/, "").trim() || "Diğer"; dag[b] = (dag[b] || 0) + 1; });
+  const foto = v => (Array.isArray(v) ? v : v ? [v] : []).map(u => `<a href="${e(u)}" target="_blank"><img src="${e(u)}" loading="lazy" style="width:100%;border-radius:8px;border:1px solid var(--cizgi,#ddd)"></a>`).join("");
+  const kart = x => `<section class="kart ai-k" data-key="${e(x.key)}" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>Soru ${x.soru_id}</b><span class="soluk">${e(x.ders || "")}</span>${x.hesap ? `<span class="etiket">${e(x.hesap)}</span>` : ""}${x.cevap ? `<span class="soluk">Cevap ${e(x.cevap)}</span>` : ""}${x.deg ? `<span class="soluk">· ${e(x.deg)}</span>` : ""}${x.karar ? `<span class="etiket">${x.karar === "begendim" ? "Beğendin" : "Beğenmedin"}</span>` : ""}</div>
+      ${x.ogrenci_notu ? `<div style="margin-bottom:8px"><span class="soluk">Öğrenci:</span> ${e(x.ogrenci_notu)}</div>` : ""}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:10px"><div><div class="soluk">Soru</div>${foto(x.soru_foto)}</div><div><div class="soluk">Bizim çözüm</div>${foto(x.cevap_foto)}</div></div>
+      <div class="cipler ai-karar" style="margin-bottom:8px">${[["begendim", "Beğendim"], ["begenmedim", "Beğenmedim"]].map(([v, a]) => `<button class="cip ${x.karar === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</div>
+      <div class="cipler ai-kusur" style="margin-bottom:8px">${AI_KUSUR.map(k => `<button class="cip ${(x.kusurlar || []).includes(k) ? "secili" : ""}" data-v="${e(k)}">${e(k)}</button>`).join("")}</div>
+      <textarea class="ai-not" rows="2" placeholder="Nasıl daha iyi olurdu? (çözümlerde buna dikkat edeceğiz)" style="width:100%;box-sizing:border-box">${e(x.notu || "")}</textarea>
+      <div style="margin-top:6px;display:flex;gap:8px;align-items:center"><button class="ince kucuk ai-kaydet">Kaydet</button><span class="soluk ai-durum">${x.karar_zamani ? "Kaydedildi" : ""}</span></div></section>`;
+  $("#icerik").innerHTML = baslik("AI inceleme") + `
+    <p class="soluk" style="margin:0 0 10px">${sik ? "Bizim hesapların (yapay zekâ ve banka) cevaplarına gelen şikayetler. Burada öğretmene bildirim yok; çözümün neresi kötüydü onu işaretle. Şikayetin kabul/ret kararı Şikayetler sayfasında." : "Her gün sonunda o günkü yapay zekâ cevaplarından branş ağırlığına göre seçilen sorular."} Notların kalite döngüsünde aday kural olur; önce iki hesapta denenir, öğrenci oranı düzelirse kalıcı olur.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="cipler">${tab("ornek", "Günün örnekleri")}${tab("sikayet", "Şikayetler")}</div>${gunSecim}<span class="soluk">İncelenen ${bitti} / ${L.length}</span></div>
+    ${!sik && L.length ? `<div class="soluk" style="margin-bottom:10px">${Object.entries(dag).sort((a, b) => b[1] - a[1]).map(([b, n]) => `${e(b)} ${n}`).join(" · ")}</div>` : ""}
+    <div id="ai-liste">${L.length ? L.map(kart).join("") : `<p class="soluk">${sik ? "Şikayet yok." : "Bu gün için örneklem yok (her gece 23:45'ten sonra hazırlanır)."}</p>`}</div>`;
+  const gs = $("#ai-gun"); if (gs) gs.onchange = () => git("aiinc", "ornek:" + gs.value);
+  document.querySelectorAll(".ai-k").forEach(k => {
+    k.querySelectorAll(".ai-karar .cip").forEach(b => b.onclick = () => { const s_ = b.classList.contains("secili"); k.querySelectorAll(".ai-karar .cip").forEach(x => x.classList.remove("secili")); if (!s_) b.classList.add("secili"); });
+    k.querySelectorAll(".ai-kusur .cip").forEach(b => b.onclick = () => b.classList.toggle("secili"));
+    k.querySelector(".ai-kaydet").onclick = async () => {
+      const kar = k.querySelector(".ai-karar .cip.secili")?.dataset.v || "", kus = [...k.querySelectorAll(".ai-kusur .cip.secili")].map(b => b.dataset.v);
+      const { error } = await sb.rpc("d_ai_inceleme_karar", { p_key: k.dataset.key, p_karar: kar, p_kusurlar: kus, p_not: k.querySelector(".ai-not").value.trim() });
+      k.querySelector(".ai-durum").textContent = error ? "Hata: " + error.message : "Kaydedildi";
+    };
+  });
 }
 
 // ---------- haftalık kontrol ----------
