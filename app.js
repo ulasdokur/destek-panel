@@ -583,19 +583,19 @@ async function tsikayet(alt) {
 // Veri: d_ai_inceleme (kalite/ai_ornek.py yazar), karar RPC d_ai_inceleme_karar.
 const AI_KUSUR = ["Yanlış cevap", "Adım eksik", "Açıklama yetersiz", "Şekil üzerinde gösterilmemiş", "Okunaksız", "Sınıf düzeyine uymuyor", "Soruyu yanlış okumuş", "Çok uzun / dağınık"];
 async function aiinc(alt) {
-  const [tur, gunSec] = (alt || "ornek").split(":"), sik = tur === "sikayet";
+  const [tur, gunSec] = (alt || "ornek").split(":"), sik = tur === "sikayet" || tur === "olumsuz";
   const G = await q(sb.from("d_ai_inceleme").select("gun").eq("tur", tur).order("gun", { ascending: false }).limit(2000));
   const gunler = [...new Set(G.map(x => x.gun))], gun = gunSec && gunler.includes(gunSec) ? gunSec : gunler[0];
   let L = [];
-  if (sik) L = await q(sb.from("d_ai_inceleme").select("*").eq("tur", "sikayet").order("olusturma", { ascending: false }).limit(300));
+  if (sik) L = await q(sb.from("d_ai_inceleme").select("*").in("tur", ["sikayet", "yetersiz"]).order("olusturma", { ascending: false }).limit(300));
   else if (gun) L = await q(sb.from("d_ai_inceleme").select("*").eq("tur", "ornek").eq("gun", gun).order("ders"));
   const bitti = L.filter(x => x.karar).length;
-  const tab = (t, ad) => `<button class="cip ${tur === t ? "secili" : ""}" onclick="git('aiinc','${t}')">${ad}</button>`;
+  const tab = (t, ad) => `<button class="cip ${tur === t || (sik && t === "olumsuz") ? "secili" : ""}" onclick="git('aiinc','${t}')">${ad}</button>`;
   const gunSecim = !sik && gunler.length ? `<select id="ai-gun" class="ince kucuk">${gunler.map(g => `<option ${g === gun ? "selected" : ""}>${g}</option>`).join("")}</select>` : "";
   const dag = {}; L.forEach(x => { const b = (x.ders || "").replace(/\(.*?\)/g, "").replace(/^(TYT|AYT|YKS|LGS)\s+/, "").trim() || "Diğer"; dag[b] = (dag[b] || 0) + 1; });
   const foto = v => (Array.isArray(v) ? v : v ? [v] : []).map(u => `<a href="${e(u)}" target="_blank"><img src="${e(u)}" loading="lazy" style="width:100%;border-radius:8px;border:1px solid var(--cizgi,#ddd)"></a>`).join("");
   const kart = x => `<section class="kart ai-k" data-key="${e(x.key)}" style="margin-bottom:12px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>Soru ${x.soru_id}</b><span class="soluk">${e(x.ders || "")}</span>${x.hesap ? `<span class="etiket">${e(x.hesap)}</span>` : ""}${x.cevap ? `<span class="soluk">Cevap ${e(x.cevap)}</span>` : ""}${x.deg ? `<span class="soluk">· ${e(x.deg)}</span>` : ""}${x.karar ? `<span class="etiket">${x.karar === "begendim" ? "Beğendin" : "Beğenmedin"}</span>` : ""}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><b>Soru ${x.soru_id}</b>${x.tur !== "ornek" ? `<span class="etiket">${x.tur === "sikayet" ? "Şikayet" : "Yetersiz · şikayet açılmadı"}</span>` : ""}<span class="soluk">${e(x.ders || "")}</span>${x.hesap ? `<span class="etiket">${e(x.hesap)}</span>` : ""}${x.cevap ? `<span class="soluk">Cevap ${e(x.cevap)}</span>` : ""}${x.deg ? `<span class="soluk">· ${e(x.deg)}</span>` : ""}${x.karar ? `<span class="etiket">${x.karar === "begendim" ? "Beğendin" : "Beğenmedin"}</span>` : ""}</div>
       ${x.ogrenci_notu ? `<div style="margin-bottom:8px"><span class="soluk">Öğrenci:</span> ${e(x.ogrenci_notu)}</div>` : ""}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:10px"><div><div class="soluk">Soru</div>${foto(x.soru_foto)}</div><div><div class="soluk">Bizim çözüm</div>${foto(x.cevap_foto)}</div></div>
       <div class="cipler ai-karar" style="margin-bottom:8px">${[["begendim", "Beğendim"], ["begenmedim", "Beğenmedim"]].map(([v, a]) => `<button class="cip ${x.karar === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</div>
@@ -603,10 +603,10 @@ async function aiinc(alt) {
       <textarea class="ai-not" rows="2" placeholder="Nasıl daha iyi olurdu? (çözümlerde buna dikkat edeceğiz)" style="width:100%;box-sizing:border-box">${e(x.notu || "")}</textarea>
       <div style="margin-top:6px;display:flex;gap:8px;align-items:center"><button class="ince kucuk ai-kaydet">Kaydet</button><span class="soluk ai-durum">${x.karar_zamani ? "Kaydedildi" : ""}</span></div></section>`;
   $("#icerik").innerHTML = baslik("AI inceleme") + `
-    <p class="soluk" style="margin:0 0 10px">${sik ? "Bizim hesapların (yapay zekâ ve banka) cevaplarına gelen şikayetler. Burada öğretmene bildirim yok; çözümün neresi kötüydü onu işaretle. Şikayetin kabul/ret kararı Şikayetler sayfasında." : "Her gün sonunda o günkü yapay zekâ cevaplarından branş ağırlığına göre seçilen sorular."} Notların kalite döngüsünde aday kural olur; önce iki hesapta denenir, öğrenci oranı düzelirse kalıcı olur.</p>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="cipler">${tab("ornek", "Günün örnekleri")}${tab("sikayet", "Şikayetler")}</div>${gunSecim}<span class="soluk">İncelenen ${bitti} / ${L.length}</span></div>
+    <p class="soluk" style="margin:0 0 10px">${sik ? "Bizim hesapların (yapay zekâ ve banka) cevaplarına gelen şikayetler ve şikayet açılmadan verilen Yetersiz değerlendirmeler. Burada öğretmene bildirim yok; çözümün neresi kötüydü onu işaretle. Şikayetin kabul/ret kararı Şikayetler sayfasında." : "Her gün sonunda o günkü yapay zekâ cevaplarından branş ağırlığına göre seçilen sorular."} Notların kalite döngüsünde aday kural olur; önce iki hesapta denenir, öğrenci oranı düzelirse kalıcı olur.</p>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="cipler">${tab("ornek", "Günün örnekleri")}${tab("olumsuz", "Olumsuzlar")}</div>${gunSecim}<span class="soluk">İncelenen ${bitti} / ${L.length}</span></div>
     ${!sik && L.length ? `<div class="soluk" style="margin-bottom:10px">${Object.entries(dag).sort((a, b) => b[1] - a[1]).map(([b, n]) => `${e(b)} ${n}`).join(" · ")}</div>` : ""}
-    <div id="ai-liste">${L.length ? L.map(kart).join("") : `<p class="soluk">${sik ? "Şikayet yok." : "Bu gün için örneklem yok (her gece 23:45'ten sonra hazırlanır)."}</p>`}</div>`;
+    <div id="ai-liste">${L.length ? L.map(kart).join("") : `<p class="soluk">${sik ? "Olumsuz değerlendirme yok." : "Bu gün için örneklem yok (her gece 23:45'ten sonra hazırlanır)."}</p>`}</div>`;
   const gs = $("#ai-gun"); if (gs) gs.onchange = () => git("aiinc", "ornek:" + gs.value);
   document.querySelectorAll(".ai-k").forEach(k => {
     k.querySelectorAll(".ai-karar .cip").forEach(b => b.onclick = () => { const s_ = b.classList.contains("secili"); k.querySelectorAll(".ai-karar .cip").forEach(x => x.classList.remove("secili")); if (!s_) b.classList.add("secili"); });
@@ -1466,7 +1466,7 @@ function gsCiz(bas, son) {
       `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`) + gsSorDun(bas, son, sor); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
-  const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz (şikayetsiz)", "hsl(var(--hata) / .55)"], ["sik_onay", "Şikayet · öğrenci haklı", "hsl(var(--hata))"], ["sik_red", "Şikayet · reddedildi", "hsl(25 95% 55%)"], ["sik_bek", "Şikayet · karar bekliyor", "hsl(45 95% 55%)"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
+  const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz · şikayet açılmadı", "hsl(var(--hata) / .55)"], ["sik_onay", "Şikayet · öğrenci haklı", "hsl(var(--hata))"], ["sik_red", "Şikayet · reddedildi", "hsl(25 95% 55%)"], ["sik_bek", "Şikayet · karar bekliyor", "hsl(45 95% 55%)"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
   const dTop = DL.reduce((a, [k]) => a + dsay(k), 0) || 1, R = 15.915;
   let ofs = 25; const halka = DL.map(([k, , r]) => { const n = dsay(k); if (!n) return ""; const p = n / dTop * 100, h = `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${r}" stroke-width="5" stroke-dasharray="${p} ${100 - p}" stroke-dashoffset="${ofs}"/>`; ofs -= p; return h; }).join("");
   const k2 = `<section class="gs-h gs-h2">
