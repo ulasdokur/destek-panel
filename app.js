@@ -1052,13 +1052,16 @@ const sadeNot = t => String(t).replace(/\s*\((?:döküm|dökümü)[^)]*\)/gi, ""
 async function odeme() {
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik("Uzaklaştırılanların ödemeleri", "Bu sayfada kimlik ve hesap bilgileri bulunduğu için yalnız yöneticiler görebilir."); return; }
   const L = await q(sb.from("d_odeme").select("*").order("olusturma", { ascending: false }).limit(500));
-  const bekleyen = L.filter(x => x.durum === "odenecek"), bilgi = L.filter(x => x.durum === "bilgi_bekleniyor"), biten = L.filter(x => x.durum === "odendi");
+  const bekleyen = L.filter(x => x.durum === "odenecek"), bilgi = L.filter(x => x.durum === "bilgi_bekleniyor");
+  // 0 TL'lik "ödendi" satırları ödeme değildir: hesabı açık kalanın kesinti kaydı ya da bakiyesi silinen hesap
+  const odemesiz = x => x.durum === "odendi" && x.odenecek != null && Number(x.odenecek) === 0;
+  const biten = L.filter(x => x.durum === "odendi" && !odemesiz(x)), yalnizKesinti = L.filter(odemesiz);
   const hazir = bekleyen.filter(x => x.odenecek != null), toplam = hazir.reduce((a, x) => a + Number(x.odenecek), 0);
   const hesap = x => x.iban ? `<div class="od-hesap"><b>${e(x.hesap_sahibi || x.ad)}</b><span>${e(x.iban)}</span><span>TC ${e(x.tc || "—")} · ${e(x.il || "—")}</span>
       <button class="ince kucuk od-kopya" data-metin="${e([x.hesap_sahibi || x.ad, x.iban, x.tc, x.il].filter(Boolean).join("\n"))}">Kopyala</button></div>` : '<span class="soluk">Henüz göndermedi</span>';
   const kesinti = x => x.kesinti == null ? '<span class="etiket uyari" data-ipucu="Sakıncalı cevapların kazancı henüz hesaplanmadı. Hesaplanmadan ödeme yapılmaz.">Hesaplanmadı</span>'
     : `${tl(x.kesinti)}${x.kesinti_notu ? `<div class="soluk kucuk-yazi klamp">${e(sadeNot(x.kesinti_notu))}</div>` : ""}`;
-  const islem = x => x.durum === "odendi" ? `<span class="etiket ok">Ödendi · ${tarih(x.odeme_zamani)}</span><button class="ince kucuk od-geri" data-id="${x.id}">Geri al</button>`
+  const islem = x => odemesiz(x) ? `<span class="etiket">${/^Hesap AÇIK/.test(x.notu || "") ? "Hesap açık · çekim talebiyle alır" : "Ödeme yok"}</span>` : x.durum === "odendi" ? `<span class="etiket ok">Ödendi · ${tarih(x.odeme_zamani)}</span><button class="ince kucuk od-geri" data-id="${x.id}">Geri al</button>`
     : (x.durum === "odenecek" && x.odenecek != null ? `<button class="birincil kucuk od-odendi" data-id="${x.id}" data-ad="${e(x.ad)}" data-tutar="${tl(x.odenecek)}" title="Ödendi olarak işaretle"><i data-lucide="check"></i>Ödendi</button>`
       : `<span class="soluk">${x.durum === "odenecek" ? "Kesinti hesaplanınca ödenebilir" : "Ödeme bilgisi bekleniyor"}</span>`);
   const satir = x => `<tr><td><b>${e(x.ad)}</b><div class="soluk kucuk-yazi">${e(x.telefon || "")}</div></td><td>${e(x.sebep || "—")}${x.pasif_tarihi ? `<div class="soluk kucuk-yazi">${new Date(x.pasif_tarihi).toLocaleDateString("tr-TR")}</div>` : ""}</td>
@@ -1069,7 +1072,8 @@ async function odeme() {
     <div class="bilgi-serit"><i data-lucide="wallet"></i>Ödemeye hazır ${hazir.length} kişi · toplam ${tl(toplam)}${bekleyen.length - hazir.length ? ` · ${bekleyen.length - hazir.length} kişinin kesintisi hesaplanmadı` : ""}</div>
     <h2>Ödenecekler (${bekleyen.length})</h2>${tablo(bekleyen, "Ödenecek kayıt yok.")}
     <h2>Ödeme bilgisi bekleniyor (${bilgi.length})</h2>${tablo(bilgi, "Bekleyen yok.")}
-    <h2>Ödenenler (${biten.length})</h2>${tablo(biten, "Henüz ödenmiş kayıt yok.")}`;
+    <h2>Ödenenler (${biten.length})</h2>${tablo(biten, "Henüz ödenmiş kayıt yok.")}
+    <h2>Ödeme gerekmeyenler (${yalnizKesinti.length})</h2><p class="soluk">Hesabı açık kalanlarda yalnız kesinti uygulandı; kalan bakiyeyi normal çekim talebiyle alırlar. Bakiyesi silinen ya da sıfır olan hesaplara ödeme yapılmaz.</p>${tablo(yalnizKesinti, "Kayıt yok.")}`;
   $("#icerik").querySelectorAll(".od-kopya").forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.metin); toast("Kopyalandı"); } catch { bildir("Kopyalanamadı; elle seç."); } });
   $("#icerik").querySelectorAll(".od-odendi").forEach(b => b.onclick = async () => {
     if (!confirm(`${b.dataset.ad} için ${b.dataset.tutar.replace(/<[^>]+>/g, "")} ödendi olarak işaretlensin mi?`)) return;
