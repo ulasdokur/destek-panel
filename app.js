@@ -1270,34 +1270,33 @@ async function hvCiz() {
   const ac = hvAcik;
   const tazelik = (y, ad) => y > 90 ? `<span class="hv-eski">⚠️ ${ad} ${y > 1e8 ? "yok" : hvSure(y) + " eski"}</span>` : "";
   const bugunH = (((gsV?.Z?.ai || {}).gun || {})[gunStr(new Date())] || {}).hesap || {};
-  // 4 Kas: boşta normal hâl, gri; yalnız gündüz (08-24) 15 dk'dan uzun boşta kalan turuncu
-  const DUR = { cozumde: ["Çözümde", "ok"], bosta: ["Boşta", ""], kapali: ["Kapalı", "hata"] }, gunduz = new Date().getHours() >= 8;
+  // 4 Kas: boşta + kuyrukta soru yok = gri (yapacak iş yok); boşta + kuyrukta soru var = sarı (1 dk tolerans: iki soru arası geçiş); kapalı = kırmızı hata
+  const DUR = { cozumde: ["Çözümde", "ok"], bosta: ["Boşta", ""], kapali: ["Hata", "hata"] };
   const botlar = (B?.v?.botlar || []).map(x => {
     const d = [...(DUR[x.durum] || [x.durum, ""])], sn = x.bas ? Math.max(0, Math.round((Date.now() - new Date(x.bas)) / 1000)) : null;
-    if (x.durum === "bosta" && gunduz && sn > 900) d[1] = "uyari";
+    if (x.durum === "bosta" && L.length && (sn == null || sn > 60)) d[1] = "uyari";
     const ne = x.durum === "cozumde" ? `${x.soru ? `<a href="${ADMIN}/Question/Detail/${x.soru}" target="_blank" rel="noopener">#${x.soru}</a>` : ""}${sn != null ? ` · ${hvSure(sn)}` : ""}` : x.durum === "bosta" && sn != null ? hvSure(sn) : "";
     return `<tr class="tik" data-hesap="${e(x.ad)}"><td class="hv-bot-ad"><i class="hv-nokta ${d[1]}"></i>${e(x.ad)}</td>
       <td><span class="etiket ${d[1]}">${d[0]}</span></td><td class="hv-sn">${ne}</td>
-      <td class="hv-sag">${x.gon30}</td><td class="hv-sag soluk">${x.atla30}</td><td class="hv-sag">${x.bugun != null ? sayi_(x.bugun) : bugunH[x.ad] != null ? sayi_(bugunH[x.ad]) : "—"}</td></tr>`;
+</tr>`;
   }).join("");
   const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length, nBugun = (B?.v?.botlar || []).reduce((a, x) => a + (x.bugun || 0), 0);
   yer.innerHTML = `<section class="hv-kart">
     <div class="hv-blok hv-bekleyen">
       <div class="hv-baslik"><span>Yanıt bekleyen · ${sayi_(v.toplam)}</span>${tazelik(hy, "havuz verisi") || `<span class="hv-ozet">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => k === "video" ? `<span class="hv-video-lej">${sayi_(v[k])} ${a}</span>` : `${sayi_(v[k])} ${a}`).join(" · ")}</span>`}</div>
-      ${L.length ? `<div class="hv-kuyruk ${ac ? "acik" : ""}">${L.slice(0, ac ? L.length : HV_KISA).map(x => { const d = dk(x.c); return `<div class="hv-k-s tik${x.m === "video" ? " hv-video" : ""}" data-soru="${x.id}" title="${x.m === "video" ? "Videolu çözüm · " : ""}Soruyu admin panelde aç">
-        <span class="hv-id">#${x.id}</span>
-        <span class="hv-yas ${hvRenk(d)}">${d >= 60 ? `${Math.floor(d / 60)} sa ${d % 60}` : `${d} dk`}</span>
-        <span class="hv-k-ders">${e((x.ders || "").replace(/\s*\(.*$/, ""))}</span></div>`; }).join("")}</div>
+      ${L.length ? `<div class="hv-kuyruk ${ac ? "acik" : ""}">${L.slice(0, ac ? L.length : HV_KISA).map(x => { const d = dk(x.c); return `<div class="hv-k-s${x.m === "video" ? " hv-video" : ""}"${x.m === "video" ? ' title="Videolu çözüm"' : ""}>
+        <a class="hv-id" href="${ADMIN}/Question/Detail/${x.id}" target="_blank" rel="noopener" title="Soruyu admin panelde aç">#${x.id}</a>
+        <span class="hv-k-ders">${e((x.ders || "").replace(/\s*\(.*$/, ""))}</span>
+        <span class="hv-yas ${hvRenk(d)}">${d >= 60 ? `${Math.floor(d / 60)} sa ${d % 60}` : `${d} dk`}</span></div>`; }).join("")}</div>
       ${L.length > HV_KISA ? `<button class="hv-daha">${ac ? "Daha az göster" : `+${sayi_(L.length - HV_KISA)} soru daha`}</button>` : ""}` : '<div class="hv-bos">Bekleyen soru yok.</div>'}
     </div>
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
-      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse elindeki soru ve süresi, boştaysa ne zamandır boşta">Ne zamandır</th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
+      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse elindeki soru ve süresi, boştaysa ne zamandır boşta">Ne zamandır</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
   ikon();
   const db = yer.querySelector(".hv-daha"); if (db) db.onclick = () => { hvAcik = !hvAcik; hvCiz(); };
-  yer.querySelectorAll("[data-soru]").forEach(t => t.onclick = ev => { if (!ev.target.closest("a")) window.open(`${ADMIN}/Question/Detail/${t.dataset.soru}`, "_blank", "noopener"); });
 }
 // bekleme süresi rengi: 30 dk üstü sarı, 60 dk üstü kırmızı
 let hvAcik = false; const HV_KISA = 5;

@@ -870,15 +870,14 @@ body.gs-kilit{overflow:hidden}
 .hv-sorular tr.tik{cursor:pointer}.hv-sorular tr.tik:hover td{background:hsl(var(--metin)/.03)}
 .hv-ogr{font-weight:500;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 .hv-sorular td{padding:5px 8px}
-/* 4 Kas c: Yanıt bekleyen = sade kuyruk: soru no | bekleme süresi | ders; videolu soru satırı hafif zeminli */
+/* 4 Kas c: Yanıt bekleyen = sade kuyruk: soru no (admin linki) | ders | bekleme süresi (sağda); videolu soru satırı hafif zeminli */
 .hv-ozet{font-size:12px;font-weight:400;color:hsl(var(--metin-2))}
 .hv-kuyruk.acik{max-height:340px;overflow:auto;margin:0 -8px;padding:0 8px}
-.hv-k-s{display:grid;grid-template-columns:76px 62px minmax(0,1fr);gap:12px;align-items:center;padding:5px 8px;margin:0 -8px;border-radius:8px;font-size:12.5px;cursor:pointer}
+.hv-k-s{display:grid;grid-template-columns:76px minmax(0,1fr) 62px;gap:12px;align-items:center;padding:5px 8px;margin:0 -8px;border-radius:8px;font-size:12.5px}
 .hv-k-s+.hv-k-s{margin-top:2px}
-.hv-k-s:hover{background:hsl(var(--metin)/.04)}
-.hv-k-s.hv-video{background:hsl(210 70% 50%/.07)}.hv-k-s.hv-video:hover{background:hsl(210 70% 50%/.12)}
+.hv-k-s.hv-video{background:hsl(210 70% 50%/.07)}
 .hv-video-lej{padding:1px 6px;border-radius:5px;background:hsl(210 70% 50%/.1)}
-.hv-id{font-weight:500;color:hsl(var(--metin));font-variant-numeric:tabular-nums}
+.hv-id{font-weight:500;color:hsl(var(--metin));font-variant-numeric:tabular-nums;text-decoration:none}.hv-id:hover{color:hsl(var(--marka-metin));text-decoration:underline}
 .hv-yas{padding:2px 0;border-radius:6px;font-size:11.5px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;background:hsl(var(--metin)/.05);color:hsl(var(--metin-2))}
 .hv-yas.hv-gec{background:hsl(var(--hata-zemin));color:hsl(var(--hata))}.hv-yas.hv-uyar{background:hsl(var(--uyari-zemin));color:hsl(var(--uyari))}
 .hv-k-ders{color:hsl(var(--metin-2));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
