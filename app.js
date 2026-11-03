@@ -1284,9 +1284,9 @@ async function hvCiz() {
       <div class="hv-baslik"><span>Yanıt bekleyen · ${sayi_(v.toplam)}</span>${tazelik(hy, "havuz verisi") || `<span class="hv-ozet">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => `${sayi_(v[k])} ${a}`).join(" · ")}${v.odullu ? ' <span class="hv-odul-lej">2x ödüllü</span>' : ""}</span>`}</div>
       ${L.length ? `<div class="hv-kuyruk ${ac ? "acik" : ""}">${L.slice(0, ac ? L.length : HV_KISA).map(x => { const d = dk(x.c); return `<div class="hv-k-s tik${x.odul ? " hv-odul" : ""}" data-soru="${x.id}" title="${x.odul ? "2x ödüllü · " : ""}Soruyu admin panelde aç">
         <span class="hv-yas ${hvRenk(d)}">${d >= 60 ? `${Math.floor(d / 60)} sa ${d % 60}` : `${d} dk`}</span>
-        ${hvDers(x.ders)}
         <span class="hv-ogr">${e(x.ogr || "Öğrenci")}</span>
         <span class="hv-n" title="Öğrencinin sorduğu soru sayısı">${x.ogr_n != null ? sayi_(x.ogr_n) + (x.ogr_tam === false ? "+" : "") : ""}</span>
+        <span class="hv-k-ders">${e((x.ders || "").replace(/\s*\(.*$/, ""))}</span>
         <span class="hv-m">${x.m === "video" ? '<i data-lucide="video" title="Videolu çözüm"></i>' : ""}</span></div>`; }).join("")}</div>
       ${L.length > HV_KISA ? `<button class="hv-daha">${ac ? "Daha az göster" : `+${sayi_(L.length - HV_KISA)} soru daha`}</button>` : ""}` : '<div class="hv-bos">Bekleyen soru yok.</div>'}
     </div>
@@ -1301,12 +1301,6 @@ async function hvCiz() {
 }
 // bekleme süresi rengi: 30 dk üstü sarı, 60 dk üstü kırmızı
 let hvAcik = false; const HV_KISA = 5;
-// 4 Kas: ders yazı yerine ikonla (adı üzerine gelince çıkar); bilinmeyen ders kitap ikonu alır
-const HV_DERS = [[/geometri/i, "triangle", 200], [/matemat/i, "sigma", 215], [/fizik/i, "atom", 190], [/kimya/i, "flask-conical", 160], [/biyoloji/i, "dna", 135],
-  [/fen/i, "microscope", 170], [/edebiyat/i, "feather", 330], [/türkçe|turkce/i, "book-open-text", 350], [/tarih|inkılap/i, "landmark", 30], [/coğrafya|cografya/i, "earth", 100],
-  [/sosyal/i, "map", 80], [/felsefe|psikoloji|mantık|sosyoloji/i, "brain", 280], [/din/i, "moon-star", 45], [/ingilizce|almanca|dil/i, "languages", 250]];
-const hvDers = ders => { const ad = (ders || "").replace(/\s*\(.*$/, ""), [, ik, h] = HV_DERS.find(([r]) => r.test(ad)) || [, "book", 0];
-  return `<span class="hv-ders-ik" title="${e(ad || "Ders bilinmiyor")}" style="--h:${h}${h ? "" : ";--s:0%"}"><i data-lucide="${ik}"></i></span>`; };
 const hvRenk = d => d == null ? "" : d >= 60 ? "hv-gec" : d >= 30 ? "hv-uyar" : "";
 function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
 // 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.

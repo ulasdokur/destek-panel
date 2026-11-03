@@ -870,18 +870,17 @@ body.gs-kilit{overflow:hidden}
 .hv-sorular tr.tik{cursor:pointer}.hv-sorular tr.tik:hover td{background:hsl(var(--metin)/.03)}
 .hv-ogr{font-weight:500;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 .hv-sorular td{padding:5px 8px}
-/* 4 Kas c: Yanıt bekleyen = kuyruk. Sütunlar hizalı: süre | ders ikonu | öğrenci | soru sayısı | video ikonu; 2x ödüllü satır mor zeminli */
+/* 4 Kas c: Yanıt bekleyen = kuyruk. Sütunlar hizalı: süre | öğrenci | soru sayısı | ders | video ikonu; 2x ödüllü satır mor zeminli */
 .hv-ozet{font-size:12px;font-weight:400;color:hsl(var(--metin-2))}
 .hv-kuyruk.acik{max-height:340px;overflow:auto;margin:0 -8px;padding:0 8px}
-.hv-k-s{display:grid;grid-template-columns:62px 24px minmax(0,1fr) 36px 18px;gap:10px;align-items:center;padding:5px 8px;margin:0 -8px;border-radius:8px;font-size:12.5px;cursor:pointer}
+.hv-k-s{display:grid;grid-template-columns:62px minmax(0,1fr) 36px 92px 18px;gap:10px;align-items:center;padding:5px 8px;margin:0 -8px;border-radius:8px;font-size:12.5px;cursor:pointer}
 .hv-k-s+.hv-k-s{margin-top:2px}
 .hv-k-s:hover{background:hsl(var(--metin)/.04)}
 .hv-k-s.hv-odul{background:hsl(262 80% 50%/.08)}.hv-k-s.hv-odul:hover{background:hsl(262 80% 50%/.13)}
 .hv-odul-lej{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:5px;background:hsl(262 80% 50%/.1);color:hsl(262 60% 45%);font-size:11.5px}
 .hv-yas{padding:2px 0;border-radius:6px;font-size:11.5px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;background:hsl(var(--metin)/.05);color:hsl(var(--metin-2))}
 .hv-yas.hv-gec{background:hsl(var(--hata-zemin));color:hsl(var(--hata))}.hv-yas.hv-uyar{background:hsl(var(--uyari-zemin));color:hsl(var(--uyari))}
-.hv-ders-ik{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;background:hsl(var(--h) var(--s,60%) 50%/.12);color:hsl(var(--h) var(--s,55%) 38%)}
-.hv-ders-ik svg{width:14px;height:14px}
+.hv-k-ders{font-size:12px;color:hsl(var(--soluk));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hv-k-s .hv-ogr{font-weight:500;color:hsl(var(--metin));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:none;text-align:left}
 .hv-n{text-align:right;font-size:12px;color:hsl(var(--soluk));font-variant-numeric:tabular-nums}
 .hv-m{display:grid;place-items:center;color:hsl(var(--metin-2))}.hv-m svg{width:15px;height:15px}
