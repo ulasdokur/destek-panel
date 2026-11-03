@@ -1281,13 +1281,11 @@ async function hvCiz() {
   const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length, nBugun = (B?.v?.botlar || []).reduce((a, x) => a + (x.bugun || 0), 0);
   yer.innerHTML = `<section class="hv-kart">
     <div class="hv-blok hv-bekleyen">
-      <div class="hv-baslik"><span>Yanıt bekleyen · ${sayi_(v.toplam)}</span>${tazelik(hy, "havuz verisi") || `<span class="hv-ozet">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => `${sayi_(v[k])} ${a}`).join(" · ")}${v.odullu ? ' <span class="hv-odul-lej">2x ödüllü</span>' : ""}</span>`}</div>
-      ${L.length ? `<div class="hv-kuyruk ${ac ? "acik" : ""}">${L.slice(0, ac ? L.length : HV_KISA).map(x => { const d = dk(x.c); return `<div class="hv-k-s tik${x.odul ? " hv-odul" : ""}" data-soru="${x.id}" title="${x.odul ? "2x ödüllü · " : ""}Soruyu admin panelde aç">
+      <div class="hv-baslik"><span>Yanıt bekleyen · ${sayi_(v.toplam)}</span>${tazelik(hy, "havuz verisi") || `<span class="hv-ozet">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => k === "video" ? `<span class="hv-video-lej">${sayi_(v[k])} ${a}</span>` : `${sayi_(v[k])} ${a}`).join(" · ")}</span>`}</div>
+      ${L.length ? `<div class="hv-kuyruk ${ac ? "acik" : ""}">${L.slice(0, ac ? L.length : HV_KISA).map(x => { const d = dk(x.c); return `<div class="hv-k-s tik${x.m === "video" ? " hv-video" : ""}" data-soru="${x.id}" title="${x.m === "video" ? "Videolu çözüm · " : ""}Soruyu admin panelde aç">
+        <span class="hv-id">#${x.id}</span>
         <span class="hv-yas ${hvRenk(d)}">${d >= 60 ? `${Math.floor(d / 60)} sa ${d % 60}` : `${d} dk`}</span>
-        <span class="hv-ogr">${e(x.ogr || "Öğrenci")}</span>
-        <span class="hv-n" title="Öğrencinin sorduğu soru sayısı">${x.ogr_n != null ? sayi_(x.ogr_n) + (x.ogr_tam === false ? "+" : "") : ""}</span>
-        <span class="hv-k-ders">${e((x.ders || "").replace(/\s*\(.*$/, ""))}</span>
-        <span class="hv-m">${x.m === "video" ? '<i data-lucide="video" title="Videolu çözüm"></i>' : ""}</span></div>`; }).join("")}</div>
+        <span class="hv-k-ders">${e((x.ders || "").replace(/\s*\(.*$/, ""))}</span></div>`; }).join("")}</div>
       ${L.length > HV_KISA ? `<button class="hv-daha">${ac ? "Daha az göster" : `+${sayi_(L.length - HV_KISA)} soru daha`}</button>` : ""}` : '<div class="hv-bos">Bekleyen soru yok.</div>'}
     </div>
     <div class="hv-blok">
