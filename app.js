@@ -1247,12 +1247,31 @@ async function gonderici(mod) {
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
   gsCanliKur();
-  $("#icerik").innerHTML = baslik(bas_, "") + `<div id="gs-serit-yer"></div>
+  $("#icerik").innerHTML = baslik(bas_, "") + `<div id="hv-canli"></div><div id="gs-serit-yer"></div>
     <div class="gs-arac"><div class="gs-sekme" id="gs-sekme"></div><div class="gs-aralik" id="gs-aralik"></div></div>
     <div id="gs-govde"></div>`;
   gsSeritCiz();
   gsAralikCiz();
+  hvKur();
 }
+// 3 Kas (Ulaş): anlık yanıt bekleyen sorular — kaynak sunucu izle.py (admin bekleyen listesi, 15 sn) + mini AI botlarından medya tipi. 5 sn'de bir okunur.
+let hvZaman = null;
+async function hvCiz() {
+  const yer = $("#hv-canli"); if (!yer) { clearInterval(hvZaman); hvZaman = null; return; }
+  if (document.hidden) return;
+  const r = await sb.from("d_durum").select("v,zaman").eq("k", "havuz_canli").maybeSingle(); if (r.error || !r.data) return;
+  const v = r.data.v || {}, yas = Math.round((Date.now() - new Date(r.data.zaman)) / 1000), bayat = yas > 90;
+  const dk = c => c ? Math.max(0, Math.round((Date.now() - new Date(c)) / 60000)) : null;
+  const L = v.liste || [], eski = L[0], kutu = (ad, n, ek = "") => `<div class="hv-kutu ${ek}"><div class="hv-n">${(n ?? 0).toLocaleString("tr-TR")}</div><div class="hv-ad">${ad}</div></div>`;
+  const ac = yer.querySelector("details")?.open;
+  yer.innerHTML = `<div class="hv-cerceve ${bayat ? "hv-bayat" : ""}">
+    <div class="hv-ust"><b>Şu an yanıt bekleyen sorular</b> <span class="hv-saat">${bayat ? `⚠️ veri ${Math.round(yas / 60)} dk eski` : `canlı · ${yas} sn önce`}</span></div>
+    <div class="hv-satir">${kutu("bekliyor", v.toplam)}${kutu("fotoğraflı cevap", v.foto)}${kutu("videolu cevap", v.video)}${v.bilinmiyor ? kutu("tipi belirsiz", v.bilinmiyor, "hv-soluk") : ""}${kutu("2x ödüllü", v.odullu, "hv-soluk")}${kutu("çözümde", v.cozumde, "hv-soluk")}</div>
+    ${eski ? `<div class="hv-not">En eski: ${dk(eski.c)} dk · ${eski.ders || ""}</div>` : ""}
+    <details ${ac ? "open" : ""}><summary>Liste (${L.length})</summary><table class="hv-tablo"><tr><th>Soru</th><th>Ders</th><th>Bekliyor</th><th>Cevap</th><th></th></tr>
+    ${L.map(x => `<tr><td>${x.id}</td><td>${x.ders || ""}</td><td>${dk(x.c)} dk</td><td>${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td>${x.odul ? "2x" : ""}</td></tr>`).join("")}</table></details></div>`;
+}
+function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
 // 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.
 let gsSenk = "", gsImza = "", gsZaman = null, gsSayac = {};
 function gsCanliKur() {

@@ -819,3 +819,17 @@ body.gs-kilit{overflow:hidden}
 .cs-rapor{margin-bottom:12px}
 .cs-h3{font-size:14px;font-weight:600;margin:16px 0 6px}
 .cs-liste{margin:0;padding-left:18px;font-size:14px;line-height:1.6}.cs-liste li{margin-bottom:4px}
+
+/* 3 Kas: canlı havuz kutusu */
+.hv-cerceve{border:1px solid #e3e3e8;border-radius:10px;padding:10px 12px;margin:0 0 12px;background:#fff}
+.hv-bayat{border-color:#e0a800}
+.hv-ust{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.hv-saat{color:#888;font-size:12px}
+.hv-satir{display:flex;gap:8px;flex-wrap:wrap}
+.hv-kutu{min-width:92px;padding:6px 10px;border:1px solid #eee;border-radius:8px}
+.hv-n{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.hv-ad{font-size:12px;color:#666}
+.hv-soluk .hv-n{color:#777;font-size:18px}
+.hv-not{font-size:12px;color:#666;margin-top:6px}
+.hv-tablo{width:100%;font-size:12px;border-collapse:collapse;margin-top:6px}
+.hv-tablo td,.hv-tablo th{padding:3px 6px;border-bottom:1px solid #f0f0f0;text-align:left}
