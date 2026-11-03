@@ -1267,7 +1267,7 @@ async function hvCiz() {
   const v = H?.v || {}, hy = yasS(H), by = yasS(B), L = v.liste || [], eski = L[0];
   const dk = c => c ? Math.max(0, Math.round((Date.now() - new Date(c)) / 60000)) : null;
   const sayi_ = n => (n ?? 0).toLocaleString("tr-TR");
-  const ac = yer.querySelector("details")?.open;
+  const ac = hvAcik;
   const tazelik = (y, ad) => y > 90 ? `<span class="hv-eski">⚠️ ${ad} ${y > 1e8 ? "yok" : hvSure(y) + " eski"}</span>` : "";
   const bugunH = (((gsV?.Z?.ai || {}).gun || {})[gunStr(new Date())] || {}).hesap || {};
   const DUR = { cozumde: ["Çözümde", "ok"], bosta: ["Boşta", "uyari"], kapali: ["Kapalı", "hata"] };
@@ -1280,25 +1280,26 @@ async function hvCiz() {
   }).join("");
   const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length, nBugun = (B?.v?.botlar || []).reduce((a, x) => a + (x.bugun || 0), 0);
   yer.innerHTML = `<section class="hv-kart">
-    <div class="hv-blok">
+    <div class="hv-blok hv-bekleyen">
       <div class="hv-baslik"><span>Yanıt bekleyen</span>${tazelik(hy, "havuz verisi")}</div>
-      <div class="hv-buyuk"><span class="hv-n">${sayi_(v.toplam)}</span><span class="hv-ad">soru${eski ? ` · en eskisi ${hvSure(dk(eski.c) * 60)}` : ""}</span></div>
-      <dl class="hv-dokum">
-        <div><dt>Fotoğraflı cevap</dt><dd>${sayi_(v.foto)}</dd></div>
-        <div><dt>Videolu cevap</dt><dd>${sayi_(v.video)}</dd></div>
-        <div><dt>2x ödüllü</dt><dd>${sayi_(v.odullu)}</dd></div>
-        <div><dt>Çözümde (herkes)</dt><dd>${sayi_(v.cozumde)}</dd></div>
-        ${v.bilinmiyor ? `<div><dt>Tipi belirsiz</dt><dd>${sayi_(v.bilinmiyor)}</dd></div>` : ""}
-      </dl>
-      <details ${ac ? "open" : ""}><summary>Soru listesi (${L.length})</summary><div class="hv-liste"><table class="hv-tablo"><thead><tr><th>Soru</th><th>Ders</th><th class="hv-sag">Bekliyor</th><th>Cevap</th><th></th></tr></thead><tbody>
-      ${L.map(x => `<tr><td>${soruLink(x.id, x.id)}</td><td>${e(x.ders || "")}</td><td class="hv-sag">${dk(x.c)} dk</td><td>${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td>${x.odul ? '<span class="etiket mor">2x</span>' : ""}</td></tr>`).join("")}</tbody></table></div></details>
+      <div class="hv-buyuk"><span class="hv-n">${sayi_(v.toplam)}</span><span class="hv-ad">soru${eski ? ` · en eskisi <b class="${hvRenk(dk(eski.c))}">${hvSure(dk(eski.c) * 60)}</b>` : ""}</span></div>
+      ${v.toplam ? `<div class="hv-tur">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => `<span class="hv-tur-s ${k}" style="flex:${v[k]}"></span>`).join("")}</div>
+      <div class="hv-lej">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => `<span><i class="${k}"></i>${sayi_(v[k])} ${a}</span>`).join("")}${v.odullu ? `<span class="etiket mor">${sayi_(v.odullu)} tanesi 2x ödüllü</span>` : ""}</div>` : '<div class="hv-bos">Bekleyen soru yok.</div>'}
+      ${L.length ? `<table class="hv-tablo hv-sorular"><tbody>
+      ${L.slice(0, ac ? L.length : 4).map(x => `<tr><td>${soruLink(x.id, x.id)}${x.odul ? ' <span class="etiket mor">2x</span>' : ""}</td><td class="hv-ders">${e((x.ders || "").replace(/\s*\(.*\)$/, ""))}</td><td class="soluk">${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td class="hv-sag ${hvRenk(dk(x.c))}">${hvSure(dk(x.c) * 60)}</td></tr>`).join("")}</tbody></table>
+      ${L.length > 4 ? `<button class="hv-daha" data-ac="${ac ? 0 : 1}">${ac ? "Daha az göster" : `+${L.length - 4} soru daha`}</button>` : ""}` : ""}
+      ${v.cozumde ? `<div class="hv-not">Ayrıca <b>${sayi_(v.cozumde)}</b> soru şu an birinin çözümünde, bu sayıya dahil değil.</div>` : ""}
     </div>
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
       ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th></th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
+  const db = yer.querySelector(".hv-daha"); if (db) db.onclick = () => { hvAcik = db.dataset.ac === "1"; hvCiz(); };
 }
+// bekleme süresi rengi: 30 dk üstü sarı, 60 dk üstü kırmızı
+let hvAcik = false;
+const hvRenk = d => d == null ? "" : d >= 60 ? "hv-gec" : d >= 30 ? "hv-uyar" : "";
 function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
 // 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.
 let gsSenk = "", gsImza = "", gsZaman = null, gsSayac = {};
