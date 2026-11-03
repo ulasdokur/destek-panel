@@ -931,3 +931,7 @@ body.gs-kilit{overflow:hidden}
 #gs-yorumlar .gs-bas{flex-wrap:nowrap;gap:10px}#gs-yorumlar .gs-bas h3{white-space:nowrap}#gs-yorumlar .cipler{flex-wrap:nowrap}
 #gs-yorumlar .gs-ys-liste{max-height:620px;overflow:auto}
 #gs-yorumlar .cip{white-space:nowrap}
+/* 4 Kas g: Süreler sade */
+.s-arac{justify-content:flex-end;margin:-4px 0 8px}
+.s-kirilim{margin:0 0 12px}.s-kirilim h3 .soluk{font-weight:400;font-size:12.5px}
+.s-hc b{font-weight:600}

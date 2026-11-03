@@ -1433,46 +1433,34 @@ function sCiz(bas, son) {
   const H = T.filter(x => !x.kim), A = sDahil ? T : H, Tb = T.filter(x => x.kim), cev = T.filter(x => x.m1 != null);
   const fark = (k, L1 = T, L2 = H, en = 10) => { const a = sOrt(L1, k), b = sOrt(L2, k); return a && b && b.n >= en && a.n - b.n >= 3 ? b.o - a.o : null; };   // az örnekte fark gürültü
   const kart = (k, bas_, ipucu) => {
-    const o = sOrt(A, k), diger = sOrt(sDahil ? H : T, k), f = fark(k);
+    const o = sOrt(T, k), diger = sOrt(H, k), f = fark(k);
     return `<section class="gs-h"><div class="gs-h-bas" data-ipucu="${e(ipucu)}">${bas_}</div>
-      <div class="s-ikili"><div class="gs-h-buyuk" style="cursor:default"><span data-sayac="s${k}">${sDk(o?.md)}</span><small>medyan</small></div>
-        <div class="s-ort"><span data-sayac="so${k}">${sDk(o?.o)}</span><small>ortalama</small></div></div>
-      <div class="gs-h-alt">${o ? `${sayi(o.n)} soru` : "henüz ölçülmedi"}</div>
-      <div class="gs-dun">${sDahil ? "Tebeşir hariç" : "Tebeşir dahil"} medyan <b>${sDk(diger?.md)}</b> · ort <b>${sDk(diger?.o)}</b>${f != null && Math.abs(f) >= 0.5 ? ` <span class="${f > 0 ? "ok" : "hata"}" data-ipucu="Tebeşir hariç ortalama ile dahil ortalama arasındaki fark">${f > 0 ? "▼" : "▲"} Tebeşir ${sDk(Math.abs(f))} ${f > 0 ? "kısaltıyor" : "uzatıyor"}</span>` : ""}</div></section>`;
+      <div class="gs-h-buyuk" style="cursor:default"><span data-sayac="s${k}">${sDk(o?.md)}</span><small>medyan</small></div>
+      <div class="gs-h-alt">${o ? `ortalama ${sDk(o.o)} · ${sayi(o.n)} soru` : "henüz ölçülmedi"}</div>
+      ${diger ? `<div class="gs-dun" data-ipucu="Yalnız öğretmenlerin cevapladığı sorular. Tebeşir olmasaydı onun aldığı sorular da öğretmenleri bekleyecekti; gerçek etki bu farktan büyük olabilir.">Tebeşir olmasa medyan <b>${sDk(diger.md)}</b>${f != null && Math.abs(f) >= 0.5 ? ` <span class="${f > 0 ? "ok" : "hata"}">${f > 0 ? "▼" : "▲"} ${sDk(Math.abs(f))} ${f > 0 ? "kısa" : "uzun"}</span>` : ""}</div>` : ""}</section>`;
   };
   const bugun = gunStr(new Date()), simdi = new Date();
   const bek = son === bugun ? [...(sVeri[gunEkle(bugun, -1)] || []), ...(sVeri[bugun] || [])].filter(x => x.s !== "A") : [];
   const yas = x => (simdi - new Date(`${x.g}T${x.sa}:00`)) / 6e4, enEski = bek.length ? Math.max(...bek.map(yas)) : null;
-  const tbB = Tb.filter(x => x.kim === 1).length, tbA = Tb.length - tbB, oT = sOrt(Tb, "m1"), oH = sOrt(H, "m1");
-  const etki = `<section class="kart gs-k"><div class="gs-bas"><h3>Tebeşir'in etkisi</h3></div>
-    <div class="gs-minis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
-      <div><div class="soluk">Cevaplanan soru</div><b style="font-size:20px">${sayi(cev.length)}</b><div class="soluk">Tebeşir ${sayi(Tb.length)} (${yuzde(Tb.length, cev.length)}) · banka ${sayi(tbB)}, yapay zekâ ${sayi(tbA)}</div></div>
-      <div data-ipucu="Soru düştükten cevap gidene kadar"><div class="soluk">Tebeşir'in cevapları</div><b style="font-size:20px">${sDk(oT?.md)}</b> <span class="soluk">medyan · ort ${sDk(oT?.o)}</span><div class="soluk">öğretmenler medyan ${sDk(oH?.md)} · ort ${sDk(oH?.o)}</div></div>
-      <div data-ipucu="Tebeşir hariç: yalnız öğretmenlerin cevapladığı sorular. Tebeşir olmasaydı onun aldığı sorular da öğretmenleri bekleyecekti; gerçek etki bu farktan büyük olabilir."><div class="soluk">Bekleme</div><b style="font-size:20px">${sDk(sOrt(T, "m1")?.md)}</b> <span class="soluk">medyan · ort ${sDk(sOrt(T, "m1")?.o)}</span><div class="soluk">Tebeşir olmadan medyan ${sDk(oH?.md)} · ort ${sDk(oH?.o)}</div></div>
-      ${son === bugun ? `<div data-ipucu="Şu an cevap bekleyen ya da çözümde olan sorular (dün ve bugün düşenler)"><div class="soluk">Şu an bekleyen</div><b style="font-size:20px">${sayi(bek.length)}</b><div class="soluk">${bek.length ? `en eskisi ${sDk(enEski)} · ${sayi(bek.filter(x => x.s === "C").length)} çözümde` : "kuyruk boş"}</div></div>` : ""}
-    </div></section>`;
   const anah = { ders: x => dersGenel(x.ders), sinif: x => sSinif(x.ders), kurum: x => x.kurum }[sKir];
   const tablo = (L, anahF, basl, sirala) => {
     const G = {}; for (const x of L) (G[anahF(x)] ||= []).push(x);
     const S = Object.entries(G).map(([ad, X]) => ({ ad, X })); sirala(S);
     return `<table class="tablo sik gs-tablo"><tr><th>${basl}</th><th>Soru</th><th data-ipucu="Cevaplananların yüzde kaçını Tebeşir cevapladı">Tebeşir</th>
-      <th data-ipucu="Soru sisteme düştükten cevap gidene kadar">Düşme → cevap <small class="soluk">medyan · ort</small></th><th data-ipucu="Soru sisteme düştükten ilk çözüme alınana kadar">Düşme → alınma <small class="soluk">medyan · ort</small></th><th data-ipucu="Çözüme alındıktan cevap gidene kadar">Alınma → cevap <small class="soluk">medyan · ort</small></th>
+      <th data-ipucu="Soru sisteme düştükten cevap gidene kadar">Düşme → cevap</th><th data-ipucu="Soru sisteme düştükten ilk çözüme alınana kadar">Düşme → alınma</th><th data-ipucu="Çözüme alındıktan cevap gidene kadar">Alınma → cevap</th>
       <th data-ipucu="Tebeşir hariç ortalama − dahil ortalama (düşme → cevap). Yeşil: Tebeşir süreyi kısaltıyor">Etki</th></tr>
-      ${S.map(({ ad, X }) => { const Y = sDahil ? X : X.filter(x => !x.kim), c = X.filter(x => x.m1 != null), tb = c.filter(x => x.kim).length, f = fark("m1", X, X.filter(x => !x.kim));
-        return `<tr><td title="${e(ad)}">${e(ad)}</td><td>${sayi(X.length)}</td><td>${c.length ? yuzde(tb, c.length) : "—"}</td><td class="s-hc">${sIki(sOrt(Y, "m1"))}</td><td class="s-hc">${sIki(sOrt(Y, "m2"))}</td><td class="s-hc">${sIki(sOrt(Y, "m3"))}</td>
+      ${S.map(({ ad, X }) => { const Y = X, c = X.filter(x => x.m1 != null), tb = c.filter(x => x.kim).length, f = fark("m1", X, X.filter(x => !x.kim));
+        return `<tr><td title="${e(ad)}">${e(ad)}</td><td>${sayi(X.length)}</td><td>${c.length ? yuzde(tb, c.length) : "—"}</td>${["m1", "m2", "m3"].map(m => { const o = sOrt(Y, m); return `<td class="s-hc" title="${o ? "ortalama " + sDk(o.o) : ""}"><b>${sDk(o?.md)}</b></td>`; }).join("")}
           <td>${f == null || Math.abs(f) < 0.5 ? '<span class="soluk">—</span>' : `<span class="${f > 0 ? "ok" : "gs-kirmizi"}">${f > 0 ? "−" : "+"}${sDk(Math.abs(f))}</span>`}</td></tr>`; }).join("")}</table>`;
   };
   const tekGun = bas === son;
   $("#gs-govde").innerHTML = `
-    <div class="gs-arac" style="margin-bottom:10px"><span class="cipler" id="s-dahil">${[[1, "Tebeşir dahil"], [0, "Tebeşir hariç"]].map(([v, a]) => `<button class="cip ${+sDahil === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span>
-      <span class="soluk" data-ipucu="Alınma ve cevap zamanı dakikalık gözlemle bulunur: yeni sorularda ±30 sn, birkaç saat bekleyenlerde ±15 dk. Tebeşir'in kendi soruları kesin zamanla.">Canlı · ${tarih(sImza[son] || sImza[bas] || "")}</span></div>
     <div class="gs-hero">${kart("m1", "Düşme → cevap", "Soru sisteme düştükten cevap gidene kadar geçen süre")}${kart("m2", "Düşme → çözüme alınma", "Soru sisteme düştükten biri ilk kez çözüme alana kadar")}${kart("m3", "Alınma → cevap", "Çözüme alındıktan cevap gidene kadar")}</div>
-    ${etki}
-    <section class="kart gs-k" style="margin-top:12px"><div class="gs-bas"><h3>Kırılım</h3><span class="cipler" id="s-kir">${[["ders", "Ders"], ["sinif", "Sınıf"], ["kurum", "Kurum"]].map(([v, a]) => `<button class="cip ${sKir === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
+    <section class="kart gs-k s-kirilim"><div class="gs-bas"><h3>Kırılım <span class="soluk">· medyan süreler, ortalama üstüne gelince</span></h3><span class="cipler" id="s-kir">${[["ders", "Ders"], ["sinif", "Sınıf"], ["kurum", "Kurum"]].map(([v, a]) => `<button class="cip ${sKir === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
       ${tablo(T, anah, { ders: "Ders", sinif: "Sınıf", kurum: "Kurum" }[sKir], S => S.sort((a, b) => b.X.length - a.X.length))}</section>
     <details class="gs-analiz" id="s-zaman-d"><summary>${tekGun ? "Saat saat" : "Gün gün"}</summary><div style="padding:10px 12px">
       ${tablo(T, tekGun ? x => x.sa.slice(0, 2) + ":00" : x => gkisa(x.g), tekGun ? "Saat" : "Gün", S => S.sort((a, b) => a.X[0].g + a.X[0].sa < b.X[0].g + b.X[0].sa ? -1 : 1))}</div></details>`;
-  $("#s-dahil").querySelectorAll(".cip").forEach(b => b.onclick = () => { sDahil = b.dataset.v === "1"; sCiz(bas, son); });
+
   $("#s-kir").querySelectorAll(".cip").forEach(b => b.onclick = () => { sKir = b.dataset.v; sCiz(bas, son); });
   gsSayacAkit(); ikon();
 }
