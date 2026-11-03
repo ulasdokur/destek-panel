@@ -885,3 +885,8 @@ body.gs-kilit{overflow:hidden}
 .hv-sn a{color:inherit;font-weight:500}.hv-sn a:hover{text-decoration:underline}
 .hv-nokta:not(.ok):not(.uyari):not(.hata){background:hsl(var(--metin)/.25)}
 .hv-bot .etiket:not(.ok):not(.uyari):not(.hata){background:hsl(var(--metin)/.06);color:hsl(var(--metin-2))}
+/* 4 Kas: banka şeridi çerçevesiz, düz satır */
+#gs-saglik{padding:2px 2px}
+#gs-saglik>.gs-cip{border:0;background:none;padding:0;gap:7px;font-size:12.5px;color:hsl(var(--metin-2))}
+#gs-saglik>.gs-cip b{color:hsl(var(--metin));font-weight:500}
+#gs-saglik .gs-senk{font-size:12px}
