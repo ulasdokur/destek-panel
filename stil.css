@@ -911,3 +911,23 @@ body.gs-kilit{overflow:hidden}
 .gs-halka{width:128px;height:128px}.gs-halka-o{width:128px}
 .gs-lej-s{padding:5px 8px;font-size:13px;gap:10px}.gs-lej-s b{font-size:14.5px}
 .gs-lej-alt{margin-top:6px;padding:0 8px;font-size:12px}
+/* 4 Kas f: Genel Bakış ızgarası — bütün satırlar aynı 3 sütuna oturur, aralık her yerde 12px, köşe 18px */
+:root{--gs-sutun:minmax(0,1.15fr) minmax(0,1.1fr) minmax(0,1fr)}
+.hv-kart{grid-template-columns:var(--gs-sutun);gap:12px;background:none;border:0;border-radius:0;overflow:visible;margin:0 0 12px}
+.hv-blok{background:hsl(var(--yuzey));border:1px solid hsl(var(--kenar));border-radius:18px;box-shadow:var(--golge-kart);padding:14px 16px}
+.hv-blok+.hv-blok{border-left:1px solid hsl(var(--kenar))}
+.hv-bekleyen{grid-column:span 2}
+.gs-hero{grid-template-columns:var(--gs-sutun);gap:12px;margin-bottom:12px}
+.gs-izgara3{display:grid;grid-template-columns:var(--gs-sutun);gap:12px;align-items:start;margin-bottom:12px}
+.gs-izgara3>.kart{margin:0;min-width:0}.gs-izgara3>.gs-liste-k{grid-column:span 2;overflow-x:auto}
+.gs-analiz{border-radius:18px;margin:0 0 12px;border-color:hsl(var(--kenar))}
+.gs-analiz>summary .soluk{font-weight:400;font-size:12.5px}
+.gs-analiz .gs-izgara .gs-tam{grid-column:1/-1}
+.gs-analiz .gs-izgara>.kart{margin:0}
+@media (max-width:1150px){.hv-kart,.gs-izgara3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.hv-bekleyen,.gs-izgara3>.gs-liste-k{grid-column:1/-1}}
+@media (max-width:900px){.hv-kart,.gs-izgara3{grid-template-columns:minmax(0,1fr)}.hv-blok+.hv-blok{border-top:1px solid hsl(var(--kenar))}}
+.hv-baslik{flex-wrap:wrap;row-gap:2px}.hv-baslik>span:first-child{white-space:nowrap}
+.hv-bot{width:100%}
+#gs-yorumlar .gs-bas{flex-wrap:nowrap;gap:10px}#gs-yorumlar .gs-bas h3{white-space:nowrap}#gs-yorumlar .cipler{flex-wrap:nowrap}
+#gs-yorumlar .gs-ys-liste{max-height:620px;overflow:auto}
+#gs-yorumlar .cip{white-space:nowrap}

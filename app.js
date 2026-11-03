@@ -1291,7 +1291,7 @@ async function hvCiz() {
       ${L.length > HV_KISA ? `<button class="hv-daha">${ac ? "Daha az göster" : `+${sayi_(L.length - HV_KISA)} soru daha`}</button>` : ""}` : '<div class="hv-bos">Bekleyen soru yok.</div>'}
     </div>
     <div class="hv-blok">
-      <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
+      <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde</span></span>${tazelik(by, "bot verisi")}</div>
       ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse ne zamandır çözüyor, boştaysa ne zamandır boşta">Ne zamandır</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
@@ -1543,15 +1543,14 @@ function gsCiz(bas, son) {
     <div class="gs-spark">${V14.map((v, i) => `<span class="${G14[i].gun >= bas && G14[i].gun <= son ? "sec" : ""}" style="height:${Math.max(3, v / mx * 100)}%" data-ipucu="${gkisa(G14[i].gun)}: ${tlStr(v)}"></span>`).join("")}</div>
     <div class="gs-spark-alt"><span>${gkisa(G14[0].gun)}</span><span>son 14 gün · ${tlStr(V14.reduce((a, b) => a + b, 0))}</span></div></section>`;
   const hero = `<div class="gs-hero">${k1}${k2}${k3}</div>`;
-  // 26 Eki: kaçış hunisi + eşiğe yakın kaçanlar (saat saat kapsama grafiği Ulaş'ın isteğiyle kaldırıldı)
-  const ek = `<div class="gs-ikili-k"><section class="kart gs-k" id="gs-huni"></section>${ai ? "" : '<section class="kart gs-k" id="gs-yakin"></section>'}</div>`;
-  $("#gs-govde").innerHTML = `${hero}${ek}
-    <div class="gs-yan">
-      <div class="gs-sol"><section class="kart gs-k" id="gs-ders"></section><section class="kart gs-k" id="gs-yorumlar"></section></div>
+  // 4 Kas: Genel Bakış sade — üstte rakamlar, altta cevap listesi + yorum yanıtları; huni, eşik, ders tablosu ve grafikler "Analiz"e
+  $("#gs-govde").innerHTML = `${hero}
+    <div class="gs-izgara3">
       <section class="kart gs-k gs-liste-k"><div class="gs-bas"><h3>Gönderilen cevaplar <span class="soluk" id="gs-liste-n"></span></h3><button class="ince kucuk" id="gs-filtre-sifir" hidden>Filtreyi temizle</button></div><div id="gs-liste"></div></section>
+      <section class="kart gs-k" id="gs-yorumlar"></section>
     </div>
-    ${ai || tum ? `<details class="gs-analiz" id="gs-atla-d"><summary>${tum ? "Yapay zekâ bugün neden atladı?" : "Bugün neden atladı?"} <span class="soluk">${sayi(gB.atla || 0)} soru</span></summary><div class="gs-atla" id="gs-atla"></div></details>` : ""}${ai ? "" : `<details class="gs-analiz" id="gs-analiz-d"><summary>Analiz ve grafikler</summary>
-        <div class="gs-izgara"><section class="kart gs-k" id="gs-sebep"></section><section class="kart gs-k" id="gs-benz"></section><section class="kart gs-k" id="gs-14"></section><section class="kart gs-k" id="gs-yorum"></section></div></details>`}`;
+    ${ai || tum ? `<details class="gs-analiz" id="gs-atla-d"><summary>${tum ? "Yapay zekâ bugün neden atladı?" : "Bugün neden atladı?"} <span class="soluk">${sayi(gB.atla || 0)} soru</span></summary><div class="gs-atla" id="gs-atla"></div></details>` : ""}<details class="gs-analiz" id="gs-analiz-d"><summary>Analiz <span class="soluk">soruların akışı${ai ? "" : ", eşik, benzerlik"}, ders bazında tasarruf, grafikler</span></summary>
+        <div class="gs-izgara"><section class="kart gs-k" id="gs-huni"></section>${ai ? "" : '<section class="kart gs-k" id="gs-yakin"></section>'}<section class="kart gs-k gs-tam" id="gs-ders"></section>${ai ? "" : '<section class="kart gs-k" id="gs-sebep"></section><section class="kart gs-k" id="gs-benz"></section><section class="kart gs-k" id="gs-14"></section><section class="kart gs-k" id="gs-yorum"></section>'}</div></details>`;
   gsB = B;
   gsHuniCiz(G, gsGorunum); if (!ai) gsYakinCiz(G);
   gsDersCiz(B, ai ? [] : Z.ders_7 || []);
@@ -1788,7 +1787,7 @@ function gsYorumlarCiz(Y) {
       ${x ? gsIplik(x, ek) : gsIplik({ yorumlar: yedek }, ek)}</div>`; };
   const U = (Y.uygunsuz || []).filter(u => (Date.now() - new Date(u.t)) < 7 * 864e5);
   const uyg = U.length ? `<div class="gs-uyg"><b>Uygunsuz yorum · ${U.length}</b> <span class="soluk">Yanıt yazılmadı. Öğrencinin kurumuna bildirilmeli.</span>${U.slice(-5).reverse().map(u => `<div><a href="#" class="gs-soru-ac" data-q="${u.soru}">Soru ${u.soru}</a> · ${tarih(u.t)} — “${e(u.metin)}”</div>`).join("")}</div>` : "";
-  yer.innerHTML = uyg + `<div class="gs-bas"><h3 data-ipucu="Bekleyenler dakikada bir gider">Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen · bugün ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
+  yer.innerHTML = uyg + `<div class="gs-bas"><h3 data-ipucu="Bekleyenler dakikada bir gider">Yorum yanıtları</h3><span class="cipler">${[["bekleyen", `Bekleyen ${Y.kuyruk_n ?? K.length}`], ["gonderilen", `Gönderilen ${Y.gonderilen_bugun || 0}`]].map(([v, a]) => `<button class="cip ${gsYorSek === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span></div>
     <div class="gs-ys-liste">${L.length ? L.slice(0, 40).map(sat).join("") : `<p class="soluk">${bek ? "Bekleyen yanıt yok." : "Henüz gönderilen yanıt yok."}</p>`}</div>`;
   yer.querySelectorAll(".cip").forEach(b => b.onclick = () => { gsYorSek = b.dataset.v; gsYorumlarCiz(Y); });
 }
