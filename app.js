@@ -1254,22 +1254,50 @@ async function gonderici(mod) {
   gsAralikCiz();
   hvKur();
 }
-// 3 Kas (Ulaş): anlık yanıt bekleyen sorular — kaynak sunucu izle.py (admin bekleyen listesi, 15 sn) + mini AI botlarından medya tipi. 5 sn'de bir okunur.
+// 3 Kas (Ulaş): canlı kart — solda anlık yanıt bekleyen sorular (Hetzner izle.py, 15 sn), sağda AI botlarının durumu
+// (mini bot_durum.py, 15 sn: çözümde / boşta / kapalı). İkisi 5 sn'de bir tek sorguyla okunur; bot satırına tıklayınca o hesabın cevapları açılır.
 let hvZaman = null;
+const hvSure = sn => sn < 60 ? `${sn} sn` : sn < 3600 ? `${Math.floor(sn / 60)} dk${sn % 60 && sn < 600 ? " " + (sn % 60) + " sn" : ""}` : `${Math.floor(sn / 3600)} sa${Math.floor(sn % 3600 / 60) ? " " + Math.floor(sn % 3600 / 60) + " dk" : ""}`;
 async function hvCiz() {
   const yer = $("#hv-canli"); if (!yer) { clearInterval(hvZaman); hvZaman = null; return; }
-  if (document.hidden) return;
-  const r = await sb.from("d_durum").select("v,zaman").eq("k", "havuz_canli").maybeSingle(); if (r.error || !r.data) return;
-  const v = r.data.v || {}, yas = Math.round((Date.now() - new Date(r.data.zaman)) / 1000), bayat = yas > 90;
+  if (document.hidden && yer.innerHTML) return;
+  const r = await sb.from("d_durum").select("k,v,zaman").in("k", ["havuz_canli", "bot_durum"]); if (r.error || !r.data) return;
+  const K = Object.fromEntries(r.data.map(x => [x.k, x])), H = K.havuz_canli, B = K.bot_durum;
+  const yasS = x => x ? Math.max(0, Math.round((Date.now() - new Date(x.zaman)) / 1000)) : 1e9;
+  const v = H?.v || {}, hy = yasS(H), by = yasS(B), L = v.liste || [], eski = L[0];
   const dk = c => c ? Math.max(0, Math.round((Date.now() - new Date(c)) / 60000)) : null;
-  const L = v.liste || [], eski = L[0], kutu = (ad, n, ek = "") => `<div class="hv-kutu ${ek}"><div class="hv-n">${(n ?? 0).toLocaleString("tr-TR")}</div><div class="hv-ad">${ad}</div></div>`;
+  const sayi_ = n => (n ?? 0).toLocaleString("tr-TR");
   const ac = yer.querySelector("details")?.open;
-  yer.innerHTML = `<div class="hv-cerceve ${bayat ? "hv-bayat" : ""}">
-    <div class="hv-ust"><b>Şu an yanıt bekleyen sorular</b> <span class="hv-saat">${bayat ? `⚠️ veri ${Math.round(yas / 60)} dk eski` : `canlı · ${yas} sn önce`}</span></div>
-    <div class="hv-satir">${kutu("bekliyor", v.toplam)}${kutu("fotoğraflı cevap", v.foto)}${kutu("videolu cevap", v.video)}${v.bilinmiyor ? kutu("tipi belirsiz", v.bilinmiyor, "hv-soluk") : ""}${kutu("2x ödüllü", v.odullu, "hv-soluk")}${kutu("çözümde", v.cozumde, "hv-soluk")}</div>
-    ${eski ? `<div class="hv-not">En eski: ${dk(eski.c)} dk · ${eski.ders || ""}</div>` : ""}
-    <details ${ac ? "open" : ""}><summary>Liste (${L.length})</summary><table class="hv-tablo"><tr><th>Soru</th><th>Ders</th><th>Bekliyor</th><th>Cevap</th><th></th></tr>
-    ${L.map(x => `<tr><td>${x.id}</td><td>${x.ders || ""}</td><td>${dk(x.c)} dk</td><td>${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td>${x.odul ? "2x" : ""}</td></tr>`).join("")}</table></details></div>`;
+  const tazelik = (y, ad) => y > 90 ? `<span class="hv-eski">⚠️ ${ad} ${y > 1e8 ? "yok" : hvSure(y) + " eski"}</span>` : "";
+  const bugunH = (((gsV?.Z?.ai || {}).gun || {})[gunStr(new Date())] || {}).hesap || {};
+  const DUR = { cozumde: ["Çözümde", "ok"], bosta: ["Boşta", "uyari"], kapali: ["Kapalı", "hata"] };
+  const botlar = (B?.v?.botlar || []).map(x => {
+    const d = DUR[x.durum] || [x.durum, ""], sn = x.bas ? Math.max(0, Math.round((Date.now() - new Date(x.bas)) / 1000)) : null;
+    const ne = x.durum === "cozumde" ? `${x.soru ?? ""}${sn != null ? ` · ${hvSure(sn)}` : ""}` : x.durum === "bosta" && sn != null ? hvSure(sn) : "";
+    return `<tr class="tik" data-hesap="${e(x.ad)}"><td class="hv-bot-ad"><i class="hv-nokta ${d[1]}"></i>${e(x.ad)}</td>
+      <td><span class="etiket ${d[1]}">${d[0]}</span></td><td class="hv-sn">${ne}</td>
+      <td class="hv-sag">${x.gon30}</td><td class="hv-sag soluk">${x.atla30}</td><td class="hv-sag">${bugunH[x.ad] != null ? sayi_(bugunH[x.ad]) : "—"}</td></tr>`;
+  }).join("");
+  const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length;
+  yer.innerHTML = `<section class="hv-kart">
+    <div class="hv-blok">
+      <div class="hv-baslik"><span>Yanıt bekleyen</span>${tazelik(hy, "havuz verisi")}</div>
+      <div class="hv-buyuk"><span class="hv-n">${sayi_(v.toplam)}</span><span class="hv-ad">soru${eski ? ` · en eskisi ${hvSure(dk(eski.c) * 60)}` : ""}</span></div>
+      <dl class="hv-dokum">
+        <div><dt>Fotoğraflı cevap</dt><dd>${sayi_(v.foto)}</dd></div>
+        <div><dt>Videolu cevap</dt><dd>${sayi_(v.video)}</dd></div>
+        <div><dt>2x ödüllü</dt><dd>${sayi_(v.odullu)}</dd></div>
+        <div><dt>Çözümde (herkes)</dt><dd>${sayi_(v.cozumde)}</dd></div>
+        ${v.bilinmiyor ? `<div><dt>Tipi belirsiz</dt><dd>${sayi_(v.bilinmiyor)}</dd></div>` : ""}
+      </dl>
+      <details ${ac ? "open" : ""}><summary>Soru listesi (${L.length})</summary><div class="hv-liste"><table class="hv-tablo"><thead><tr><th>Soru</th><th>Ders</th><th class="hv-sag">Bekliyor</th><th>Cevap</th><th></th></tr></thead><tbody>
+      ${L.map(x => `<tr><td>${soruLink(x.id, x.id)}</td><td>${e(x.ders || "")}</td><td class="hv-sag">${dk(x.c)} dk</td><td>${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td>${x.odul ? '<span class="etiket mor">2x</span>' : ""}</td></tr>`).join("")}</tbody></table></div></details>
+    </div>
+    <div class="hv-blok">
+      <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde</span></span>${tazelik(by, "bot verisi")}</div>
+      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th></th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
+    </div></section>`;
+  yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
 }
 function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
 // 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.
@@ -1326,7 +1354,6 @@ function gsSeritCiz() {
   yer.innerHTML = `<div class="gs-serit" id="gs-saglik">
     ${canli || !H.planli ? cip(canli, `<b>Banka ${canli ? "çalışıyor" : "durmuş olabilir"}</b> · ${dk == null ? "—" : dk < 1 ? "az önce" : dk + " dk önce"}`, canli ? "Banka göndericisi açık ve son 15 dakikada iş yaptı." : "15 dakikadan uzun süredir hareket yok ya da program kapalı. Ulaş'a haber ver.")
       : cip(null, `<b>Banka planlı durdu</b> · ${e(H.durum_ne || "")}`, "Gönderici bilerek durduruldu, arıza değil.")}
-    ${hesaplar}
     <span class="soluk gs-senk"><i class="gs-nokta"></i>Canlı · ${tarih(senk)}</span></div>`;
   yer.querySelectorAll("[data-hesap]").forEach(b => b.onclick = () => gsHesapAc(b.dataset.hesap));
 }
