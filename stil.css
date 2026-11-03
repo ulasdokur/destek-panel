@@ -813,3 +813,9 @@ body.gs-kilit{overflow:hidden}
 /* 27 Eki: tıklanabilir hesap çipi */
 .gs-cip-tik{cursor:pointer;font:inherit;font-size:12px}.gs-cip-tik:hover{border-color:hsl(var(--foreground)/.35)}
 .gs-p-ust .gs-geri{margin-right:8px;vertical-align:middle}
+/* Grispi destek */
+.cs-cevap-et{display:block;margin-top:12px;font-size:13px;font-weight:600}
+.cs-cevap-et textarea{display:block;width:100%;margin-top:6px;font:inherit;font-weight:400;font-size:14px}
+.cs-rapor{margin-bottom:12px}
+.cs-h3{font-size:14px;font-weight:600;margin:16px 0 6px}
+.cs-liste{margin:0;padding-left:18px;font-size:14px;line-height:1.6}.cs-liste li{margin-bottom:4px}

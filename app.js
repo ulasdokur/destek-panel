@@ -199,7 +199,7 @@ document.addEventListener("keydown", ev => { if ((ev.metaKey || ev.ctrlKey) && e
 // ---------- sayfa durumları ----------
 const iskelet = (n = 9) => `<div class="iskelet">${Array.from({ length: n }, () => "<div><span></span><span></span><span></span><span></span><span></span></div>").join("")}</div>`;
 const ADLAR = { bugun: "Bugün", rapor: "Rapor", bekleyen: "Kararını bekleyenler", kontrol: "Haftalık kontrol", uyari: "Uyarılar", ogretmen: "Öğretmenler", sikayet: "Tüm şikayetler",
-  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", tsikayet: "Tebeşir şikayetleri", aiinc: "AI inceleme", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
+  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", tsikayet: "Tebeşir şikayetleri", aiinc: "AI inceleme", cs: "Grispi destek", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
 function git(s, alt) {
   if (s === "gunluk" || s === "haftalik") s = "rapor";
   if (s === "ozet") s = "bugun";
@@ -211,7 +211,7 @@ function git(s, alt) {
   altlar.forEach(b => b.classList.remove("secili"));
   (altlar.find(b => b.dataset.s === s) || altlar.find(b => grup && b.dataset.grup === grup) || altlar.find(b => b.dataset.s === "daha")).classList.add("secili");
   $("#ust-arac").classList.remove("acik"); araKapat(); window.scrollTo(0, 0);
-  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), tsikayet, aiinc, daha }[s] || bugun;
+  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), tsikayet, aiinc, cs, daha }[s] || bugun;
   $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + iskelet();
   Promise.resolve().then(() => f(alt)).then(() => { ikon(); klampBagla(); }).catch(err => {
     if (sekme !== s) return;
@@ -230,7 +230,7 @@ function daha() {
     <div class="daha-grup"><h4>Raporlar</h4>${sat("rapor", "chart-column", "Rapor")}</div>
     <div class="daha-grup"><h4>Şikayetler</h4>${sat("bekleyen", "inbox", "Kararını bekleyenler", r("r-bekleyen"))}${sat("kontrol", "check", "Haftalık kontrol", r("r-kontrol"))}${sat("sikayet", "list-checks", "Tüm şikayetler")}</div>
     <div class="daha-grup"><h4>Öğretmenler</h4>${sat("ogretmen", "graduation-cap", "Öğretmen listesi")}${sat("uyari", "bell", "Uyarılar", r("r-uyari"))}${sat("takip", "eye", "Yakın takip")}${sat("denetim", "target", "Rastgele denetim")}${sat("eksi", "triangle-alert", "Eksi puanlılar")}${yon ? sat("kesinti", "shield-check", "Hesap kesintileri", r("r-kesinti")) + sat("odeme", "wallet", "Ödemeler", r("r-odeme")) : ""}</div>
-    <div class="daha-grup"><h4>Diğer</h4>${sat("basvuru", "award", "Solver başvuruları", r("r-basvuru"))}${sat("ogrenci", "users", "Öğrenciler")}${yon ? sat("gonderici", "send", "Tebeşir") + sat("sure", "timer", "Tebeşir · Süreler") : ""}</div>
+    <div class="daha-grup"><h4>Diğer</h4>${sat("basvuru", "award", "Solver başvuruları", r("r-basvuru"))}${sat("ogrenci", "users", "Öğrenciler")}${sat("cs", "headset", "Grispi destek", r("r-cs"))}${yon ? sat("gonderici", "send", "Tebeşir") + sat("sure", "timer", "Tebeşir · Süreler") : ""}</div>
     <div class="daha-grup"><h4>Hesap · ${e(ben?.ad || "")}</h4>
       <div style="padding:6px 12px 10px"><div class="tema"><button data-tema="sistem" title="Cihaza göre"><i data-lucide="clock"></i></button><button data-tema="acik" title="Açık"><i data-lucide="sun"></i></button><button data-tema="koyu" title="Koyu"><i data-lucide="moon"></i></button></div></div>
       <button class="sifre-ac"><i data-lucide="key-round"></i><span>Şifre değiştir</span></button><button class="cikis"><i data-lucide="log-out"></i><span>Çıkış yap</span></button></div>`;
@@ -258,7 +258,8 @@ async function rozetler() {
   if (rk && ben?.rol === "yonetici") { const ks = await sb.from("d_kesinti").select("ogretmen_id", { count: "exact", head: true }).eq("durum", "hazir"); rk.textContent = ks.count || ""; }
   const top = ids => ids.reduce((a, i) => a + (+$(i).textContent || 0), 0) || "";
   $("#r-sikayet-grup").textContent = top(["#r-bekleyen", "#r-kontrol"]); $("#r-ogretmen-grup").textContent = top(["#r-uyari", "#r-kesinti", "#r-odeme"]);
-  const is = top(["#r-bekleyen", "#r-kontrol", "#r-uyari", "#r-basvuru"]);
+  const rc = document.getElementById("r-cs"); if (rc) { const cs_ = await sb.from("d_cs_soru").select("id", { count: "exact", head: true }).eq("durum", "bekliyor"); rc.textContent = cs_.count || ""; }
+  const is = top(["#r-bekleyen", "#r-kontrol", "#r-uyari", "#r-basvuru", "#r-cs"]);
   document.querySelectorAll(".zil .nokta").forEach(n => n.hidden = !is);
 }
 
@@ -422,7 +423,7 @@ document.addEventListener("keydown", ev => {
 // ---------- bugün: yalnız bekleyen işler + sistem durumu ----------
 async function bugun() {
   const h = haftaNo(), yon = ben?.rol === "yonetici";
-  const [bek, kon, konB, tas, bas, hata, dur, uh, ks] = await Promise.all([
+  const [bek, kon, konB, tas, bas, hata, dur, uh, ks, csS] = await Promise.all([
     q(sb.from("d_sikayet").select("key,olusturma,d_karar(tip)").eq("durum", "bekliyor")),
     q(sb.from("d_sikayet").select("key,d_karar(tip)").eq("kontrol_hafta", h)),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", h).is("kontrol_secim", null),
@@ -432,12 +433,14 @@ async function bugun() {
     q(sb.from("d_durum").select("*")),
     sb.from("d_uyari").select("id", { count: "exact", head: true }).eq("durum", "hata").gte("olusturma", new Date(Date.now() - 7 * 864e5).toISOString()),
     yon ? sb.from("d_kesinti").select("ogretmen_id", { count: "exact", head: true }).in("durum", ["hazir", "sorun"]) : { count: 0 },
+    sb.from("d_cs_soru").select("id", { count: "exact", head: true }).eq("durum", "bekliyor"),
   ]);
   const acikB = bek.filter(x => !x.d_karar.some(k => k.tip === "bekleyen")), eskiB = acikB.filter(x => Date.now() - new Date(x.olusturma) > 864e5).length;
   const nKon = kon.filter(x => !x.d_karar.some(k => k.tip === "kontrol")).length + (konB.count || 0);
   const nPas = tas.filter(t => t.kademe === "PASIF").length, nTas = tas.length - nPas;
   const D = Object.fromEntries(dur.map(x => [x.k, x])), S = D.saglik?.v || {};
   const is = [
+    ["cs", "Grispi: cevap bekleyen müşteri soruları", csS.count || 0, "uyari"],
     ["bekleyen", "Kararını bekleyen şikayetler", acikB.length, "uyari", eskiB ? `${eskiB} tanesi 1 günden eski` : ""],
     ["uyari", "Hesap kapatma önerileri", nPas, "hata"],
     ["uyari", "Onay bekleyen bildirimler", nTas, "uyari"],
@@ -1761,3 +1764,51 @@ function gsYorumCiz(Y) {
 window.git = git;
 sb.auth.onAuthStateChange(ev => { if (ev === "SIGNED_OUT") girisGoster(); });
 basla();
+
+// ---------- Grispi destek (3 Kas 2026): Dilara Grispi oturumunun soruları + gün sonu raporu ----------
+let csGorunum = "soru";
+const CS_DUR = { bekliyor: ["Cevap bekliyor", "uyari"], cevaplandi: ["Cevaplandı, müşteriye iletilecek", "mor"], iletildi: ["Müşteriye iletildi", "ok"], iptal: ["Gerek kalmadı", ""] };
+const CS_SAYI = [["konusulan", "message-circle", "Konuşulan müşteri"], ["cozulen", "circle-check", "Çözüldü"], ["bekleyen", "clock", "Müşteriden cevap bekleniyor"], ["satisa", "arrow-right-left", "Satışa devredildi"], ["kilit", "smartphone", "Cihaz kilidi açıldı"], ["soru", "circle-help", "Panele sorulan"]];
+async function cs(alt) {
+  if (alt === "rapor" || alt === "soru") csGorunum = alt;
+  const [S, R] = await Promise.all([
+    q(sb.from("d_cs_soru").select("*").order("olusturma", { ascending: false }).limit(150)),
+    q(sb.from("d_cs_rapor").select("*").order("gun", { ascending: false }).limit(30)),
+  ]);
+  const acik = S.filter(s => s.durum === "bekliyor");
+  $("#icerik").innerHTML = baslik("Grispi destek") + `<p class="aciklama">Dilara'nın Grispi kuyruğunu yapay zekâ yürütüyor. Cevabını bilmediği bir müşteri sorusu olursa buraya düşer: cevabı yaz, 10 dakika içinde müşteriye iletilir. Her gün 22:00'de gün sonu raporu eklenir.</p>
+    <div class="gs-sekme"><button class="cip ${csGorunum === "soru" ? "secili" : ""}" data-g="soru">Sorular${acik.length ? ` · ${acik.length}` : ""}</button><button class="cip ${csGorunum === "rapor" ? "secili" : ""}" data-g="rapor">Gün sonu raporları</button></div>
+    <div id="cs-govde"></div>`;
+  $("#icerik").querySelectorAll(".gs-sekme .cip").forEach(b => b.onclick = () => { csGorunum = b.dataset.g; git("cs", csGorunum); });
+  const g = $("#cs-govde");
+  if (csGorunum === "rapor") { g.innerHTML = R.length ? R.map(csRapor).join("") : '<div class="bos">Henüz rapor yok. İlk rapor bugün 22:00\'de gelecek.</div>'; return; }
+  const kart = s => { const [da, dr] = CS_DUR[s.durum] || [s.durum, ""], yaz = s.durum === "bekliyor" || s.durum === "cevaplandi";
+    return `<section class="kart u-kart cs-kart" data-id="${s.id}">
+    <div class="kart-ust"><b>${e(s.musteri || "Müşteri")}</b><span class="soluk">${e(s.ticket)}</span><span class="etiket ${dr}">${da}</span><span class="soluk">${tarih(s.olusturma)}</span></div>
+    <div class="u-metin-kutu"><b class="u-g-baslik">Müşterinin sorusu</b><span class="u-g-metin">${e(s.soru)}</span></div>
+    ${s.bilinmeyen ? `<p class="u-not" style="margin:10px 0 0"><b>Neyi bilmiyorum:</b> ${e(s.bilinmeyen)}</p>` : ""}
+    ${s.oneri ? `<p class="u-not" style="margin:6px 0 0"><b>Aklımdaki cevap:</b> ${e(s.oneri)}</p>` : ""}
+    ${yaz ? `<label class="cs-cevap-et">Cevap<textarea class="cs-cevap" rows="3" placeholder="Müşteriye ne söyleyelim? Bilgiyi yazman yeter, müşteriye uygun dille ben yazarım.">${e(s.cevap || "")}</textarea></label>
+      <div class="kart-alt"><button class="birincil cs-kaydet">${s.durum === "cevaplandi" ? "Cevabı güncelle" : "Cevabı kaydet"}</button>${s.cevaplayan ? `<span class="soluk">${e(s.cevaplayan)} · ${tarih(s.cevap_zamani)}</span>` : ""}</div>`
+    : `${s.cevap ? `<p class="u-not" style="margin:10px 0 0"><b>Verilen bilgi:</b> ${e(s.cevap)} <span class="soluk">(${e(s.cevaplayan || "")})</span></p>` : ""}${s.iletilen ? `<p class="u-not" style="margin:6px 0 0"><b>Müşteriye giden:</b> ${e(s.iletilen)} <span class="soluk">${tarih(s.iletildi_zamani)}</span></p>` : ""}`}
+    </section>`; };
+  const eski = S.filter(s => s.durum !== "bekliyor");
+  g.innerHTML = `<div class="kart-izgara">${acik.length ? acik.map(kart).join("") : '<div class="bos">Cevap bekleyen soru yok.</div>'}</div>
+    ${eski.length ? `<h2>Önceki sorular</h2><div class="kart-izgara">${eski.map(kart).join("")}</div>` : ""}`;
+  g.querySelectorAll(".cs-kart").forEach(k => { const b = k.querySelector(".cs-kaydet"); if (!b) return;
+    b.onclick = async () => { const cevap = k.querySelector(".cs-cevap").value.trim();
+      if (cevap.length < 2) return bildir("Önce cevabı yaz.");
+      b.disabled = true; const { error } = await sb.rpc("d_cs_cevapla", { p_id: +k.dataset.id, p_cevap: cevap }); b.disabled = false;
+      if (error) return bildir(error.message === "degistirilemez" ? "Bu soru müşteriye zaten iletilmiş." : "Kaydedilemedi: " + error.message);
+      toast("Cevap kaydedildi", "10 dakika içinde müşteriye iletilir."); rozetler(); git("cs", "soru"); }; });
+}
+function csRapor(r) {
+  const n = r.sayilar || {}, gun = new Date(r.gun + "T12:00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", weekday: "long" });
+  const liste = (b, L, f) => L && L.length ? `<h3 class="cs-h3">${b}</h3><ul class="cs-liste">${L.map(f).join("")}</ul>` : "";
+  return `<section class="kart cs-rapor"><div class="kart-ust"><b>${e(gun)}</b></div>
+    <div class="kutular">${CS_SAYI.filter(([k]) => n[k] != null).map(([k, ik, ad]) => `<div class="kutu"><span class="k-bas"><i data-lucide="${ik}"></i>${ad}</span><div class="s">${e(n[k])}</div></div>`).join("")}</div>
+    ${liste("Botun yanlış yaptıkları", r.bot_hatalari, x => `<li><b>${e(x.ticket || "")}</b> ${e(x.ne_oldu || "")}${x.dogrusu ? `<br><span class="soluk">Doğrusu: ${e(x.dogrusu)}</span>` : ""}</li>`)}
+    ${liste("Cevabını bilmediğim konular", r.bilinmeyenler, x => `<li><b>${e(x.ticket || "")}</b> ${e(x.konu || "")}</li>`)}
+    ${liste("Sorunlar", r.sorunlar, x => `<li><b>${e(x.baslik || "")}</b>${x.ayrinti ? ` ${e(x.ayrinti)}` : ""}</li>`)}
+    ${r.notlar ? `<p class="u-not" style="white-space:pre-line">${e(r.notlar)}</p>` : ""}</section>`;
+}
