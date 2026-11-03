@@ -1490,7 +1490,7 @@ function gsCiz(bas, son) {
   const Gs = G.filter(g => g.sorulan), sor = Gs.reduce((a, g) => a + g.sorulan, 0), don = Gs.reduce((a, g) => a + (g.havuza_donus || 0), 0);
   const gonS = Lr.filter(x => Gs.some(g => g.gun === x.zaman.slice(0, 10))).length;
   const yz = (a, b) => b ? Math.min(100, a / b * 100) : 0;
-  const cubuk = (baslik, oran, sag, parca, ipucu) => `<div class="gs-hb" data-ipucu="${e(ipucu)}"><div class="gs-hb-ust"><span>${baslik}</span><b data-sayac="${e(baslik)}">${oran}</b></div>
+  const cubuk = (baslik, oran, sag, parca, ipucu, ek = "") => `<div class="gs-hb" data-ipucu="${e(ipucu)}"><div class="gs-hb-ust"><span>${baslik}</span><span class="gs-hb-sag">${ek}<b data-sayac="${e(baslik)}">${oran}</b></span></div>
     <div class="gs-bar">${parca}</div><div class="gs-hb-alt">${sag}</div></div>`;
   // 27 Eki: önceki dönem (bugünse dünün aynı saatine kadar) — gönderilen ve tasarruf kartları ortak kullanır
   const OK = (() => {
@@ -1500,6 +1500,7 @@ function gsCiz(bas, son) {
     const L = C.filter(x => { const g = x.zaman.slice(0, 10); return g >= pb && g <= ps && (g < ps || x.zaman.slice(11, 16) <= sa) && uy(x); });
     return { L, n, et: n === 1 ? (son === bg ? "dün bu saatte" : `önceki gün (${gkisa(pb)})`) : son === bg ? `önceki ${n} gün, aynı saate kadar` : `önceki ${n} gün` };
   })();
+  let gsKapEk = "";
   const k1 = `<section class="gs-h gs-h1">
     <div class="gs-h-bas">${tum ? "Tebeşir cevapları" : ai ? "Yapay zekâ cevapları" : "Banka cevapları"}</div>
     <button class="gs-h-buyuk" data-f="hepsi" data-ipucu="Tıkla, hepsini gör"><span data-sayac="gonderildi">${sayi(B.length)}</span><small>cevap gönderildi</small></button>${(() => { // 25 Eki: her aralık bir öncekiyle kıyaslanır; bugün için dünün aynı saatine kadar
@@ -1507,19 +1508,19 @@ function gsCiz(bas, son) {
       const { L: OL, et, n } = OK, bg = gunStr(new Date()), d = OL.length, f = B.length - d;
       const P = gsSorOnceki(bas, son), kB = B.filter(x => Gs.some(g => g.gun === x.zaman.slice(0, 10))).length, k1_ = sor ? kB / sor : null, k0 = P && P.d ? d / P.d : null;
       const pc = v => "%" + (v * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 }), kf = k1_ != null && k0 != null ? Math.round((k1_ - k0) * 1000) / 10 : null;
-      const kap = k1_ != null && k0 != null ? `<div class="gs-dun gs-kap" data-ipucu="Kapsama = gönderilen cevap ÷ bütün sorulan sorular (aynı saate kadar). Soru sayısındaki düşüşten bağımsız olarak payımızı gösterir.">kapsama ${et} <b>${pc(k0)}</b> · ${son === bg ? (n === 1 ? "bugün" : "bu aralık") : "seçili"} <b>${pc(k1_)}</b>${kf ? ` <span class="${kf > 0 ? "ok" : "hata"}">${kf > 0 ? "▲" : "▼"} ${Math.abs(kf).toLocaleString("tr-TR")} puan</span>` : ""}</div>` : "";
-      return `<div class="gs-dun">${et} <b>${sayi(d)}</b>${f ? ` <span class="${f > 0 ? "ok" : "hata"}">${f > 0 ? "▲" : "▼"} ${sayi(Math.abs(f))}${d >= 10 ? ` (%${Math.round(Math.abs(f) / d * 100)})` : ""}</span>` : ""}</div>${kap}`; })()}
-    <div class="gs-h-alt">${ai ? `<button class="gs-mcip" data-f="atla">${sayi(gB.atla || 0)} atlandı</button><button class="gs-mcip ${gB.hata ? "hata" : ""}" data-f="hata">${sayi(gB.hata || 0)} hata</button><span class="soluk">bugün</span>`
-      : tum ? `banka ${sayi(bankaN)} · yapay zekâ ${sayi(aiN)} · ${sayi(B.filter(x => x.video).length)} video` : `${sayi(bak)} soruya bakıldı · ${sayi(B.filter(x => !x.video).length)} foto, ${sayi(B.filter(x => x.video).length)} video`}</div>
+      gsKapEk = kf ? `<span class="gs-hb-fark ${kf > 0 ? "ok" : "hata"}" data-ipucu="Kapsama ${et} ${pc(k0)} idi">${kf > 0 ? "▲" : "▼"} ${Math.abs(kf).toLocaleString("tr-TR")} puan</span>` : "";
+      return `<div class="gs-dun">${et} <b>${sayi(d)}</b>${f ? ` <span class="${f > 0 ? "ok" : "hata"}">${f > 0 ? "▲" : "▼"} ${sayi(Math.abs(f))}${d >= 10 ? ` (%${Math.round(Math.abs(f) / d * 100)})` : ""}</span>` : ""}</div>`; })()}
+    ${tum ? "" : `<div class="gs-h-alt">`}${ai ? `<button class="gs-mcip" data-f="atla">${sayi(gB.atla || 0)} atlandı</button><button class="gs-mcip ${gB.hata ? "hata" : ""}" data-f="hata">${sayi(gB.hata || 0)} hata</button><span class="soluk">bugün</span>`
+      : tum ? "" : `${sayi(bak)} soruya bakıldı · ${sayi(B.filter(x => !x.video).length)} foto, ${sayi(B.filter(x => x.video).length)} video`}${tum ? "" : "</div>"}
     <div class="gs-hbs">
-    ${bakT ? cubuk("Baktığımız sorular", yuzde(bankaN + aiN, bakT), `<span><i class="b1"></i>banka ${sayi(bankaN)}</span><span><i class="b2"></i>yapay zekâ ${sayi(aiN)}</span><span>${sayi(bakT)} soru</span>`,
+    ${bakT ? cubuk("Baktığımız sorular", yuzde(bankaN + aiN, bakT), `<span><i class="b1"></i>banka ${sayi(bankaN)}</span><span><i class="b2"></i>yapay zekâ ${sayi(aiN)}</span>${tum ? `<span class="soluk">${sayi(B.filter(x => x.video).length)} video</span>` : ""}<span>${sayi(bakT)} soru</span>`,
       `<span class="b1" style="width:${yz(bankaN, bakT)}%"></span><span class="b2" style="width:${yz(aiN, bakT)}%"></span>`, "Baktığımız soruların yüzde kaçına cevap gitti") : ""}
     ${sor ? (() => { const ogN = Math.max(0, sor - gonS), UG = (Z.ucret || {})._genel || {}, DG = UG.deg || {}, dn = (DG.yeterli || 0) + (DG.yetersiz || 0);
       const bizYet = Lr.filter(x => x.deg === "yetersiz" && Gs.some(g => g.gun === x.zaman.slice(0, 10))).length;
       const oran = dn >= 20 ? `yeterli %${Math.round(DG.yeterli / dn * 100)} / yetersiz %${Math.round(DG.yetersiz / dn * 100)}` : ogN ? `yetersiz ~%${Math.round(Math.max(0, don - bizYet) / ogN * 100)}` : "";
       return cubuk("Bütün sorulan sorular", yuzde(gonS, sor), `<span><i class="b3"></i>biz ${sayi(gonS)}</span><span><i class="b4"></i>öğretmenler ${sayi(ogN)}</span><span>${sayi(sor)} soru</span>`,
       `<span class="b3" style="width:${yz(gonS, sor)}%"></span><span class="b4" style="width:${yz(ogN, sor)}%"></span>`,
-      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`) + gsSorDun(bas, son, sor); })() : ""}
+      `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`, gsKapEk) + gsSorDun(bas, son, sor); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
   const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz · şikayet açılmadı", "hsl(var(--hata) / .55)"], ["sik_onay", "Şikayet · öğrenci haklı", "hsl(var(--hata))"], ["sik_red", "Şikayet · reddedildi", "hsl(25 95% 55%)"], ["sik_bek", "Şikayet · karar bekliyor", "hsl(45 95% 55%)"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
