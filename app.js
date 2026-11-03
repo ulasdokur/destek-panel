@@ -1275,9 +1275,9 @@ async function hvCiz() {
   const botlar = (B?.v?.botlar || []).map(x => {
     const d = [...(DUR[x.durum] || [x.durum, ""])], sn = x.bas ? Math.max(0, Math.round((Date.now() - new Date(x.bas)) / 1000)) : null;
     if (x.durum === "bosta" && L.length && (sn == null || sn > 60)) d[1] = "uyari";
-    const ne = x.durum === "cozumde" ? `${x.soru ? `<a href="${ADMIN}/Question/Detail/${x.soru}" target="_blank" rel="noopener">#${x.soru}</a>` : ""}${sn != null ? ` · ${hvSure(sn)}` : ""}` : x.durum === "bosta" && sn != null ? hvSure(sn) : "";
+    const ne = (x.durum === "cozumde" || x.durum === "bosta") && sn != null ? hvSure(sn) : "";
     return `<tr class="tik" data-hesap="${e(x.ad)}"><td class="hv-bot-ad"><i class="hv-nokta ${d[1]}"></i>${e(x.ad)}</td>
-      <td><span class="etiket ${d[1]}">${d[0]}</span></td><td class="hv-sn">${ne}</td>
+      <td>${x.durum === "cozumde" && x.soru ? `<a class="etiket ${d[1]} hv-et-link" href="${ADMIN}/Question/Detail/${x.soru}" target="_blank" rel="noopener" title="Çözdüğü soruyu admin panelde aç" onclick="event.stopPropagation()">${d[0]}</a>` : `<span class="etiket ${d[1]}">${d[0]}</span>`}</td><td class="hv-sn">${ne}</td>
 </tr>`;
   }).join("");
   const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length, nBugun = (B?.v?.botlar || []).reduce((a, x) => a + (x.bugun || 0), 0);
@@ -1292,14 +1292,14 @@ async function hvCiz() {
     </div>
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
-      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse elindeki soru ve süresi, boştaysa ne zamandır boşta">Ne zamandır</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
+      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse ne zamandır çözüyor, boştaysa ne zamandır boşta">Ne zamandır</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
   ikon();
   const db = yer.querySelector(".hv-daha"); if (db) db.onclick = () => { hvAcik = !hvAcik; hvCiz(); };
 }
 // bekleme süresi rengi: 30 dk üstü sarı, 60 dk üstü kırmızı
-let hvAcik = false; const HV_KISA = 5;
+let hvAcik = false; const HV_KISA = 10;   // geniş ekranda iki sütun × 5 satır
 const hvRenk = d => d == null ? "" : d >= 60 ? "hv-gec" : d >= 30 ? "hv-uyar" : "";
 function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
 // 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.
