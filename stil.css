@@ -940,3 +940,6 @@ body.gs-kilit{overflow:hidden}
 .ts-ozet-k{background:hsl(var(--yuzey));border:1px solid hsl(var(--kenar));border-radius:18px;box-shadow:var(--golge-kart);padding:12px 16px;display:flex;flex-direction:column;gap:2px;font-size:13px}
 .ts-ozet-k b{font-size:15px}.ts-ozet-k>div:nth-child(2) b{font-size:22px;font-weight:700}
 @media (max-width:700px){.ts-ozet{grid-template-columns:1fr}}
+/* 4 Kas i: AI inceleme — tarih kutusu dar, kusurlar yalnız "Beğenmedim" seçilince */
+#ai-gun{width:auto;flex:0 0 auto}
+.ai-k:not(:has(.ai-karar .cip.secili[data-v="begenmedim"])) .ai-kusur{display:none}
