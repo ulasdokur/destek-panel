@@ -1270,10 +1270,12 @@ async function hvCiz() {
   const ac = hvAcik;
   const tazelik = (y, ad) => y > 90 ? `<span class="hv-eski">⚠️ ${ad} ${y > 1e8 ? "yok" : hvSure(y) + " eski"}</span>` : "";
   const bugunH = (((gsV?.Z?.ai || {}).gun || {})[gunStr(new Date())] || {}).hesap || {};
-  const DUR = { cozumde: ["Çözümde", "ok"], bosta: ["Boşta", "uyari"], kapali: ["Kapalı", "hata"] };
+  // 4 Kas: boşta normal hâl, gri; yalnız gündüz (08-24) 15 dk'dan uzun boşta kalan turuncu
+  const DUR = { cozumde: ["Çözümde", "ok"], bosta: ["Boşta", ""], kapali: ["Kapalı", "hata"] }, gunduz = new Date().getHours() >= 8;
   const botlar = (B?.v?.botlar || []).map(x => {
-    const d = DUR[x.durum] || [x.durum, ""], sn = x.bas ? Math.max(0, Math.round((Date.now() - new Date(x.bas)) / 1000)) : null;
-    const ne = x.durum === "cozumde" ? `${x.soru ?? ""}${sn != null ? ` · ${hvSure(sn)}` : ""}` : x.durum === "bosta" && sn != null ? hvSure(sn) : "";
+    const d = [...(DUR[x.durum] || [x.durum, ""])], sn = x.bas ? Math.max(0, Math.round((Date.now() - new Date(x.bas)) / 1000)) : null;
+    if (x.durum === "bosta" && gunduz && sn > 900) d[1] = "uyari";
+    const ne = x.durum === "cozumde" ? `${x.soru ? `<a href="${ADMIN}/Question/Detail/${x.soru}" target="_blank" rel="noopener">#${x.soru}</a>` : ""}${sn != null ? ` · ${hvSure(sn)}` : ""}` : x.durum === "bosta" && sn != null ? hvSure(sn) : "";
     return `<tr class="tik" data-hesap="${e(x.ad)}"><td class="hv-bot-ad"><i class="hv-nokta ${d[1]}"></i>${e(x.ad)}</td>
       <td><span class="etiket ${d[1]}">${d[0]}</span></td><td class="hv-sn">${ne}</td>
       <td class="hv-sag">${x.gon30}</td><td class="hv-sag soluk">${x.atla30}</td><td class="hv-sag">${x.bugun != null ? sayi_(x.bugun) : bugunH[x.ad] != null ? sayi_(bugunH[x.ad]) : "—"}</td></tr>`;
@@ -1290,7 +1292,7 @@ async function hvCiz() {
     </div>
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
-      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th></th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
+      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse elindeki soru ve süresi, boştaysa ne zamandır boşta">Ne zamandır</th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
   ikon();
