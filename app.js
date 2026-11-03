@@ -565,17 +565,13 @@ async function tsikayet(alt) {
   const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("tur", "c").in("ogretmen_id", ids).order("olusturma", { ascending: false }).limit(2000));
   const bek = L.filter(s => s.durum === "bekliyor"), acik = bek.filter(s => !s.d_karar.some(k => k.tip === "bekleyen")).reverse();
   const bugunT = new Date(); bugunT.setHours(0, 0, 0, 0); const yedi = new Date(bugunT - 6 * 864e5);
-  const say = ara => { const X = L.filter(ara), on = X.filter(s => s.son_karar === "ONAYLA").length, re = X.filter(s => s.son_karar === "REDDET").length;
-    return `<td><b>${X.length}</b></td><td>${on}</td><td>${re}</td><td>${X.length - on - re}</td>`; };
+  const say = (ara, ad) => { const X = L.filter(ara), on = X.filter(s => s.son_karar === "ONAYLA").length, re = X.filter(s => s.son_karar === "REDDET").length, bk = X.length - on - re;
+    return `<div class="ts-ozet-k"><div class="soluk">${ad}</div><div><b>${sayi(X.length)}</b> şikayet</div>
+      <div class="soluk" data-ipucu="Öğrenci haklı: şikayet kabul edildi, cevap hatalı/yetersiz. Öğretmen haklı: reddedildi.">${on + re ? `<span class="${on / (on + re) >= 0.3 ? "gs-kirmizi" : ""}">%${Math.round(on / (on + re) * 100)} öğrenci haklı</span> (${on}/${on + re})` : "karar yok"}${bk ? ` · <b>${bk}</b> bekliyor` : ""}</div></div>`; };
   const tab = (g, ad) => `<button class="cip ${grup === g ? "secili" : ""}" onclick="git('tsikayet','${g}')">${ad}</button>`;
   $("#icerik").innerHTML = baslik("Tebeşir şikayetleri", "Bizim hesaplarımızın cevaplarına gelen öğrenci şikayetleri. Otomatik karar verilmez; her birine sen karar verirsin. Reddedilen şikayetler de burada sayılır.") + `
     <div class="cipler" style="margin-bottom:12px">${tab("ai", "Yapay zekâ")}${tab("banka", "Banka")}</div>
-    <section class="kart" style="margin-bottom:14px"><h3 style="margin:0 0 8px">${grup === "banka" ? "Banka" : "Yapay zekâ"} cevaplarına gelen şikayetler</h3>
-      <div class="tablo-sar"><table class="tablo sik"><tr><th></th><th>Şikayet</th><th data-ipucu="Şikayet kabul edildi: cevap hatalı ya da yetersiz">Öğrenci haklı</th><th data-ipucu="Şikayet reddedildi: cevap yeterli bulundu">Öğretmen haklı</th><th>Bekleyen</th></tr>
-        <tr><td>Bugün</td>${say(s => new Date(s.olusturma) >= bugunT)}</tr>
-        <tr><td>Son 7 gün</td>${say(s => new Date(s.olusturma) >= yedi)}</tr>
-        <tr><td>Tümü</td>${say(() => true)}</tr></table></div>
-      <div class="soluk" style="margin-top:6px">Hesaplar: ${grup === "banka" ? "Ahmet Y., Umut T." : "Berfin B., Serkan K., Elif Ş., Mert A."}</div></section>
+    <div class="ts-ozet">${say(s => new Date(s.olusturma) >= bugunT, "Bugün")}${say(s => new Date(s.olusturma) >= yedi, "Son 7 gün")}${say(() => true, "Tümü")}</div>
     <h3 style="margin:6px 0">Kararını bekleyenler (${acik.length})</h3><div id="ts-liste"></div>`;
   await ogrIstat(acik);
   skListe($("#ts-liste"), acik, "bekleyen", () => tsikayet(grup), "Bekleyen şikayet yok.");

@@ -935,3 +935,8 @@ body.gs-kilit{overflow:hidden}
 .s-arac{justify-content:flex-end;margin:-4px 0 8px}
 .s-kirilim{margin:0 0 12px}.s-kirilim h3 .soluk{font-weight:400;font-size:12.5px}
 .s-hc b{font-weight:600}
+/* 4 Kas h: Tebeşir şikayetleri özeti — 3 küçük kart */
+.ts-ozet{display:grid;grid-template-columns:var(--gs-sutun);gap:12px;margin:0 0 14px}
+.ts-ozet-k{background:hsl(var(--yuzey));border:1px solid hsl(var(--kenar));border-radius:18px;box-shadow:var(--golge-kart);padding:12px 16px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.ts-ozet-k b{font-size:15px}.ts-ozet-k>div:nth-child(2) b{font-size:22px;font-weight:700}
+@media (max-width:700px){.ts-ozet{grid-template-columns:1fr}}
