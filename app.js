@@ -1287,7 +1287,7 @@ async function hvCiz() {
     </div>
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde</span></span>${tazelik(by, "bot verisi")}</div>
-      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse ne zamandır çözüyor, boştaysa ne zamandır boşta">Ne zamandır</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
+      ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th title="Çözümdeyse ne zamandır çözüyor, boştaysa ne zamandır boşta">Ne zamandır</th></tr></thead><tbody>${hvBankaSatir()}${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
   ikon();
@@ -1337,6 +1337,8 @@ function gsSayacAkit() {
   });
 }
 // üst şerit: gönderici + yapay zekâ hesapları + canlı veri saati
+let hvBanka = null;
+const hvBankaSatir = () => hvBanka ? `<tr id="hv-banka" data-ipucu="${e(hvBanka.ipucu)}"><td class="hv-bot-ad"><i class="hv-nokta ${hvBanka.cls}"></i><b>Banka</b></td><td><span class="etiket ${hvBanka.cls}">${hvBanka.et}</span></td><td class="hv-sn">${hvBanka.ne}</td></tr>` : "";
 function gsSeritCiz() {
   const yer = $("#gs-serit-yer"); if (!yer || !gsV) return;
   const H = gsV.Z.saglik, ai = gsV.Z.ai || {}, senk = gsSenk;
@@ -1348,10 +1350,13 @@ function gsSeritCiz() {
     return cip(acik ? true : planli ? null : false, `<b>${e(h)}</b> · ${acik ? "açık" : planli ? "planlı durdu" : "kapalı"}${bugunH[h] ? ` · bugün ${sayi(bugunH[h])}` : ""}`,
       (acik ? `Yapay zekâ hesabı çalışıyor. Bugün ${sayi(bugunH[h] || 0)} cevap gönderdi.` : planli ? (d.ne || "Bilerek durduruldu, arıza değil.") : (d.ne || "Beklenmedik şekilde durdu.")) + " Tıkla, cevaplarını gör.", h);
   }).join("");
-  yer.innerHTML = `<div class="gs-serit" id="gs-saglik">
-    ${canli || !H.planli ? cip(canli, `<b>Banka ${canli ? "çalışıyor" : "durmuş olabilir"}</b> · son hareket ${dk == null ? "—" : dk < 1 ? "az önce" : dk + " dk önce"}`, canli ? "Banka göndericisi açık ve son 15 dakikada iş yaptı." : "15 dakikadan uzun süredir hareket yok ya da program kapalı. Ulaş'a haber ver.")
-      : cip(null, `<b>Banka planlı durdu</b> · ${e(H.durum_ne || "")}`, "Gönderici bilerek durduruldu, arıza değil.")}
-    <span class="soluk gs-senk">Güncellendi ${tarih(senk).split(" ").pop()}</span></div>`;
+  // 4 Kas (Ulaş): banka durumu ayrı şerit değil, "Yapay zekâ hesapları" tablosunun ilk satırı
+  const ne = dk == null ? "—" : dk < 1 ? "az önce" : dk + " dk önce";
+  hvBanka = canli || !H.planli
+    ? { et: canli ? "Çalışıyor" : "Durmuş olabilir", cls: canli ? "ok" : "hata", ne, ipucu: (canli ? "Banka göndericisi açık ve son 15 dakikada iş yaptı." : "15 dakikadan uzun süredir hareket yok ya da program kapalı. Ulaş'a haber ver.") + ` Son hareket: ${ne}.` }
+    : { et: "Planlı durdu", cls: "", ne: e(H.durum_ne || "—"), ipucu: "Gönderici bilerek durduruldu, arıza değil." };
+  yer.innerHTML = "";
+  const tr = document.querySelector("#hv-banka"); if (tr) tr.outerHTML = hvBankaSatir();
   yer.querySelectorAll("[data-hesap]").forEach(b => b.onclick = () => gsHesapAc(b.dataset.hesap));
 }
 // 27 Eki (Ulaş): soru listeleri kart ızgarası yerine satır satır; satıra tıklayınca soru + cevap görseli + yorumlar, "←" ile listeye dönülür
@@ -1528,16 +1533,12 @@ function gsCiz(bas, son) {
   const hero = `<div class="gs-hero">${k1}${k2}${k3}</div>`;
   // 4 Kas: Genel Bakış sade — üstte rakamlar, altta cevap listesi + yorum yanıtları; huni, eşik, ders tablosu ve grafikler "Analiz"e
   $("#gs-govde").innerHTML = `${hero}
-    <div class="gs-izgara3">
-      <section class="kart gs-k gs-liste-k"><div class="gs-bas"><h3>Gönderilen cevaplar <span class="soluk" id="gs-liste-n"></span></h3><button class="ince kucuk" id="gs-filtre-sifir" hidden>Filtreyi temizle</button></div><div id="gs-liste"></div></section>
-      <section class="kart gs-k" id="gs-yorumlar"></section>
-    </div>
+    <section class="kart gs-k" id="gs-yorumlar"></section>
     ${ai || tum ? `<details class="gs-analiz" id="gs-atla-d"><summary>${tum ? "Yapay zekâ bugün neden atladı?" : "Bugün neden atladı?"} <span class="soluk">${sayi(gB.atla || 0)} soru</span></summary><div class="gs-atla" id="gs-atla"></div></details>` : ""}<details class="gs-analiz" id="gs-analiz-d"><summary>Analiz <span class="soluk">soruların akışı${ai ? "" : ", eşik, benzerlik"}, ders bazında tasarruf, grafikler</span></summary>
         <div class="gs-izgara"><section class="kart gs-k" id="gs-huni"></section>${ai ? "" : '<section class="kart gs-k" id="gs-yakin"></section>'}<section class="kart gs-k gs-tam" id="gs-ders"></section>${ai ? "" : '<section class="kart gs-k" id="gs-sebep"></section><section class="kart gs-k" id="gs-benz"></section><section class="kart gs-k" id="gs-14"></section><section class="kart gs-k" id="gs-yorum"></section>'}</div></details>`;
   gsB = B;
   gsHuniCiz(G, gsGorunum); if (!ai) gsYakinCiz(G);
   gsDersCiz(B, ai ? [] : Z.ders_7 || []);
-  gsListe(B);
   gsYorumlarCiz(Z.yorum || {});
   if (ai || tum) gsAtlaCiz(gB); if (!ai) { gsSebepCiz(Z); gsBenzCiz(Z); gs14Ciz(Z.gunler); gsYorumCiz(Z.yorum || {}); }
   $("#gs-govde").querySelectorAll(".gs-hero [data-f]").forEach(b => b.onclick = () => {
@@ -1640,6 +1641,7 @@ function gsKartlar(baslikM, L) { gsSatirlar(baslikM, L); }   // 27 Eki: kart ız
 // ---------- gönderilen cevaplar: Excel gibi süz + sırala ----------
 let gsTF = { sira: null, f: {} };
 function gsListe(C, n = 60) {
+  if (!$("#gs-liste")) return;   // 4 Kas: liste kartı kalktı (öğrenci değerlendirmesi + Tebeşir cevapları zaten açıyor)
   const ai = gsGorunum === "ai";
   const S = [["zaman", "Saat"], ["soru_id", "Soru"], ["ders", "Ders"], ...(ai ? [] : [["benzerlik", "Benzerlik"]]), ["tur", "Tür"], ["deg", "Değerlendirme"]];
   const deger = (x, k) => k === "tur" ? (gsGorunum === "tum" ? (x.banka_id == -1 ? "Yapay zekâ · " : "Banka · ") : "") + (x.video ? "Video" : "Fotoğraf") : k === "ders" ? dersGenel(x.ders) : k === "deg" ? (DEG[x.deg] || [x.deg])[0] : x[k];
