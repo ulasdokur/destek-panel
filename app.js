@@ -1523,15 +1523,16 @@ function gsCiz(bas, son) {
       `Öğretmenler ${sayi(ogN)} soru çözdü${oran ? " · " + oran : ""}${UG.ort ? " · soru başı " + tlStr(UG.ort) : ""}`, gsKapEk) + gsSorDun(bas, son, sor); })() : ""}
     </div></section>`;
   // (2) değerlendirme halkası
-  const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz · şikayet açılmadı", "hsl(var(--hata) / .55)"], ["sik_onay", "Şikayet · öğrenci haklı", "hsl(var(--hata))"], ["sik_red", "Şikayet · reddedildi", "hsl(25 95% 55%)"], ["sik_bek", "Şikayet · karar bekliyor", "hsl(45 95% 55%)"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
+  const DL = [["yeterli", "Yeterli", "hsl(var(--basari))"], ["yetersiz", "Yetersiz", "hsl(var(--hata) / .55)"], ["sik_onay", "Şikayet: haklı", "hsl(var(--hata))"], ["sik_red", "Şikayet: reddedildi", "hsl(25 95% 55%)"], ["sik_bek", "Şikayet: bekliyor", "hsl(45 95% 55%)"], ["bekliyor", "Bekliyor", "hsl(var(--uyari) / .45)"], ...(ai ? [] : [["otomatik", "Otomatik onay", "hsl(var(--basari) / .4)"]])];
+  const DLA = { yeterli: "Öğrenci yeterli dedi", yetersiz: "Yetersiz dedi, şikayet açmadı", sik_onay: "Şikayet açtı, öğrenci haklı bulundu", sik_red: "Şikayet açtı, reddedildi", sik_bek: "Şikayet açtı, karar bekliyor", bekliyor: "Öğrenci henüz değerlendirmedi", otomatik: "Süre dolunca otomatik onaylandı" };
   const dTop = DL.reduce((a, [k]) => a + dsay(k), 0) || 1, R = 15.915;
   let ofs = 25; const halka = DL.map(([k, , r]) => { const n = dsay(k); if (!n) return ""; const p = n / dTop * 100, h = `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${r}" stroke-width="5" stroke-dasharray="${p} ${100 - p}" stroke-dashoffset="${ofs}"/>`; ofs -= p; return h; }).join("");
   const k2 = `<section class="gs-h gs-h2">
     <div class="gs-h-bas" data-ipucu="Yeterli oranı = (yeterli + otomatik onay) ÷ değerlendirilen. Şikayet edilen her cevap, şikayet reddedilse de yeterli sayılmaz. Bekleyenler dahil değil.">Öğrenci değerlendirmesi</div>
     <div class="gs-h2-ic"><svg class="gs-halka" viewBox="0 0 42 42"><circle r="${R}" cx="21" cy="21" fill="none" stroke="hsl(var(--muted))" stroke-width="5"/>${halka}</svg>
       <div class="gs-halka-o"><b data-sayac="yeterli-orani">${yuzde(dsay("yeterli") + dsay("otomatik"), ogr + dsay("otomatik"))}</b><small>yeterli</small></div>
-      <div class="gs-lej">${DL.map(([k, a, r]) => `<button class="gs-lej-s ${(k === "yetersiz" || k === "sik_onay") && dsay(k) ? "kirmizi" : ""}" data-f="${k}"><i style="background:${r}"></i><span>${a}</span><b data-sayac="d-${k}">${sayi(dsay(k))}</b></button>`).join("")}
-        <div class="soluk" style="margin-top:4px">Toplam şikayet <b>${sayi(sikT)}</b> · onaylanan <b>${sayi(dsay("sik_onay"))}</b>${sikT ? ` (%${Math.round(dsay("sik_onay") / sikT * 100)})` : ""}</div></div></div></section>`;
+      <div class="gs-lej">${DL.filter(([k]) => k === "yeterli" || dsay(k)).map(([k, a, r]) => `<button data-ipucu="${e(DLA[k] || a)}" class="gs-lej-s ${(k === "yetersiz" || k === "sik_onay") && dsay(k) ? "kirmizi" : ""}" data-f="${k}"><i style="background:${r}"></i><span>${a}</span><b data-sayac="d-${k}">${sayi(dsay(k))}</b></button>`).join("")}
+        ${(() => { const kr = dsay("sik_onay") + dsay("sik_red"); return kr ? `<div class="soluk gs-lej-alt">Kararı verilen ${sayi(kr)} şikayetin %${Math.round(dsay("sik_onay") / kr * 100)}'inde öğrenci haklı</div>` : ""; })()}</div></div></section>`;
   // (3) tasarruf + son 14 gün
   const G14 = Z.gunler.slice(-14), tg = g => gsTasarruf(C.filter(x => x.zaman.slice(0, 10) === g.gun && uy(x))), V14 = G14.map(tg), mx = Math.max(1, ...V14);
   const k3 = `<section class="gs-h gs-h3">

@@ -906,3 +906,8 @@ body.gs-kilit{overflow:hidden}
 .gs-h1 .gs-hbs{margin-top:4px;padding-top:0}
 .gs-hb-sag{display:inline-flex;align-items:baseline;gap:8px}
 .gs-hb-fark{font-size:11.5px;font-weight:500}
+/* 4 Kas e: Öğrenci değerlendirmesi — sıfır satırlar gizli, kısa etiket, sıkı satır */
+.gs-h2-ic{grid-template-columns:128px minmax(0,1fr);gap:22px}
+.gs-halka{width:128px;height:128px}.gs-halka-o{width:128px}
+.gs-lej-s{padding:5px 8px;font-size:13px;gap:10px}.gs-lej-s b{font-size:14.5px}
+.gs-lej-alt{margin-top:6px;padding:0 8px;font-size:12px}
