@@ -1285,17 +1285,16 @@ async function hvCiz() {
       <div class="hv-buyuk"><span class="hv-n">${sayi_(v.toplam)}</span><span class="hv-ad">soru${eski ? ` · en eskisi <b class="${hvRenk(dk(eski.c))}">${hvSure(dk(eski.c) * 60)}</b>` : ""}</span></div>
       ${v.toplam ? `<div class="hv-tur">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => `<span class="hv-tur-s ${k}" style="flex:${v[k]}"></span>`).join("")}</div>
       <div class="hv-lej">${[["foto", "fotoğraf"], ["video", "video"], ["bilinmiyor", "tipi belirsiz"]].filter(([k]) => v[k]).map(([k, a]) => `<span><i class="${k}"></i>${sayi_(v[k])} ${a}</span>`).join("")}${v.odullu ? `<span class="etiket mor">${sayi_(v.odullu)} tanesi 2x ödüllü</span>` : ""}</div>` : '<div class="hv-bos">Bekleyen soru yok.</div>'}
-      ${L.length ? `<table class="hv-tablo hv-sorular"><tbody>
-      ${L.slice(0, ac ? L.length : 4).map(x => `<tr><td>${soruLink(x.id, x.id)}${x.odul ? ' <span class="etiket mor">2x</span>' : ""}</td><td class="hv-ders">${e((x.ders || "").replace(/\s*\(.*\)$/, ""))}</td><td class="soluk">${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td class="hv-sag ${hvRenk(dk(x.c))}">${hvSure(dk(x.c) * 60)}</td></tr>`).join("")}</tbody></table>
-      ${L.length > 4 ? `<button class="hv-daha" data-ac="${ac ? 0 : 1}">${ac ? "Daha az göster" : `+${L.length - 4} soru daha`}</button>` : ""}` : ""}
-      ${v.cozumde ? `<div class="hv-not">Ayrıca <b>${sayi_(v.cozumde)}</b> soru şu an birinin çözümünde, bu sayıya dahil değil.</div>` : ""}
+      ${L.length ? `<details class="hv-acilir" ${ac ? "open" : ""}><summary>Soruları göster (${L.length})</summary><table class="hv-tablo hv-sorular"><tbody>
+      ${L.map(x => `<tr class="tik" data-soru="${x.id}" title="Soruyu admin panelde aç"><td class="hv-ogr">${e(x.ogr || "Öğrenci")}${x.ogr_n != null ? ` <span class="soluk">(${sayi_(x.ogr_n)}${x.ogr_tam === false ? "+" : ""})</span>` : ""}</td><td class="hv-ders">${e((x.ders || "").replace(/\s*\(.*$/, ""))}</td><td class="soluk">${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}${x.odul ? ' <span class="etiket mor">2x</span>' : ""}</td><td class="hv-sag ${hvRenk(dk(x.c))}">${hvSure(dk(x.c) * 60)}</td></tr>`).join("")}</tbody></table></details>` : ""}
     </div>
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
       ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th></th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
-  const db = yer.querySelector(".hv-daha"); if (db) db.onclick = () => { hvAcik = db.dataset.ac === "1"; hvCiz(); };
+  const da = yer.querySelector(".hv-acilir"); if (da) da.ontoggle = () => { hvAcik = da.open; };
+  yer.querySelectorAll("[data-soru]").forEach(t => t.onclick = ev => { if (!ev.target.closest("a")) window.open(`${ADMIN}/Question/Detail/${t.dataset.soru}`, "_blank", "noopener"); });
 }
 // bekleme süresi rengi: 30 dk üstü sarı, 60 dk üstü kırmızı
 let hvAcik = false;
