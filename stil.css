@@ -896,3 +896,9 @@ body.gs-kilit{overflow:hidden}
 /* 4 Kas: kuyruk geniş blokta iki sütun (boş orta alan kalmasın); dar ekranda tek sütun */
 .hv-bekleyen{container-type:inline-size}
 @container (min-width:560px){.hv-kuyruk{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;row-gap:2px;align-content:start}.hv-kuyruk .hv-k-s+.hv-k-s{margin-top:0}}
+/* 4 Kas: tarih aralığı = tek parça düğme grubu */
+.gs-segment{display:inline-flex;padding:2px;border-radius:9px;background:hsl(var(--metin)/.05);gap:2px}
+.gs-segment button{height:28px;padding:0 11px;border:0;border-radius:7px;background:none;font:inherit;font-size:12.5px;font-weight:500;color:hsl(var(--metin-2));cursor:pointer;white-space:nowrap}
+.gs-segment button:hover{color:hsl(var(--metin))}
+.gs-segment button.secili{background:hsl(var(--yuzey));color:hsl(var(--metin));box-shadow:0 1px 2px hsl(var(--metin)/.12)}
+.gs-arac .gs-tarihler input{height:30px;font-size:12.5px}

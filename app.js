@@ -1384,10 +1384,11 @@ function gsAralikCiz() {
   const { Z } = gsV, [bas, son] = gsAralik(), ilk = Z.gunler[0].gun, bugun = gunStr(new Date()), ai = Z.ai || {};
   $("#gs-sekme").innerHTML = gsGorunum === "sure" ? "" : [["tum", "Tümü"], ["banka", "Banka cevapları"], ["ai", `Yapay zekâ${ai.calisiyor === false ? " · kapalı" : ""}`]].map(([v, a]) => `<button class="cip ${gsGorunum === v ? "secili" : ""}" data-g="${v}">${a}</button>`).join("");
   $("#gs-sekme").querySelectorAll(".cip").forEach(b => b.onclick = () => { gsGorunum = b.dataset.g; gsTF = { sira: null, f: {} }; gsAralikCiz(); });
-  $("#gs-aralik").innerHTML = `<span class="cipler">${[["bugun", "Bugün"], ["dun", "Dün"], ["7", "7 gün"], ["30", "30 gün"], ["hepsi", "Tümü"]].map(([v, a]) => `<button class="cip ${gsAr.tur === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span>
-    <span class="gs-tarihler"><input type="date" id="gs-bas" value="${bas}" min="${ilk}" max="${bugun}"><span>–</span><input type="date" id="gs-son" value="${son}" min="${ilk}" max="${bugun}"></span>`;
-  $("#gs-aralik").querySelectorAll(".cip").forEach(b => b.onclick = () => { gsAr = { tur: b.dataset.v }; gsAralikCiz(); });
-  ["#gs-bas", "#gs-son"].forEach(s => $(s).onchange = () => { gsAr = { tur: "ozel", bas: $("#gs-bas").value, son: $("#gs-son").value }; if (gsAr.bas > gsAr.son) [gsAr.bas, gsAr.son] = [gsAr.son, gsAr.bas]; gsAralikCiz(); });
+  $("#gs-aralik").innerHTML = `<span class="gs-segment">${[["bugun", "Bugün"], ["dun", "Dün"], ["7", "7 gün"], ["30", "30 gün"], ["hepsi", "Tümü"], ["ozel", "Özel"]].map(([v, a]) => `<button class="${gsAr.tur === v ? "secili" : ""}" data-v="${v}">${a}</button>`).join("")}</span>
+    ${gsAr.tur !== "ozel" ? "" : `<span class="gs-tarihler"><input type="date" id="gs-bas" value="${bas}" min="${ilk}" max="${bugun}"><span>–</span><input type="date" id="gs-son" value="${son}" min="${ilk}" max="${bugun}"></span>`}`;
+  // 4 Kas: hızlı aralıklar tek parça düğme grubu; tarih kutuları yalnız "Özel" seçiliyken (o anki aralıkla açılır)
+  $("#gs-aralik").querySelectorAll(".gs-segment button").forEach(b => b.onclick = () => { gsAr = b.dataset.v === "ozel" ? { tur: "ozel", bas, son } : { tur: b.dataset.v }; gsAralikCiz(); });
+  if (gsAr.tur === "ozel") ["#gs-bas", "#gs-son"].forEach(s => $(s).onchange = () => { gsAr = { tur: "ozel", bas: $("#gs-bas").value, son: $("#gs-son").value }; if (gsAr.bas > gsAr.son) [gsAr.bas, gsAr.son] = [gsAr.son, gsAr.bas]; gsAralikCiz(); });
   gsCiz(bas, son);
 }
 // 26 Eki: Tebeşir süreleri (Ulaş). Sisteme düşen HER soru (öğretmen + Tebeşir): düşme→cevap, düşme→çözüme alınma, alınma→cevap.
