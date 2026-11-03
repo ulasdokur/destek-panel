@@ -1276,9 +1276,9 @@ async function hvCiz() {
     const ne = x.durum === "cozumde" ? `${x.soru ?? ""}${sn != null ? ` · ${hvSure(sn)}` : ""}` : x.durum === "bosta" && sn != null ? hvSure(sn) : "";
     return `<tr class="tik" data-hesap="${e(x.ad)}"><td class="hv-bot-ad"><i class="hv-nokta ${d[1]}"></i>${e(x.ad)}</td>
       <td><span class="etiket ${d[1]}">${d[0]}</span></td><td class="hv-sn">${ne}</td>
-      <td class="hv-sag">${x.gon30}</td><td class="hv-sag soluk">${x.atla30}</td><td class="hv-sag">${bugunH[x.ad] != null ? sayi_(bugunH[x.ad]) : "—"}</td></tr>`;
+      <td class="hv-sag">${x.gon30}</td><td class="hv-sag soluk">${x.atla30}</td><td class="hv-sag">${x.bugun != null ? sayi_(x.bugun) : bugunH[x.ad] != null ? sayi_(bugunH[x.ad]) : "—"}</td></tr>`;
   }).join("");
-  const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length;
+  const nCoz = (B?.v?.botlar || []).filter(x => x.durum === "cozumde").length, nBot = (B?.v?.botlar || []).length, nBugun = (B?.v?.botlar || []).reduce((a, x) => a + (x.bugun || 0), 0);
   yer.innerHTML = `<section class="hv-kart">
     <div class="hv-blok">
       <div class="hv-baslik"><span>Yanıt bekleyen</span>${tazelik(hy, "havuz verisi")}</div>
@@ -1294,7 +1294,7 @@ async function hvCiz() {
       ${L.map(x => `<tr><td>${soruLink(x.id, x.id)}</td><td>${e(x.ders || "")}</td><td class="hv-sag">${dk(x.c)} dk</td><td>${x.m === "video" ? "video" : x.m === "foto" ? "fotoğraf" : "?"}</td><td>${x.odul ? '<span class="etiket mor">2x</span>' : ""}</td></tr>`).join("")}</tbody></table></div></details>
     </div>
     <div class="hv-blok">
-      <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde</span></span>${tazelik(by, "bot verisi")}</div>
+      <div class="hv-baslik"><span>Yapay zekâ hesapları <span class="soluk">· ${nCoz}/${nBot} çözümde${nBugun ? ` · bugün ${sayi_(nBugun)} cevap` : ""}</span></span>${tazelik(by, "bot verisi")}</div>
       ${nBot ? `<table class="hv-tablo hv-bot"><thead><tr><th>Hesap</th><th>Durum</th><th></th><th class="hv-sag" title="Son 30 dakikada gönderilen">30 dk gönd.</th><th class="hv-sag" title="Son 30 dakikada atlanan">atl.</th><th class="hv-sag">Bugün</th></tr></thead><tbody>${botlar}</tbody></table>` : '<div class="bos">Bot verisi henüz gelmedi.</div>'}
     </div></section>`;
   yer.querySelectorAll("[data-hesap]").forEach(t => t.onclick = () => gsV && gsHesapAc(t.dataset.hesap));
@@ -1316,12 +1316,12 @@ function gsCanliKur() {
     const C = { data: await gsCevaplar().catch(() => null) }; if (!C.data) return;
     gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C: C.data }; gsUN = null;
     gsSeritCiz();
-    if (document.activeElement?.closest("#gs-govde")) return;   // filtreye yazarken ekranı altından çekmeyelim; bir sonraki turda çizilir
+    if (document.activeElement?.matches?.("#gs-govde input, #gs-govde textarea, #gs-govde select")) return;   // filtreye yazarken ekranı altından çekmeyelim; bir sonraki turda çizilir
     const acik = [...document.querySelectorAll("#gs-govde details[open]")].map(d => d.id).filter(Boolean);
     const [bas, son] = gsAralik(); gsCiz(bas, son);
     acik.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
   };
-  gsZaman = setInterval(tur, 15000);
+  gsZaman = setInterval(tur, 10000);
   document.onvisibilitychange = () => { if (!document.hidden && gsZaman) tur(); };
 }
 // sayılar: "1.234", "20%", "126,62 TL" gibi metnin sayı kısmını eskiden yeniye 0,8 sn'de say
