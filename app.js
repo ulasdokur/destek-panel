@@ -199,10 +199,13 @@ document.addEventListener("keydown", ev => { if ((ev.metaKey || ev.ctrlKey) && e
 // ---------- sayfa durumları ----------
 const iskelet = (n = 9) => `<div class="iskelet">${Array.from({ length: n }, () => "<div><span></span><span></span><span></span><span></span><span></span></div>").join("")}</div>`;
 const ADLAR = { bugun: "Bugün", rapor: "Rapor", bekleyen: "Kararını bekleyenler", kontrol: "Haftalık kontrol", uyari: "Uyarılar", ogretmen: "Öğretmenler", sikayet: "Tüm şikayetler",
-  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", tsikayet: "Tebeşir şikayetleri", aiinc: "AI inceleme", cs: "Grispi destek", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
+  basvuru: "Solver başvuruları", takip: "Yakın takip", ogrenci: "Öğrenciler", eksi: "Eksi puanlılar", denetim: "Rastgele denetim", odeme: "Ödemeler", kesinti: "Hesap kesintileri", gonderici: "Tebeşir", kalite: "Kalite kontrol", cs: "Grispi destek", sure: "Tebeşir · Süreler", daha: "Daha fazla" };
 function git(s, alt) {
   if (s === "gunluk" || s === "haftalik") s = "rapor";
   if (s === "ozet") s = "bugun";
+  // 4 Kas (Ulaş): Şikayetler + AI inceleme tek sayfa "Kalite kontrol"; eski adresler buraya düşer
+  if (s === "tsikayet") s = "kalite";
+  if (s === "aiinc") { s = "kalite"; alt = alt || "ornek"; }
   sekme = s; location.hash = alt ? `${s}/${alt}` : s;
   document.querySelectorAll("#sekmeler button[data-s]").forEach(b => b.classList.toggle("secili", b.dataset.s === s));
   let grup = "";
@@ -211,7 +214,7 @@ function git(s, alt) {
   altlar.forEach(b => b.classList.remove("secili"));
   (altlar.find(b => b.dataset.s === s) || altlar.find(b => grup && b.dataset.grup === grup) || altlar.find(b => b.dataset.s === "daha")).classList.add("secili");
   $("#ust-arac").classList.remove("acik"); araKapat(); window.scrollTo(0, 0);
-  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), tsikayet, aiinc, cs, daha }[s] || bugun;
+  const f = { bugun, rapor, gunluk: rapor, haftalik: rapor, bekleyen, kontrol, uyari, ogretmen, sikayet, basvuru, takip, ogrenci, eksi, denetim, odeme, kesinti, gonderici, sure: () => gonderici("sure"), kalite, cs, daha }[s] || bugun;
   $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + iskelet();
   Promise.resolve().then(() => f(alt)).then(() => { ikon(); klampBagla(); }).catch(err => {
     if (sekme !== s) return;
@@ -559,6 +562,9 @@ async function bekleyen() {
   skListe($("#sk-liste"), acik, "bekleyen", bekleyen, "Bekleyen kayıt yok.");
 }
 
+// 4 Kas: Kalite kontrol = Şikayetler (ai/banka) + Cevap inceleme (ornek[:gün]/olumsuz)
+const kalite = alt => /^(ornek|olumsuz|sikayet)/.test(alt || "") ? aiinc(alt) : tsikayet(alt);
+const kaliteUst = sk => baslik("Kalite kontrol") + `<div class="gs-sekme kl-sekme"><button class="cip ${sk ? "secili" : ""}" onclick="git('kalite','ai')">Şikayetler<b class="rozet">${$("#r-tsikayet")?.textContent || ""}</b></button><button class="cip ${sk ? "" : "secili"}" onclick="git('kalite','ornek')">Cevap inceleme</button></div>`;
 // ---------- 28 Eki: Tebeşir şikayetleri (Ulaş: bizim cevaplara gelen şikayeti ben değerlendireceğim; banka ve yapay zekâ ayrı) ----------
 async function tsikayet(alt) {
   const grup = alt === "banka" ? "banka" : "ai", SET = grup === "banka" ? BIZIM_BANKA : BIZIM_AI, ids = [...SET];
@@ -568,8 +574,8 @@ async function tsikayet(alt) {
   const say = (ara, ad) => { const X = L.filter(ara), on = X.filter(s => s.son_karar === "ONAYLA").length, re = X.filter(s => s.son_karar === "REDDET").length, bk = X.length - on - re;
     return `<div class="ts-ozet-k"><div class="soluk">${ad}</div><div><b>${sayi(X.length)}</b> şikayet</div>
       <div class="soluk" data-ipucu="Öğrenci haklı: şikayet kabul edildi, cevap hatalı/yetersiz. Öğretmen haklı: reddedildi.">${on + re ? `<span class="${on / (on + re) >= 0.3 ? "gs-kirmizi" : ""}">%${Math.round(on / (on + re) * 100)} öğrenci haklı</span> (${on}/${on + re})` : "karar yok"}${bk ? ` · <b>${bk}</b> bekliyor` : ""}</div></div>`; };
-  const tab = (g, ad) => `<button class="cip ${grup === g ? "secili" : ""}" onclick="git('tsikayet','${g}')">${ad}</button>`;
-  $("#icerik").innerHTML = baslik("Tebeşir şikayetleri", "Bizim hesaplarımızın cevaplarına gelen öğrenci şikayetleri. Otomatik karar verilmez; her birine sen karar verirsin. Reddedilen şikayetler de burada sayılır.") + `
+  const tab = (g, ad) => `<button class="cip ${grup === g ? "secili" : ""}" onclick="git('kalite','${g}')">${ad}</button>`;
+  $("#icerik").innerHTML = kaliteUst(true) + `
     <div class="cipler" style="margin-bottom:12px">${tab("ai", "Yapay zekâ")}${tab("banka", "Banka")}</div>
     <div class="ts-ozet">${say(s => new Date(s.olusturma) >= bugunT, "Bugün")}${say(s => new Date(s.olusturma) >= yedi, "Son 7 gün")}${say(() => true, "Tümü")}</div>
     <h3 style="margin:6px 0">Kararını bekleyenler (${acik.length})</h3><div id="ts-liste"></div>`;
@@ -589,7 +595,7 @@ async function aiinc(alt) {
   if (sik) L = await q(sb.from("d_ai_inceleme").select("*").in("tur", ["sikayet", "yetersiz"]).order("olusturma", { ascending: false }).limit(300));
   else if (gun) L = await q(sb.from("d_ai_inceleme").select("*").eq("tur", "ornek").eq("gun", gun).order("ders"));
   const bitti = L.filter(x => x.karar).length;
-  const tab = (t, ad) => `<button class="cip ${tur === t || (sik && t === "olumsuz") ? "secili" : ""}" onclick="git('aiinc','${t}')">${ad}</button>`;
+  const tab = (t, ad) => `<button class="cip ${tur === t || (sik && t === "olumsuz") ? "secili" : ""}" onclick="git('kalite','${t}')">${ad}</button>`;
   const gunSecim = !sik && gunler.length ? `<select id="ai-gun" class="ince kucuk">${gunler.map(g => `<option ${g === gun ? "selected" : ""}>${g}</option>`).join("")}</select>` : "";
   const dag = {}; L.forEach(x => { const b = (x.ders || "").replace(/\(.*?\)/g, "").replace(/^(TYT|AYT|YKS|LGS)\s+/, "").trim() || "Diğer"; dag[b] = (dag[b] || 0) + 1; });
   const foto = v => (Array.isArray(v) ? v : v ? [v] : []).map(u => `<a href="${e(u)}" target="_blank"><img src="${e(u)}" loading="lazy" style="width:100%;border-radius:8px;border:1px solid var(--cizgi,#ddd)"></a>`).join("");
@@ -601,11 +607,11 @@ async function aiinc(alt) {
       <div class="cipler ai-kusur" style="margin-bottom:8px">${AI_KUSUR.map(k => `<button class="cip ${(x.kusurlar || []).includes(k) ? "secili" : ""}" data-v="${e(k)}">${e(k)}</button>`).join("")}</div>
       <textarea class="ai-not" rows="2" placeholder="Nasıl daha iyi olurdu? (çözümlerde buna dikkat edeceğiz)" style="width:100%;box-sizing:border-box">${e(x.notu || "")}</textarea>
       <div style="margin-top:6px;display:flex;gap:8px;align-items:center"><button class="ince kucuk ai-kaydet">Kaydet</button><span class="soluk ai-durum">${x.karar_zamani ? "Kaydedildi" : ""}</span></div></section>`;
-  $("#icerik").innerHTML = baslik("AI inceleme") + `
-    <p class="soluk" style="margin:0 0 10px">${sik ? "Bizim cevaplara gelen şikayetler ve Yetersiz değerlendirmeler. Çözümün neresi kötüydü onu işaretle; şikayet kararı Şikayetler sayfasında." : "Her gün yapay zekâ cevaplarından seçilen örnekler. Beğenmediğine kusur ve not yaz; notlar çözüm kuralına dönüşür."}</p>
+  $("#icerik").innerHTML = kaliteUst(false) + `
+    <p class="soluk" style="margin:0 0 10px">${sik ? "Bizim cevaplara gelen şikayetler ve Yetersiz değerlendirmeler. Çözümün neresi kötüydü onu işaretle; şikayet kararı Şikayetler sekmesinde." : "Her gün yapay zekâ cevaplarından seçilen örnekler. Beğenmediğine kusur ve not yaz; notlar çözüm kuralına dönüşür."}</p>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px"><div class="cipler">${tab("ornek", "Günün örnekleri")}${tab("olumsuz", "Olumsuzlar")}</div>${gunSecim}<span class="soluk"${!sik && L.length ? ` data-ipucu="${e(Object.entries(dag).sort((a, b) => b[1] - a[1]).map(([b, n]) => `${b} ${n}`).join(" · "))}"` : ""}>İncelenen ${bitti} / ${L.length}</span></div>
     <div id="ai-liste">${L.length ? L.map(kart).join("") : `<p class="soluk">${sik ? "Olumsuz değerlendirme yok." : "Bu gün için örneklem yok (her gece 23:45'ten sonra hazırlanır)."}</p>`}</div>`;
-  const gs = $("#ai-gun"); if (gs) gs.onchange = () => git("aiinc", "ornek:" + gs.value);
+  const gs = $("#ai-gun"); if (gs) gs.onchange = () => git("kalite", "ornek:" + gs.value);
   document.querySelectorAll(".ai-k").forEach(k => {
     k.querySelectorAll(".ai-karar .cip").forEach(b => b.onclick = () => { const s_ = b.classList.contains("secili"); k.querySelectorAll(".ai-karar .cip").forEach(x => x.classList.remove("secili")); if (!s_) b.classList.add("secili"); });
     k.querySelectorAll(".ai-kusur .cip").forEach(b => b.onclick = () => b.classList.toggle("secili"));
@@ -1242,12 +1248,12 @@ async function gonderici(mod) {
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
   gsCanliKur();
-  $("#icerik").innerHTML = baslik(bas_, "") + `<div id="hv-canli"></div><div id="gs-serit-yer"></div>
+  $("#icerik").innerHTML = baslik(bas_, "") + `${mod === "sure" ? "" : '<div id="hv-canli"></div>'}<div id="gs-serit-yer"></div>
     <div class="gs-arac"><div class="gs-sekme" id="gs-sekme"></div><div class="gs-aralik" id="gs-aralik"></div></div>
     <div id="gs-govde"></div>`;
   gsSeritCiz();
   gsAralikCiz();
-  hvKur();
+  if (mod !== "sure") hvKur();   // 4 Kas (Ulaş): Süreler'de yanıt bekleyen + hesap kartı gereksiz
 }
 // 3 Kas (Ulaş): canlı kart — solda anlık yanıt bekleyen sorular (Hetzner izle.py, 15 sn), sağda AI botlarının durumu
 // (mini bot_durum.py, 15 sn: çözümde / boşta / kapalı). İkisi 5 sn'de bir tek sorguyla okunur; bot satırına tıklayınca o hesabın cevapları açılır.
