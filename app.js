@@ -1210,6 +1210,9 @@ let gsUN = null;
 // 28 Eki (Ulaş): reddedilen şikayet öğrenci değerlendirmesini "yeterli"ye çeviriyordu; halkada şikayetler ayrı dilim
 let gsSik = new Map();
 const gsSinif = x => { const k = gsSik.get(String(x.soru_id)); return !k ? x.deg : k.son_karar === "ONAYLA" ? "sik_onay" : k.son_karar === "REDDET" ? "sik_red" : "sik_bek"; };
+// 6 Kas (Ulaş): yeterli oranı = (yeterli + şikayeti reddedilen) ÷ (yeterli + şikayeti reddedilen + yetersiz).
+// Yetersiz = şikayeti bekleyen + şikayeti haklı bulunan + yetersiz deyip şikayet açmayan. Otomatik onay yeterli sayılır; değerlendirme bekleyen dahil değil.
+const gsYeterli = L => { let p = 0, y = 0; for (const x of L) { const k = gsSinif(x); if (k === "yeterli" || k === "otomatik" || k === "sik_red") p++; else if (k === "yetersiz" || k === "sik_bek" || k === "sik_onay") y++; } return [p, p + y]; };
 function gsUcret(ders) {
   const U = gsV.Z.ucret || {}, g = U._genel || {};
   if (!gsUN) { gsUN = {}; for (const [k, v] of Object.entries(U)) { if (k === "_genel") continue; const a = gsUN[dersAnahtar(k)] ||= { top: 0, n: 0 }; a.top += v.ort * v.n; a.n += v.n; }
@@ -1522,9 +1525,9 @@ function gsCiz(bas, son) {
   const dTop = DL.reduce((a, [k]) => a + dsay(k), 0) || 1, R = 15.915;
   let ofs = 25; const halka = DL.map(([k, , r]) => { const n = dsay(k); if (!n) return ""; const p = n / dTop * 100, h = `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${r}" stroke-width="5" stroke-dasharray="${p} ${100 - p}" stroke-dashoffset="${ofs}"/>`; ofs -= p; return h; }).join("");
   const k2 = `<section class="gs-h gs-h2">
-    <div class="gs-h-bas" data-ipucu="Yeterli oranı = (yeterli + otomatik onay) ÷ değerlendirilen. Şikayet edilen her cevap, şikayet reddedilse de yeterli sayılmaz. Bekleyenler dahil değil.">Öğrenci değerlendirmesi</div>
+    <div class="gs-h-bas" data-ipucu="Yeterli oranı = (yeterli + otomatik onay + şikayeti reddedilen) ÷ (bunlar + yetersiz). Yetersiz: şikayeti bekleyen, şikayeti haklı bulunan ve yetersiz deyip şikayet açmayan. Değerlendirme bekleyenler dahil değil.">Öğrenci değerlendirmesi</div>
     <div class="gs-h2-ic"><svg class="gs-halka" viewBox="0 0 42 42"><circle r="${R}" cx="21" cy="21" fill="none" stroke="hsl(var(--muted))" stroke-width="5"/>${halka}</svg>
-      <div class="gs-halka-o"><b data-sayac="yeterli-orani">${yuzde(dsay("yeterli") + dsay("otomatik"), ogr + dsay("otomatik"))}</b><small>yeterli</small></div>
+      <div class="gs-halka-o"><b data-sayac="yeterli-orani">${yuzde(...gsYeterli(B))}</b><small>yeterli</small></div>
       <div class="gs-lej">${DL.filter(([k]) => k === "yeterli" || dsay(k)).map(([k, a, r]) => `<button data-ipucu="${e(DLA[k] || a)}" class="gs-lej-s ${(k === "yetersiz" || k === "sik_onay") && dsay(k) ? "kirmizi" : ""}" data-f="${k}"><i style="background:${r}"></i><span>${a}</span><b data-sayac="d-${k}">${sayi(dsay(k))}</b></button>`).join("")}
         ${(() => { const kr = dsay("sik_onay") + dsay("sik_red"); return kr ? `<div class="soluk gs-lej-alt">Kararı verilen ${sayi(kr)} şikayetin %${Math.round(dsay("sik_onay") / kr * 100)}'inde öğrenci haklı</div>` : ""; })()}</div></div></section>`;
   // (3) tasarruf + son 14 gün
@@ -1730,7 +1733,7 @@ function gs14Ciz(T) {
   $("#gs-14").innerHTML = `<div class="gs-bas"><h3>Son 14 gün</h3></div><p class="gs-acikla">Her çubuk bir gün, en sağdaki bugün; üstüne gelince o günün değeri çıkar. Sağdaki sayı 14 günün toplamı ya da ortalaması.</p><div class="gs-minis">
     ${kucuk("Gönderilen cevap · toplam", g => g.gonderilen || 0, top("gonderilen"), sayi)}
     ${kucuk("Eşleşme oranı · ortalama", g => oran(g.gonderilen || 0, g.bakilan), oran(top("gonderilen"), top("bakilan")), yz)}
-    ${kucuk("Yeterli oranı · ortalama", g => oran((g.yeterli || 0) + (g.otomatik || 0), (g.yeterli || 0) + (g.yetersiz || 0) + (g.otomatik || 0)), oran(top("yeterli") + top("otomatik"), top("yeterli") + top("yetersiz") + top("otomatik")), yz)}
+    ${kucuk("Yeterli oranı · ortalama", g => oran(...gsYeterli(C.filter(x => x.zaman.slice(0, 10) === g.gun))), oran(...gsYeterli(C.filter(x => G.some(g => g.gun === x.zaman.slice(0, 10))))), yz)}
     ${kucuk("Tasarruf · toplam", tg, G.reduce((a, g) => a + tg(g), 0), x => sayi(Math.round(x)) + " TL")}</div>`;
 }
 function gsDersCiz(L, D7) {
