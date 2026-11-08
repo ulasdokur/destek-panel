@@ -947,3 +947,8 @@ body.gs-kilit{overflow:hidden}
 
 /* 4 Kas j: Kalite kontrol üst sekmesi */
 .kl-sekme .rozet{margin-left:6px}.kl-sekme .rozet:empty{display:none}
+/* 8 Kas: mobil/tablet taşmaları — Rapor ızgarası tablo genişliğine uzuyordu; Süreler/Kalite tabloları, tarih düğme grubu ve hesap tablosu kaydırmasızdı */
+@media (max-width:1180px){.r-izgara{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1280px){.gs-tablo,.hv-bot{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+@media (max-width:767px){.gs-segment{max-width:100%;overflow-x:auto;scrollbar-width:none}.gs-segment::-webkit-scrollbar{display:none}.gs-h-buyuk{flex-wrap:wrap;row-gap:0}}
+@media (max-width:767px){.gs-lej,.gs-lej-s{min-width:0;max-width:100%;box-sizing:border-box}.gs-lej-s{grid-template-columns:10px minmax(0,1fr) auto 10px}.gs-lej-s>span{min-width:0;overflow-wrap:anywhere}}
