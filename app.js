@@ -1232,12 +1232,33 @@ function gsAralik() {
   return { bugun: [bugun, bugun], dun: [gunEkle(bugun, -1), gunEkle(bugun, -1)], 7: [gunEkle(bugun, -6), bugun], 30: [gunEkle(bugun, -29), bugun], hepsi: [ilk, bugun] }[t];
 }
 // 28 Eki: Supabase tek istekte en çok 1000 satır döndürüyor (.limit(5000) sessizce 1000'de kesiyordu); sayfa sayfa hepsi
-async function gsCevaplar() {
+// 11 Kas: egress kotası doldu (her değişiklikte ~9 MB'lık tablonun tamamı iniyordu). Artık tablo tarayıcıda (IndexedDB) saklanır,
+// açılışta / "Yenile"de yalnız guncelleme'si son çekimden sonra olan satırlar gelir (10 dk örtüşme payıyla). 24 saatte bir tam çekim (silinenler temizlensin).
+const gsDB = (() => { let p; return () => p ||= new Promise((ok, no) => { const r = indexedDB.open("tebesir", 1); r.onupgradeneeded = () => r.result.createObjectStore("o"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); })();
+async function gsOnbOku() { try { const db = await gsDB(); return await new Promise(ok => { const r = db.transaction("o").objectStore("o").get("cevap"); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(null); }); } catch { return null; } }
+async function gsOnbYaz(v) { try { (await gsDB()).transaction("o", "readwrite").objectStore("o").put(v, "cevap"); } catch { } }
+async function gsSayfala(f) {
   let L = [], i = 0;
-  while (true) {
-    const d = await q(sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).order("soru_id").range(i, i + 999));
-    L = L.concat(d); if (d.length < 1000) break; i += 1000;
+  while (true) { const d = await q(f().range(i, i + 999)); L = L.concat(d); if (d.length < 1000) break; i += 1000; }
+  return L;
+}
+let gsCekim = null;   // son çekim: { t: Date.now(), yeni: kaç satır geldi, tam: true/false }
+async function gsCevaplar(tam = false) {
+  const o = tam ? null : await gsOnbOku(), taze = o && o.s === 1 && o.L?.length && Date.now() - o.tam_t < 864e5;
+  const enSon = (L, a) => L.reduce((m, x) => x.guncelleme > m ? x.guncelleme : m, a);
+  let L, son, Y;
+  if (taze) {
+    const esik = new Date(new Date(o.son).getTime() - 6e5).toISOString();
+    Y = await gsSayfala(() => sb.from("d_gonderici_cevap").select("*").gt("guncelleme", esik).order("guncelleme").order("soru_id"));
+    const M = new Map(o.L.map(x => [x.soru_id, x])); Y.forEach(x => M.set(x.soru_id, x));
+    L = [...M.values()]; son = enSon(Y, o.son);
+  } else {
+    L = Y = await gsSayfala(() => sb.from("d_gonderici_cevap").select("*").order("zaman", { ascending: false }).order("soru_id"));
+    son = enSon(L, "");
   }
+  L.sort((a, b) => a.zaman < b.zaman ? 1 : a.zaman > b.zaman ? -1 : a.soru_id - b.soru_id);
+  gsOnbYaz({ s: 1, L, son, tam_t: taze ? o.tam_t : Date.now() });
+  gsCekim = { t: Date.now(), yeni: Y.length, tam: !taze };
   return L;
 }
 // 26 Eki: Süreler Tebeşir'in alt sayfası (#sure); ana sayfa Tümü / Banka cevapları / Yapay zekâ
@@ -1252,7 +1273,7 @@ async function gonderici(mod) {
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
   gsCanliKur();
-  $("#icerik").innerHTML = baslik(bas_, "") + `${mod === "sure" ? "" : '<div id="hv-canli"></div>'}<div id="gs-serit-yer"></div>
+  $("#icerik").innerHTML = baslik(bas_, "") + `<div class="gs-yenile-bar" id="gs-yenile-yer"></div>${mod === "sure" ? "" : '<div id="hv-canli"></div>'}<div id="gs-serit-yer"></div>
     <div class="gs-arac"><div class="gs-sekme" id="gs-sekme"></div><div class="gs-aralik" id="gs-aralik"></div></div>
     <div id="gs-govde"></div>`;
   gsSeritCiz();
@@ -1307,29 +1328,30 @@ async function hvCiz() {
 let hvAcik = false; const HV_KISA = 10;   // geniş ekranda iki sütun × 5 satır
 const hvRenk = d => d == null ? "" : d >= 60 ? "hv-gec" : d >= 30 ? "hv-uyar" : "";
 function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
-// 25 Eki: Ulaş sayfayı yenilemeden sayıların akmasını istedi. 20 sn'de bir okunur; veri değiştiyse yeniden çizilir, sayılar eski değerden yeniye sayarak geçer.
-let gsSenk = "", gsImza = "", gsZaman = null, gsSayac = {};
-function gsCanliKur() {
-  if (gsZaman) return;
-  const tur = async () => {
-    if (!$("#gs-govde")) { clearInterval(gsZaman); gsZaman = null; return; }
-    if (document.hidden) return;
-    gsSeritCiz();   // "son hareket x dk önce" her turda tazelensin
+// 11 Kas (Ulaş): 10 sn'lik otomatik yenileme egress kotasını doldurdu; artık yalnız "Yenile" düğmesiyle, yalnız değişen satırlar çekilir.
+let gsSenk = "", gsImza = "", gsSayac = {}, gsYenileniyor = false;
+function gsCanliKur() { gsYenileCiz(); }
+function gsYenileCiz() {
+  const yer = $("#gs-yenile-yer"); if (!yer) return;
+  const c = gsCekim, saat = c ? new Date(c.t).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const ne = !c ? "" : c.tam ? " · tam liste indirildi" : c.yeni ? ` · ${sayi(c.yeni)} değişen satır geldi` : " · yeni bir şey yok";
+  yer.innerHTML = `<span class="soluk">Son güncelleme ${saat}${ne}</span> <button class="cip" id="gs-yenile"${gsYenileniyor ? " disabled" : ""}>${gsYenileniyor ? "Yenileniyor…" : "Yenile"}</button>`;
+  $("#gs-yenile").onclick = gsYenile;
+}
+async function gsYenile() {
+  if (gsYenileniyor || !$("#gs-govde")) return;
+  gsYenileniyor = true; gsYenileCiz();
+  try {
     const O = await sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%"); if (O.error || !O.data) return;
-    // 25 Eki: değişiklik bütün satırların saatinden anlaşılır (tek bir satırın saati ileri yazılınca panel donuyordu); gösterilen saat ileri olamaz
     const imza = O.data.map(x => x.k + x.zaman).sort().join("|"), simdi = new Date().toISOString();
-    if (imza === gsImza) return;
     const senk = O.data.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
-    const C = { data: await gsCevaplar().catch(() => null) }; if (!C.data) return;
-    gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C: C.data }; gsUN = null;
+    const C = await gsCevaplar().catch(() => null); if (!C) return;
+    gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C }; gsUN = null;
     gsSeritCiz();
-    if (document.activeElement?.matches?.("#gs-govde input, #gs-govde textarea, #gs-govde select")) return;   // filtreye yazarken ekranı altından çekmeyelim; bir sonraki turda çizilir
     const acik = [...document.querySelectorAll("#gs-govde details[open]")].map(d => d.id).filter(Boolean);
     const [bas, son] = gsAralik(); gsCiz(bas, son);
     acik.forEach(id => { const d = document.getElementById(id); if (d) d.open = true; });
-  };
-  gsZaman = setInterval(tur, 10000);
-  document.onvisibilitychange = () => { if (!document.hidden && gsZaman) tur(); };
+  } finally { gsYenileniyor = false; gsYenileCiz(); }
 }
 // sayılar: "1.234", "20%", "126,62 TL" gibi metnin sayı kısmını eskiden yeniye 0,8 sn'de say
 function gsSayacAkit() {
