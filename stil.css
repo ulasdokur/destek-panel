@@ -958,9 +958,9 @@ body.gs-kilit{overflow:hidden}
 .ai-nedir ol{margin:10px 0 6px;padding-left:20px;display:grid;gap:6px;font-size:14px;line-height:1.5}.ai-nedir p{margin:0;font-size:13px}
 .ai-ust{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.ai-ust .cipler{margin:0}
 .ai-ilerle{height:4px;border-radius:4px;background:hsl(var(--yuzey-2));margin:0 0 14px;overflow:hidden}.ai-ilerle span{display:block;height:100%;background:hsl(var(--basari))}
-.ai-izgara{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}
-.ai-k .m-kutu{aspect-ratio:auto;height:190px}.ai-k .m-kutu img{object-fit:contain;background:#fff}
+.ai-izgara{grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.ai-k .medya{grid-template-columns:1fr 1fr}.ai-k .m-kutu{aspect-ratio:auto;height:170px}.ai-k .m-kutu img{object-fit:contain;background:#fff}
 .ai-ogr,.ai-onceki{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}.ai-ogr .klamp,.ai-onceki .klamp{flex:1 1 100%}
 .ai-aks{margin-top:auto;display:grid;gap:10px}.ai-kotu{display:grid;gap:8px}.ai-kotu .cipler{margin:0}.ai-kotu .cip{height:32px;font-size:13px}
 .ai-kotu textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px;border-radius:10px;padding:8px}.ai-kotu .birincil{justify-self:start}.ai-soru{font-size:12px}
-@media (max-width:767px){.ai-izgara{grid-template-columns:1fr}.ai-k .m-kutu{height:150px}}
+@media (max-width:767px){.ai-izgara{grid-template-columns:1fr}.ai-k .medya{grid-template-columns:1fr 1fr}.ai-k .m-kutu{height:150px}}
