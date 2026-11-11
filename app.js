@@ -1365,7 +1365,7 @@ async function hvCiz() {
 // bekleme süresi rengi: 30 dk üstü sarı, 60 dk üstü kırmızı
 let hvAcik = false; const HV_KISA = 10;   // geniş ekranda iki sütun × 5 satır
 const hvRenk = d => d == null ? "" : d >= 60 ? "hv-gec" : d >= 30 ? "hv-uyar" : "";
-function hvKur() { hvCiz(); if (!hvZaman) hvZaman = setInterval(hvCiz, 5000); }
+function hvKur() { if (hvZaman) { clearInterval(hvZaman); hvZaman = null; } hvCiz(); }   // 11 Kas (Ulaş): 5 sn döngü yok; açılışta + Yenile ile okunur
 // 11 Kas (Ulaş): 10 sn'lik otomatik yenileme egress kotasını doldurdu; artık yalnız "Yenile" düğmesiyle, yalnız değişen satırlar çekilir.
 let gsSenk = "", gsImza = "", gsSayac = {}, gsYenileniyor = false;
 function gsCanliKur() { gsYenileCiz(); }
@@ -1385,6 +1385,7 @@ async function gsYenile() {
     const senk = O.data.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
     const [C, SK] = await Promise.all([gsCevaplar(), gsSikCek()]).catch(() => []); if (!C) { bildir("Yenilenemedi, bağlantıyı kontrol edip tekrar dene."); return; }
     gsSik = new Map(SK.map(x => [String(x.question_id), x]));
+    hvCiz();
     gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C }; gsUN = null;
     gsSeritCiz();
     const acik = [...document.querySelectorAll("#gs-govde details[open]")].map(d => d.id).filter(Boolean);
