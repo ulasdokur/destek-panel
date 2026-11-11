@@ -1272,12 +1272,12 @@ async function gonderici(mod) {
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), simdi = new Date().toISOString(), senk = O.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
   if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
-  gsCanliKur();
   $("#icerik").innerHTML = baslik(bas_, "") + `<div class="gs-yenile-bar" id="gs-yenile-yer"></div>${mod === "sure" ? "" : '<div id="hv-canli"></div>'}<div id="gs-serit-yer"></div>
     <div class="gs-arac"><div class="gs-sekme" id="gs-sekme"></div><div class="gs-aralik" id="gs-aralik"></div></div>
     <div id="gs-govde"></div>`;
   gsSeritCiz();
   gsAralikCiz();
+  gsCanliKur();
   if (mod !== "sure") hvKur();   // 4 Kas (Ulaş): Süreler'de yanıt bekleyen + hesap kartı gereksiz
 }
 // 3 Kas (Ulaş): canlı kart — solda anlık yanıt bekleyen sorular (Hetzner izle.py, 15 sn), sağda AI botlarının durumu
