@@ -816,7 +816,7 @@ const yiginCubuk = (P, toplamYazi) => { const t = P.reduce((a, p) => a + p[1], 0
 const kategori = s => s.kategori || ["diger"];  // kategoriler Mac'te (ortak.py kategori) hesaplanıp kayda yazılır; tek kaynak
 async function ogretmen(id) {
   if (id) return ogretmenDetay(+id);
-  const [O, U, S7, NU] = await Promise.all([gsSayfala(() => sb.from("d_ogretmen").select("*").order("ogretmen_id")), gsSayfala(() => sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7), uyariSayilari()]);
+  const [O, U, S7, NU] = await Promise.all([gsSayfala(() => sb.from("d_ogretmen").select("*").order("id")), gsSayfala(() => sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7), uyariSayilari()]);
   const son = {}, bekleyenU = {}, H = {};
   for (const u of U) { if (u.durum === "gonderildi" || u.kademe === "AKTIF") son[u.ogretmen_id] = u; if (u.durum === "taslak" || u.durum === "onaylandi") bekleyenU[u.ogretmen_id] = u; }
   const Q = {};  // öğretmen başına aynı soru tek sayılır, onaylanan varsa o (uyari.py plan() ile aynı)
