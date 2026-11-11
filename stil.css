@@ -942,7 +942,6 @@ body.gs-kilit{overflow:hidden}
 @media (max-width:700px){.ts-ozet{grid-template-columns:1fr}}
 /* 4 Kas i: AI inceleme — tarih kutusu dar, kusurlar yalnız "Beğenmedim" seçilince */
 #ai-gun{width:auto;flex:0 0 auto}
-.ai-k:not(:has(.ai-karar .cip.secili[data-v="begenmedim"])) .ai-kusur{display:none}
 .gs-analiz .gs-izgara{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}.gs-analiz .gs-izgara>#gs-ders,.gs-analiz .gs-izgara>#gs-sebep,.gs-analiz .gs-izgara>#gs-benz,.gs-analiz .gs-izgara>#gs-14,.gs-analiz .gs-izgara>#gs-yorum{grid-column:1/-1}@media (max-width:900px){.gs-analiz .gs-izgara{grid-template-columns:minmax(0,1fr)}}
 
 /* 4 Kas j: Kalite kontrol üst sekmesi */

@@ -24,7 +24,7 @@ const e = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&
 const SEBEP = { 7: "Yapılan çözümler hatalı", 8: "Format kurallarına uyulmamış", 6: "Soruların çoğunluğu çözülmemiş", 4: "Yetersiz açıklama", 5: "Çözüm aşamaları anlaşılır değil", 1: "Görüntü kalitesi kötü", 2: "Yazı okunamıyor", 3: "Yapay zeka veya dış kaynak kullanımı", 9: "Uygunsuz içerik" };  // admin RejectSolver sebep kodları
 const SIK_UYARI = 3, UYARI_TUR = ["F", "Y", "G", "GERI", "PASIF"];  // son 30 günde bu kadar uyarı alan "sık uyarı" sayılır
 async function uyariSayilari() {
-  const L = await q(sb.from("d_uyari").select("ogretmen_id,kademe,gonderim").eq("durum", "gonderildi").in("kademe", UYARI_TUR).gte("gonderim", new Date(Date.now() - 30 * 864e5).toISOString()).limit(5000));
+  const L = await gsSayfala(() => sb.from("d_uyari").select("ogretmen_id,kademe,gonderim").eq("durum", "gonderildi").in("kademe", UYARI_TUR).gte("gonderim", new Date(Date.now() - 30 * 864e5).toISOString()).order("id"));
   const N = {}; L.forEach(u => N[u.ogretmen_id] = (N[u.ogretmen_id] || 0) + 1); return N;
 }
 const sikEtiket = n => n >= SIK_UYARI ? ` <span class="etiket uyari" data-ipucu="Son 30 günde ${n} uyarı bildirimi gönderildi">Sık uyarı · ${n}</span>` : "";
@@ -118,7 +118,7 @@ async function basla() {
   ikon();
   const h = location.hash.slice(1); if (h) sekme = h.split("/")[0];
   git(sekme, location.hash.slice(1).split("/")[1]);
-  rozetler(); setInterval(rozetler, 60000);
+  rozetler(); window._rozetZ ||= setInterval(rozetler, 60000);
 }
 function girisGoster(m = "") { $("#uygulama").hidden = true; $("#giris").hidden = false; $("#g-hata").textContent = m; }
 $("#giris-form").onsubmit = async ev => {
@@ -219,7 +219,7 @@ function git(s, alt) {
   Promise.resolve().then(() => f(alt)).then(() => { ikon(); klampBagla(); }).catch(err => {
     if (sekme !== s) return;
     console.error(err);
-    $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + `<div class="durum-hata"><span class="dh-ikon"><i data-lucide="cloud-off"></i></span><b>${e(ADLAR[s] || "Sayfa")} yüklenemedi</b>Bağlantıyı kontrol edip yeniden dene.<button class="ince" onclick="git('${s}'${alt ? `,'${e(alt)}'` : ""})">Tekrar dene</button></div>`;
+    $("#icerik").innerHTML = baslik(ADLAR[s] || "", "") + `<div class="durum-hata"><span class="dh-ikon"><i data-lucide="cloud-off"></i></span><b>${e(ADLAR[s] || "Sayfa")} yüklenemedi</b>Bağlantıyı kontrol edip yeniden dene.<button class="ince" data-s="${e(s)}" data-a="${e(alt || "")}" onclick="git(this.dataset.s, this.dataset.a || undefined)">Tekrar dene</button></div>`;
     ikon();
   });
 }
@@ -428,7 +428,7 @@ document.addEventListener("keydown", ev => {
 async function bugun() {
   const h = haftaNo(), yon = ben?.rol === "yonetici";
   const [bek, kon, konB, tas, bas, hata, dur, uh, ks, csS] = await Promise.all([
-    q(sb.from("d_sikayet").select("key,olusturma,d_karar(tip)").eq("durum", "bekliyor")),
+    q(sb.from("d_sikayet").select("key,olusturma,ogretmen_id,d_karar(tip)").eq("durum", "bekliyor")).then(L => L.filter(x => !bizimMi(x.ogretmen_id))),
     q(sb.from("d_sikayet").select("key,d_karar(tip)").eq("kontrol_hafta", h)),
     sb.from("d_basvuru").select("id", { count: "exact", head: true }).eq("kontrol_hafta", h).is("kontrol_secim", null),
     q(sb.from("d_uyari").select("kademe").eq("durum", "taslak")),
@@ -524,7 +524,7 @@ async function rapor() {
     <div class="kutular">
       ${kutu("inbox", "Gelen şikayet", bu.length, `${say(bu, s => s.tur === "s")} soru · ${say(bu, s => s.tur === "c")} cevap · ${fark(bu.length, ge.length, true)}`, "sikayet")}
       ${kutu("user-check", "Öğrenci haklı", ob == null ? "—" : "%" + ob, `${haklı(bu)} şikayet · ${fark(ob, og, true)}`, "sikayet")}
-      ${kutu("clock", "Kararını bekleyen", say(bu, s => s.durum === "bekliyor"), "senin kararını bekliyor", "bekleyen")}
+      ${kutu("clock", "Kararını bekleyen", say(bu, s => s.durum === "bekliyor" && !bizimMi(s.ogretmen_id)), "senin kararını bekliyor", "bekleyen")}
       ${kutu("badge-check", "Otomatik karar doğruluğu", kN ? `%${Math.round(kD / kN * 100)}` : "—", kN ? `${kN} kontrolden ${kD} doğru` : "bu hafta kontrol yok", "kontrol")}
     </div>
     <div class="r-izgara">
@@ -569,7 +569,7 @@ const kaliteUst = sk => baslik("Kalite kontrol") + `<div class="gs-sekme kl-sekm
 // ---------- 28 Eki: Tebeşir şikayetleri (Ulaş: bizim cevaplara gelen şikayeti ben değerlendireceğim; banka ve yapay zekâ ayrı) ----------
 async function tsikayet(alt) {
   const grup = alt === "banka" ? "banka" : "ai", SET = grup === "banka" ? BIZIM_BANKA : BIZIM_AI, ids = [...SET];
-  const L = await q(sb.from("d_sikayet").select("*,d_karar(*)").eq("tur", "c").in("ogretmen_id", ids).order("olusturma", { ascending: false }).limit(2000));
+  const L = await gsSayfala(() => sb.from("d_sikayet").select("*,d_karar(*)").eq("tur", "c").in("ogretmen_id", ids).order("olusturma", { ascending: false }).order("key"));
   const bek = L.filter(s => s.durum === "bekliyor"), acik = bek.filter(s => !s.d_karar.some(k => k.tip === "bekleyen")).reverse();
   const bugunT = new Date(); bugunT.setHours(0, 0, 0, 0); const yedi = new Date(bugunT - 6 * 864e5);
   const say = (ara, ad) => { const X = L.filter(ara), on = X.filter(s => s.son_karar === "ONAYLA").length, re = X.filter(s => s.son_karar === "REDDET").length, bk = X.length - on - re;
@@ -687,7 +687,7 @@ async function uyari() {
   const KT = Object.fromEntries(kt.length ? (await q(sb.from("d_takip").select("*").in("key", kt))).map(s => [s.key, takipKayit(s)]) : []);
   const K = Object.fromEntries(kanitlar.map(k => [k, coz(k)[0] === "s" ? KS[coz(k)[1]] : KT[coz(k)[1]]]));
   const kart = u => { const kn = (u.kanit || []).filter(k => K[k]);
-    return `<section class="kart u-kart" data-id="${u.id}" data-durum="${e(u.durum)}">
+    return `<section class="kart u-kart" data-id="${u.id}" data-durum="${e(u.durum)}" data-kademe="${e(u.kademe)}">
     <div class="kart-ust"><a class="u-ad" href="#" title="Öğretmenin geçmişi" onclick="event.preventDefault();git('ogretmen','${u.ogretmen_id}')">${e(u.ad)}</a>${sikEtiket(NU[u.ogretmen_id] || 0)}<span class="etiket ${u.kademe === "PASIF" ? "hata" : u.kademe === "G" || u.kademe === "Y" ? "uyari" : "mor"}">${KADEME[u.kademe] || e(u.kademe)}</span>
       <span class="soluk">${tarih(u.olusturma)}</span>
       ${u.durum === "onaylandi" ? `<span class="etiket ok">Onaylandı (${e(u.karar_veren)}), birazdan gidecek</span>` : ""}</div>
@@ -699,7 +699,7 @@ async function uyari() {
       : '<p class="u-not">Bu taslağa soru bağlanmamış (eski kayıt).</p>'}
     <div class="kart-alt">${u.durum === "taslak" ? (u.kademe === "PASIF" && ben.rol !== "yonetici" ? '<span class="soluk">Hesap pasife alma onayını yalnızca yöneticiler verebilir.</span>' : `<button class="birincil u-onay">${u.kademe === "PASIF" ? "Onayla ve pasife al" : "Onayla ve gönder"}</button><button class="ince u-iptal">Gönderme</button><button class="metin-btn u-duzenle">Metni düzenle</button>`) : `<button class="ince u-geri">Onayı geri al</button>`}</div></section>`; };
   const DUR = { gonderildi: ["Gönderildi", "ok"], gonderiliyor: ["Gönderiliyor", "uyari"], iptal: ["Gönderilmedi", ""], hata: ["Hata", "hata"] };
-  $("#icerik").innerHTML = baslik("Uyarılar", "Öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Her taslağın altında bildirimde geçen sorular ve cevaplar görünür. Aşağıda daha önce gönderilen bildirimlerin tamamı var. Öğretmenleri sık bildirimle yormamak için geri bildirim, format hatırlatması ve küçük hatırlatmalar Pazartesi ve Perşembe hazırlanır; bir öğretmenin biriken cevapları tek bildirimde toplanır. Son 3 günde bildirim almış öğretmene yenisi açılmaz, cevapları sonraki güne kalır. Yapay zekâ uyarısı, genel uyarı ve hesap kapatma önerisi beklemez.") + `
+  $("#icerik").innerHTML = baslik("Uyarılar", "Öğretmenlere gidecek bildirimler burada onayını bekler. Metni istersen düzelt, sonra \"Onayla ve gönder\" ya da \"Gönderme\" de. Onayladıktan sonra 30 saniye geri alabilirsin, sonra 1-2 dakika içinde gider. Her taslağın altında bildirimde geçen sorular ve cevaplar görünür. Aşağıda son 300 bildirim var. Öğretmenleri sık bildirimle yormamak için geri bildirim, format hatırlatması ve küçük hatırlatmalar Pazartesi ve Perşembe hazırlanır; bir öğretmenin biriken cevapları tek bildirimde toplanır. Son 3 günde bildirim almış öğretmene yenisi açılmaz, cevapları sonraki güne kalır. Yapay zekâ uyarısı, genel uyarı ve hesap kapatma önerisi beklemez.") + `
     ${acik.length ? `<h2>Onay bekleyenler (${acik.length})</h2>` : ""}
     ${acik.length ? `<div id="u-acik" class="kart-izgara">${acik.map(kart).join("")}</div>` : '<div class="bos-ince"><i data-lucide="circle-check"></i>Onay bekleyen bildirim yok.</div>'}
     <h2>Gönderilen bildirimler</h2>
@@ -749,7 +749,7 @@ async function uyari() {
         bildir("Geri alındı, yeniden onay bekliyor."); rozetler(); sekme === "uyari" && uyari();
       });
     };
-    k.querySelector(".u-onay")?.addEventListener("click", () => { if (k.querySelector(".etiket.hata") && !confirm("Bildirim gidecek ve öğretmenin hesabı pasife alınacak. Emin misin?")) return; karar(true); });
+    k.querySelector(".u-onay")?.addEventListener("click", () => { if (k.dataset.kademe === "PASIF" && !confirm("Bildirim gidecek ve öğretmenin hesabı pasife alınacak. Emin misin?")) return; karar(true); });
     k.querySelector(".u-iptal")?.addEventListener("click", () => karar(false));
     k.querySelector(".u-geri")?.addEventListener("click", async () => {
       const { error } = await sb.rpc("d_uyari_geri_al", { p_id: id });
@@ -816,7 +816,7 @@ const yiginCubuk = (P, toplamYazi) => { const t = P.reduce((a, p) => a + p[1], 0
 const kategori = s => s.kategori || ["diger"];  // kategoriler Mac'te (ortak.py kategori) hesaplanıp kayda yazılır; tek kaynak
 async function ogretmen(id) {
   if (id) return ogretmenDetay(+id);
-  const [O, U, S7, NU] = await Promise.all([q(sb.from("d_ogretmen").select("*").limit(2000)), q(sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7), uyariSayilari()]);
+  const [O, U, S7, NU] = await Promise.all([gsSayfala(() => sb.from("d_ogretmen").select("*").order("ogretmen_id")), gsSayfala(() => sb.from("d_uyari").select("ogretmen_id,kademe,durum,gonderim,olusturma,title").order("id")), tumSikayetler(7), uyariSayilari()]);
   const son = {}, bekleyenU = {}, H = {};
   for (const u of U) { if (u.durum === "gonderildi" || u.kademe === "AKTIF") son[u.ogretmen_id] = u; if (u.durum === "taslak" || u.durum === "onaylandi") bekleyenU[u.ogretmen_id] = u; }
   const Q = {};  // öğretmen başına aynı soru tek sayılır, onaylanan varsa o (uyari.py plan() ile aynı)
@@ -985,7 +985,7 @@ function basvuruBagla(yenile) {
     btn.onclick = async () => {
       const not = k.querySelector(".aksiyon input").value.trim(), id = +k.dataset.bid;
       if (!sec) return bildir("Önce seçim yap."); if (sec === "YANLIS" && not.length < 3) return bildir("Yanlış dediysen nedenini yaz.");
-      const { error } = await sb.rpc("d_basvuru_kontrol", { p_id: id, p_secim: sec, p_not: not });
+      btn.disabled = true; const { error } = await sb.rpc("d_basvuru_kontrol", { p_id: id, p_secim: sec, p_not: not }); btn.disabled = false;
       if (error) return bildir("Kaydedilemedi: " + error.message);
       k.classList.add("gidiyor"); setTimeout(() => k.remove(), 250); rozetler();
       toast("Kontrol kaydedildi", "", async () => {
@@ -1030,7 +1030,7 @@ async function takip() {
 
 // ---------- rastgele denetim ----------
 async function denetim() {
-  const L = await q(sb.from("d_takip").select("*").eq("kaynak", "denetim").order("cevap_tarihi", { ascending: false }).limit(2000));
+  const L = await gsSayfala(() => sb.from("d_takip").select("*").eq("kaynak", "denetim").order("cevap_tarihi", { ascending: false }).order("key"));
   const G = {}, O = {};
   L.forEach(x => { const g = x.olusturma ? gunu(x.olusturma) : "", o = G[g] ||= { n: 0, s: 0, y: 0 }; o.n++; if (x.sonuc === "SORUNLU") o.s++; if (x.sonuc === "YZ_KESIN") o.y++;
     const t = O[x.ogretmen_id] ||= { ad: x.ogretmen, n: 0, s: 0, y: 0 }; t.n++; if (x.sonuc === "SORUNLU") t.s++; if (x.sonuc === "YZ_KESIN") t.y++; });
@@ -1054,7 +1054,7 @@ async function denetim() {
 // ---------- eksi puanlı solverlar ----------
 async function eksi() {
   const [L, NU, GE] = await Promise.all([q(sb.from("d_solver_puan").select("*").order("puan").limit(1000)), uyariSayilari(),
-    q(sb.from("d_solver_puan_gecmis").select("solver_id,zaman,puan,onceki,fark,dogru,sikayet,diger,kaynak").gte("zaman", new Date(Date.now() - 7 * 864e5).toISOString()).order("zaman").limit(5000))]);
+    gsSayfala(() => sb.from("d_solver_puan_gecmis").select("solver_id,zaman,puan,onceki,fark,dogru,sikayet,diger,kaynak").gte("zaman", new Date(Date.now() - 7 * 864e5).toISOString()).order("zaman").order("id"))]);
   const G = {}; GE.forEach(g => (G[g.solver_id] ||= []).push(g));
   // son 7 günün dökümü: doğru cevap +1, onaylanan şikayet −3, kalan "diğer" (soruyu bırakma, süre aşımı) ya da bizim elle düzeltmemiz
   const D = {};
@@ -1164,7 +1164,7 @@ async function kesinti() {
     const id = Number(k.dataset.id), x = L.find(y => y.ogretmen_id === id), acik = x.durum === "hazir";
     k.querySelector(".ks-cevap").addEventListener("toggle", async ev => {
       if (!ev.target.open || ev.target.dataset.yuklu) return; ev.target.dataset.yuklu = 1;
-      const C = await q(sb.from("d_kesinti_cevap").select("*").eq("ogretmen_id", id).order("cevap_tarihi", { ascending: false }).limit(3000));
+      const C = await gsSayfala(() => sb.from("d_kesinti_cevap").select("*").eq("ogretmen_id", id).order("cevap_tarihi", { ascending: false }).order("id"));
       const medya = c => { const M = [...(c.soru_url || []), ...(c.cevap_url || []), ...(c.video_url ? [c.video_url] : [])], ns = (c.soru_url || []).length;
         return M.length ? `<div class="ks-medya" data-medya="${e(JSON.stringify(M))}">${M.map((u, i) => /\.(mp4|mov)(\?|$)/i.test(u) ? `<button class="ince kucuk" data-galeri="${i}">Videoyu aç</button>` : `<figure><img loading="lazy" src="${e(u)}" data-galeri="${i}" alt=""><figcaption>${i < ns ? "Soru" : "Cevap"}</figcaption></figure>`).join("")}</div>` : ""; };
       const satir = c => `<div class="ks-satir"><div class="ks-s-ust"><span><b>${new Date(c.cevap_tarihi).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}</b> · ${e(c.ders || "")} · ${tl(c.tutar)}</span>
@@ -1204,7 +1204,7 @@ async function kesinti() {
 // ---------- öğrenciler ----------
 async function ogrenci() {
   const L = (await tumSikayetler(30)).filter(s => s.tur === "c"), O = {};
-  const seo = {}; (await q(sb.from("d_sikayet").select("ogrenci_id,ogrenci_seo").eq("tur", "c").not("ogrenci_seo", "is", null).limit(5000))).forEach(x => seo[x.ogrenci_id] = x.ogrenci_seo);
+  const seo = {}; (await gsSayfala(() => sb.from("d_sikayet").select("ogrenci_id,ogrenci_seo").eq("tur", "c").not("ogrenci_seo", "is", null).order("key"))).forEach(x => seo[x.ogrenci_id] = x.ogrenci_seo);
   for (const s of L) {
     if (!s.ogrenci_id) continue;
     const o = O[s.ogrenci_id] ||= { ad: s.ogrenci, n: 0, ret: 0, onay: 0, sorular: {} };
@@ -1274,6 +1274,7 @@ function gsAralik() {
 const gsDB = (() => { let p; return () => p ||= new Promise((ok, no) => { const r = indexedDB.open("tebesir", 1); r.onupgradeneeded = () => r.result.createObjectStore("o"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); })();
 async function gsOnbOku() { try { const db = await gsDB(); return await new Promise(ok => { const r = db.transaction("o").objectStore("o").get("cevap"); r.onsuccess = () => ok(r.result || null); r.onerror = () => ok(null); }); } catch { return null; } }
 async function gsOnbYaz(v) { try { (await gsDB()).transaction("o", "readwrite").objectStore("o").put(v, "cevap"); } catch { } }
+const gsSikCek = () => gsSayfala(() => sb.from("d_sikayet").select("key,question_id,son_karar,durum").eq("tur", "c").in("ogretmen_id", [...BIZIM_BANKA, ...BIZIM_AI]).order("key"));
 async function gsSayfala(f) {
   let L = [], i = 0;
   while (true) { const d = await q(f().range(i, i + 999)); L = L.concat(d); if (d.length < 1000) break; i += 1000; }
@@ -1304,10 +1305,10 @@ async function gonderici(mod) {
   const bas_ = mod === "sure" ? "Süreler" : "Tebeşir";
   if (ben.rol !== "yonetici") { $("#icerik").innerHTML = baslik(bas_, "Bu sayfayı yalnız yöneticiler görebilir."); return; }
   const [O, C, SK] = await Promise.all([q(sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%")), gsCevaplar(),
-    sb.from("d_sikayet").select("question_id,son_karar,durum").eq("tur", "c").in("ogretmen_id", [...BIZIM_BANKA, ...BIZIM_AI]).limit(10000)]);
-  gsSik = new Map((SK.data || []).map(x => [String(x.question_id), x]));   // 28 Eki: bizim cevaplara gelen şikayetler (reddedilenler dahil)
+    gsSikCek()]);
+  gsSik = new Map(SK.map(x => [String(x.question_id), x]));   // 28 Eki: bizim cevaplara gelen şikayetler (reddedilenler dahil)
   const Z = Object.fromEntries(O.map(x => [x.k, x.v])), simdi = new Date().toISOString(), senk = O.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
-  if (!Z.gunler) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
+  if (!Z.gunler?.length) { $("#icerik").innerHTML = baslik("Tebeşir", "Henüz veri gelmedi.") + '<div class="bos">Mac\'teki eşitleme ilk kez çalıştığında burası dolar.</div>'; return; }
   gsV = { Z, C }; gsUN = null; gsSenk = senk; gsImza = O.map(x => x.k + x.zaman).sort().join("|");
   $("#icerik").innerHTML = baslik(bas_, "") + `<div class="gs-yenile-bar" id="gs-yenile-yer"></div>${mod === "sure" ? "" : '<div id="hv-canli"></div>'}<div id="gs-serit-yer"></div>
     <div class="gs-arac"><div class="gs-sekme" id="gs-sekme"></div><div class="gs-aralik" id="gs-aralik"></div></div>
@@ -1379,10 +1380,11 @@ async function gsYenile() {
   if (gsYenileniyor || !$("#gs-govde")) return;
   gsYenileniyor = true; gsYenileCiz();
   try {
-    const O = await sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%"); if (O.error || !O.data) return;
+    const O = await sb.from("d_gonderici_ozet").select("k,v,zaman").not("k", "like", "sure_%"); if (O.error || !O.data) { bildir("Yenilenemedi, bağlantıyı kontrol edip tekrar dene."); return; }
     const imza = O.data.map(x => x.k + x.zaman).sort().join("|"), simdi = new Date().toISOString();
     const senk = O.data.reduce((a, x) => x.zaman > a && new Date(x.zaman).toISOString() <= simdi ? x.zaman : a, "");
-    const C = await gsCevaplar().catch(() => null); if (!C) return;
+    const [C, SK] = await Promise.all([gsCevaplar(), gsSikCek()]).catch(() => []); if (!C) { bildir("Yenilenemedi, bağlantıyı kontrol edip tekrar dene."); return; }
+    gsSik = new Map(SK.map(x => [String(x.question_id), x]));
     gsSenk = senk; gsImza = imza; gsV = { Z: Object.fromEntries(O.data.map(x => [x.k, x.v])), C }; gsUN = null;
     gsSeritCiz();
     const acik = [...document.querySelectorAll("#gs-govde details[open]")].map(d => d.id).filter(Boolean);
@@ -1410,7 +1412,7 @@ let hvBanka = null;
 const hvBankaSatir = () => hvBanka ? `<tr id="hv-banka" data-ipucu="${e(hvBanka.ipucu)}"><td class="hv-bot-ad"><i class="hv-nokta ${hvBanka.cls}"></i><b>Banka</b></td><td><span class="etiket ${hvBanka.cls}">${hvBanka.et}</span></td><td class="hv-sn">${hvBanka.ne}</td></tr>` : "";
 function gsSeritCiz() {
   const yer = $("#gs-serit-yer"); if (!yer || !gsV) return;
-  const H = gsV.Z.saglik, ai = gsV.Z.ai || {}, senk = gsSenk;
+  const H = gsV.Z.saglik || {}, ai = gsV.Z.ai || {}, senk = gsSenk;
   const dk = H.son_olay ? Math.round((Date.now() - new Date(H.son_olay)) / 6e4) : null, canli = dk != null && dk <= 15 && H.surec >= 2;
   const cip = (ok, metin, ipucu, hesap) => `<${hesap ? "button" : "span"} class="gs-cip ${hesap ? "gs-cip-tik" : ""} ${ok === true ? "ok" : ok === false ? "hata" : ""}" ${hesap ? `data-hesap="${e(hesap)}"` : ""} ${ipucu ? `data-ipucu="${e(ipucu)}"` : ""}>${metin}</${hesap ? "button" : "span"}>`;
   const bugunH = ((ai.gun || {})[gunStr(new Date())] || {}).hesap || {};
